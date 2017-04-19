@@ -27,3 +27,8 @@
 *.exe
 *.out
 *.app
+
+# Others
+.lock-waf_linux2_build
+.vscode/
+build/
