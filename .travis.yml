@@ -12,11 +12,17 @@ addons:
 before_install:
 - ORIG_DIR=$(pwd)
 - sudo apt-get update -q
-- sudo apt-get install gcc g++ python libgtest-dev cmake -y
+- sudo apt-get install software-properties-common python-software-properties -y
+- sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
+- sudo apt-get update -q
+- sudo apt-get install gcc g++ gcc-5 g++-5 python libgtest-dev cmake -y
+- sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 100
+- sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 100
 - cd /usr/src/gtest
-- sudo cmake .
+- sudo cmake . -DBUILD_SHARED_LIBS=ON
 - sudo make
-- sudo mv libg* /usr/lib/
+- sudo mv libgtest*.so /usr/local/lib/
+- sudo ldconfig
 - cd $ORIG_DIR
 
 script:
