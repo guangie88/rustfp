@@ -10,12 +10,14 @@ addons:
     - ubuntu-toolchain-r-test
 
 before_install:
+- ORIG_DIR=$(pwd)
 - sudo apt-get update -q
 - sudo apt-get install gcc g++ python libgtest-dev cmake -y
 - cd /usr/src/gtest
 - sudo cmake .
 - sudo make
 - sudo mv libg* /usr/lib/
+- cd $ORIG_DIR
 
 script:
 - python waf configure
