@@ -13,6 +13,7 @@
 
 // rustfp
 using rustfp::filter;
+using rustfp::fold;
 using rustfp::for_each;
 using rustfp::iter;
 using rustfp::map;
@@ -40,12 +41,12 @@ TEST_F(SimpleTest, Filter)
     int sum = 0;
 
     iter(intVec)
-        | filter([](const int value)
+        | filter([](const auto value)
         {
             return value % 2 == 1;
         })
 
-        | for_each([&sum](const int value)
+        | for_each([&sum](const auto value)
         {
             sum += value;
         });
@@ -53,12 +54,25 @@ TEST_F(SimpleTest, Filter)
     EXPECT_EQ(9, sum);
 }
 
+TEST_F(SimpleTest, Fold)
+{
+    static constexpr int FOLD_ACC = 10;
+
+    const auto fold_sum = iter(intVec)
+        | fold(FOLD_ACC, [](const auto acc, const auto rhs)
+        {
+            return acc + rhs;
+        });
+
+    EXPECT_EQ(accumulate(cbegin(intVec), cend(intVec), FOLD_ACC), fold_sum);
+}
+
 TEST_F(SimpleTest, ForEach)
 {
     int sum = 0;
 
     iter(intVec)
-        | for_each([&sum](const int value)
+        | for_each([&sum](const auto value)
         {
             sum += value;
         });
@@ -71,12 +85,12 @@ TEST_F(SimpleTest, Map)
     double sum = 0.0;
 
     iter(intVec)
-        | map([](const int value)
+        | map([](const auto value)
         {
             return value * 0.5;
         })
 
-        | for_each([&sum](const double value)
+        | for_each([&sum](const auto value)
         {
             sum += value;
         });

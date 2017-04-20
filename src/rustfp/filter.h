@@ -1,6 +1,7 @@
 #pragma once
 
 #include "option.h"
+#include "traits.h"
 
 #include <type_traits>
 #include <utility>
@@ -64,8 +65,8 @@ namespace rustfp
     }
 
     template <class Pred>
-    auto filter(Pred &&pred) -> details::FilterOp<std::remove_reference_t<std::remove_const_t<Pred>>>
+    auto filter(Pred &&pred) -> details::FilterOp<special_decay_t<Pred>>
     {
-        return details::FilterOp<std::remove_reference_t<std::remove_const_t<Pred>>>(std::forward<Pred>(pred));
+        return details::FilterOp<special_decay_t<Pred>>(std::forward<Pred>(pred));
     }
 }

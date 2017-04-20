@@ -59,8 +59,8 @@ namespace rustfp
     }
 
     template <class FnToType>
-    auto map(FnToType &&fn) -> details::MapOp<std::remove_reference_t<std::remove_const_t<FnToType>>>
+    auto map(FnToType &&fn) -> details::MapOp<special_decay_t<FnToType>>
     {
-        return details::MapOp<std::remove_reference_t<std::remove_const_t<FnToType>>>(std::forward<FnToType>(fn));
+        return details::MapOp<special_decay_t<FnToType>>(std::forward<FnToType>(fn));
     }
 }

@@ -10,7 +10,7 @@ namespace rustfp
         template <class T>
         struct special_decay_impl
         {
-            using type = T;
+            using type = std::decay_t<T>;
         };
 
         template <class T>
