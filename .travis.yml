@@ -11,7 +11,7 @@ addons:
 
 before_install:
 - sudo apt-get update -q
-- sudo apt-get install gcc g++ python -y
+- sudo apt-get install gcc g++ python libgtest-dev -y
 
 script:
 - python waf configure
