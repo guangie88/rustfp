@@ -12,6 +12,7 @@
 #include <vector>
 
 // rustfp
+using rustfp::filter;
 using rustfp::for_each;
 using rustfp::iter;
 using rustfp::map;
@@ -33,6 +34,24 @@ protected:
 
     vector<int> intVec;
 };
+
+TEST_F(SimpleTest, Filter)
+{
+    int sum = 0;
+
+    iter(intVec)
+        | filter([](const int value)
+        {
+            return value % 2 == 1;
+        })
+
+        | for_each([&sum](const int value)
+        {
+            sum += value;
+        });
+
+    EXPECT_EQ(9, sum);
+}
 
 TEST_F(SimpleTest, ForEach)
 {

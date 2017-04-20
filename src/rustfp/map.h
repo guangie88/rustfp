@@ -13,7 +13,7 @@ namespace rustfp
         class Map
         {
         public:
-            using Item = typename Iterator::Item;
+            using Item = special_decay_t<std::result_of_t<FnToType(typename Iterator::Item)>>;
 
             template <class Iteratorx, class FnToTypex>
             Map(Iteratorx &&it, FnToTypex &&fn) :
@@ -22,7 +22,7 @@ namespace rustfp
             {
             }
 
-            auto next() -> Option<special_decay_t<std::result_of_t<FnToType(Item)>>>
+            auto next() -> Option<Item>
             {
                 return it.next().map(
                     [this](auto &&value)
@@ -41,7 +41,7 @@ namespace rustfp
         {
         public:
             template <class FnToTypex>
-            MapOp(FnToTypex &&fn) :
+            explicit MapOp(FnToTypex &&fn) :
                 fn(std::forward<FnToTypex>(fn))
             {
             }
