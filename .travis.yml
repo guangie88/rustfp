@@ -1,0 +1,18 @@
+language:
+- cpp
+
+addons:
+  apt:
+    sources:
+    - ubuntu-toolchain-r-test
+
+before_install:
+- apt install python
+
+script:
+- python waf configure
+- python waf debug
+- python waf
+
+after_success:
+- ./build/debug/bin/unit_test-debug
