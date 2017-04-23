@@ -75,10 +75,10 @@ TEST_F(SimpleTest, CollectVec)
 
 TEST_F(SimpleTest, CollectMapVecSum)
 {
-    static constexpr auto ADDITIONAL = 0.5;
+    static constexpr auto COLLECT_MAP_VEC_SUM_ADD = 0.5;
 
     const auto dup_vec = range(0, int_vec.size())
-        | map([](const auto value) { return value + ADDITIONAL; })
+        | map([](const auto value) { return value + COLLECT_MAP_VEC_SUM_ADD; })
         | collect<vector<double>>();
 
     const auto fold_sum = iter(dup_vec)
@@ -86,7 +86,7 @@ TEST_F(SimpleTest, CollectMapVecSum)
 
     const auto expected_sum = accumulate(
         cbegin(int_vec), cend(int_vec),
-        0.0, [](const double acc, const int value) { return acc + value + ADDITIONAL; });
+        0.0, [](const double acc, const int value) { return acc + value + COLLECT_MAP_VEC_SUM_ADD; });
 
     EXPECT_EQ(expected_sum, fold_sum);
 }
@@ -121,13 +121,13 @@ TEST_F(SimpleTest, Fold)
 
 TEST_F(SimpleTest, FindSome)
 {
-    static constexpr auto FIND_VALUE = 5;
+    static constexpr auto FIND_SOME_ACC = 5;
 
     const auto find_some_opt = iter(int_vec)
-        | find([](const auto value) { return value == FIND_VALUE; });
+        | find([](const auto value) { return value == FIND_SOME_ACC; });
 
     EXPECT_TRUE(find_some_opt.is_some());
-    EXPECT_EQ(FIND_VALUE, find_some_opt.get_unchecked());
+    EXPECT_EQ(FIND_SOME_ACC, find_some_opt.get_unchecked());
 }
 
 TEST_F(SimpleTest, FindNone)
@@ -140,30 +140,30 @@ TEST_F(SimpleTest, FindNone)
 
 TEST_F(SimpleTest, FindMapSome)
 {
-    static constexpr auto FIND_VALUE = 4;
+    static constexpr auto FIND_MAP_SOME_ACC = 4;
 
-    static const auto MAPPER_FN = [](const int value) { return value + 0.5; };
+    static const auto FIND_MAP_SOME_MAPPER = [](const int value) { return value + 0.5; };
 
     const auto find_some_opt = iter(int_vec)
         | find_map([](const auto value)
         {
-            return value == FIND_VALUE
-                ? Some(MAPPER_FN(value))
+            return value == FIND_MAP_SOME_ACC
+                ? Some(FIND_MAP_SOME_MAPPER(value))
                 : None;
         });
 
     EXPECT_TRUE(find_some_opt.is_some());
-    EXPECT_EQ(MAPPER_FN(FIND_VALUE), find_some_opt.get_unchecked());
+    EXPECT_EQ(FIND_MAP_SOME_MAPPER(FIND_MAP_SOME_ACC), find_some_opt.get_unchecked());
 }
 
 TEST_F(SimpleTest, FindMapNone)
 {
-    static constexpr auto CANNOT_FIND_VALUE = -1;
+    static constexpr auto FIND_MAP_NONE_VAL = -1;
 
     const auto find_none_opt = iter(int_vec)
         | find_map([](const int value)
         {
-            return value == CANNOT_FIND_VALUE
+            return value == FIND_MAP_NONE_VAL
                 ? Some(value)
                 : None;
         });
@@ -204,12 +204,12 @@ TEST_F(SimpleTest, Map)
 
 TEST_F(SimpleTest, Range)
 {
-    static constexpr int FOLD_ACC = 5;
+    static constexpr int RANGE_ACC = 5;
 
     const auto sum = range(0, 6)
-        | fold(FOLD_ACC, plus<int>());
+        | fold(RANGE_ACC, plus<int>());
 
-    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), sum);
+    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), RANGE_ACC), sum);
 }
 
 TEST_F(ComplexTest, FilterMapFold)
@@ -229,18 +229,18 @@ TEST_F(ComplexTest, FilterMapFind)
 {
     // .5 is a easily representable value in mantissa
     // so that the floating float comparison can directly compare the values
-    static constexpr auto FIND_VALUE = 34.5;
+    static constexpr auto FILTER_MAP_FIND_VAL = 34.5;
 
     const auto find_opt = range(1, 100)
         | filter([](const auto value) { return value % 17 == 0; })
         | map([](const auto value) { return value + 0.5; })
         | find([](const auto value)
         {
-            return value == FIND_VALUE;
+            return value == FILTER_MAP_FIND_VAL;
         });
 
     EXPECT_TRUE(find_opt.is_some());
-    EXPECT_EQ(FIND_VALUE, find_opt.get_unchecked());
+    EXPECT_EQ(FILTER_MAP_FIND_VAL, find_opt.get_unchecked());
 }
 
 int main(int argc, char * argv[])
