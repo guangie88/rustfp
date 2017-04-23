@@ -48,8 +48,25 @@ namespace rustfp
     {
     public:
         template <class Tx>
-        Option(Tx &&value) :
+        explicit Option(Tx &&value) :
             opt(std::forward<Tx>(value))
+        {
+        }
+
+        Option(Option<T> &rhs) :
+            opt(rhs.opt)
+        {
+            static_assert(std::is_copy_constructible<T>::value, "Option<T> is not copy constructible");
+        }
+
+        Option(const Option<T> &rhs) :
+            opt(rhs.opt)
+        {
+            static_assert(std::is_copy_constructible<T>::value, "Option<T> is not copy constructible");
+        }
+
+        Option(Option<T> &&rhs) :
+            opt(std::move(rhs.opt))
         {
         }
 
@@ -90,7 +107,7 @@ namespace rustfp
             // forward moves rref value only, lref remains as lref
             reverse_decay_t<T> value = std::forward<T>(*opt);
             opt.reset();
-            return std::forward<T>(value);
+            return std::move(value);
         }
 
     private:

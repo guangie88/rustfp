@@ -14,7 +14,8 @@ namespace rustfp
         class Iter
         {
         public:
-            using Item = typename StdInputIterable::const_reference; 
+            using Item = typename std::iterator_traits<typename StdInputIterable::const_iterator>::reference;
+            static_assert(std::is_lvalue_reference<Item>::value, "Iter can only take iterable whose iterator dereferences to a reference type");
 
             Iter(const StdInputIterable &inputIterable) :
                 inputIterableRef(inputIterable),

@@ -1,4 +1,5 @@
 #include "rustfp/filter.h"
+#include "rustfp/find.h"
 #include "rustfp/fold.h"
 #include "rustfp/for_each.h"
 #include "rustfp/iter.h"
@@ -16,6 +17,7 @@
 
 // rustfp
 using rustfp::filter;
+using rustfp::find;
 using rustfp::fold;
 using rustfp::for_each;
 using rustfp::iter;
@@ -79,6 +81,23 @@ TEST_F(SimpleTest, Fold)
     EXPECT_EQ(accumulate(cbegin(intVec), cend(intVec), FOLD_ACC), fold_sum);
 }
 
+TEST_F(SimpleTest, FindSome)
+{
+    const auto find_five_opt = iter(intVec)
+        | find([](const auto value) { return value == 5; });
+
+    EXPECT_TRUE(find_five_opt.is_some());
+    EXPECT_EQ(5, find_five_opt.get_unchecked());
+}
+
+TEST_F(SimpleTest, FindNone)
+{
+    const auto find_none_opt = iter(intVec)
+        | find([](const auto value) { return value == 6; });
+
+    EXPECT_TRUE(find_none_opt.is_none());
+}
+
 TEST_F(SimpleTest, ForEach)
 {
     int sum = 0;
@@ -120,7 +139,7 @@ TEST_F(SimpleTest, Range)
     EXPECT_EQ(accumulate(cbegin(intVec), cend(intVec), FOLD_ACC), sum);
 }
 
-TEST_F(ComplexTest, 1)
+TEST_F(ComplexTest, FilterMapFold)
 {
     const auto eleven_div_str = range(1, 100)
         | filter([](const auto value) { return value % 11 == 0; })
@@ -131,6 +150,24 @@ TEST_F(ComplexTest, 1)
         });
 
     EXPECT_EQ("11 22 33 44 55 66 77 88 99 ", eleven_div_str);
+}
+
+TEST_F(ComplexTest, FilterMapFind)
+{
+    // .5 is a easily representable value in mantissa
+    // so that the floating float comparison can directly compare the values
+    static constexpr auto FIND_VALUE = 34.5;
+
+    const auto find_opt = range(1, 100)
+        | filter([](const auto value) { return value % 17 == 0; })
+        | map([](const auto value) { return value + 0.5; })
+        | find([](const auto value)
+        {
+            return value == FIND_VALUE;
+        });
+
+    EXPECT_TRUE(find_opt.is_some());
+    EXPECT_EQ(FIND_VALUE, find_opt.get_unchecked());
 }
 
 int main(int argc, char * argv[])
