@@ -1,9 +1,11 @@
 #include "rustfp/filter.h"
 #include "rustfp/find.h"
+#include "rustfp/find_map.h"
 #include "rustfp/fold.h"
 #include "rustfp/for_each.h"
 #include "rustfp/iter.h"
 #include "rustfp/map.h"
+#include "rustfp/option.h"
 #include "rustfp/range.h"
 
 #include "gtest/gtest.h"
@@ -18,11 +20,14 @@
 // rustfp
 using rustfp::filter;
 using rustfp::find;
+using rustfp::find_map;
 using rustfp::fold;
 using rustfp::for_each;
 using rustfp::iter;
 using rustfp::map;
 using rustfp::range;
+using rustfp::None;
+using rustfp::Some;
 
 // std
 using std::accumulate;
@@ -83,11 +88,13 @@ TEST_F(SimpleTest, Fold)
 
 TEST_F(SimpleTest, FindSome)
 {
-    const auto find_five_opt = iter(intVec)
-        | find([](const auto value) { return value == 5; });
+    static constexpr auto FIND_VALUE = 5;
 
-    EXPECT_TRUE(find_five_opt.is_some());
-    EXPECT_EQ(5, find_five_opt.get_unchecked());
+    const auto find_some_opt = iter(intVec)
+        | find([](const auto value) { return value == FIND_VALUE; });
+
+    EXPECT_TRUE(find_some_opt.is_some());
+    EXPECT_EQ(FIND_VALUE, find_some_opt.get_unchecked());
 }
 
 TEST_F(SimpleTest, FindNone)
@@ -96,6 +103,41 @@ TEST_F(SimpleTest, FindNone)
         | find([](const auto value) { return value == 6; });
 
     EXPECT_TRUE(find_none_opt.is_none());
+}
+
+TEST_F(SimpleTest, FindMapSome)
+{
+    static constexpr auto FIND_VALUE = 4;
+
+    static const auto MAPPER_FN = [](const int value) { return value + 0.5; };
+
+    const auto find_some_opt = iter(intVec)
+        | find_map([](const auto value)
+        {
+            return value == FIND_VALUE
+                ? Some(MAPPER_FN(value))
+                : None;
+        });
+
+    EXPECT_TRUE(find_some_opt.is_some());
+    EXPECT_EQ(MAPPER_FN(FIND_VALUE), find_some_opt.get_unchecked());
+}
+
+TEST_F(SimpleTest, FindMapNone)
+{
+    static constexpr auto FIND_VALUE = -1;
+
+    static const auto MAPPER_FN = [](const int value) { return value + 0.5; };
+
+    const auto find_some_opt = iter(intVec)
+        | find_map([](const auto value)
+        {
+            return value == FIND_VALUE
+                ? Some(MAPPER_FN(value))
+                : None;
+        });
+
+    EXPECT_TRUE(find_some_opt.is_none());
 }
 
 TEST_F(SimpleTest, ForEach)
