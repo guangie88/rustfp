@@ -1,3 +1,4 @@
+#include "rustfp/collect.h"
 #include "rustfp/filter.h"
 #include "rustfp/find.h"
 #include "rustfp/find_map.h"
@@ -18,6 +19,7 @@
 #include <vector>
 
 // rustfp
+using rustfp::collect;
 using rustfp::filter;
 using rustfp::find;
 using rustfp::find_map;
@@ -34,6 +36,7 @@ using std::accumulate;
 using std::cbegin;
 using std::cend;
 using std::cout;
+using std::mismatch;
 using std::plus;
 using std::string;
 using std::to_string;
@@ -44,10 +47,10 @@ class SimpleTest : public ::testing::Test
 protected:
     void SetUp() override
     {
-        intVec = vector<int>{0, 1, 2, 3, 4, 5};
+        int_vec = vector<int>{0, 1, 2, 3, 4, 5};
     }
 
-    vector<int> intVec;
+    vector<int> int_vec;
 };
 
 class ComplexTest : public ::testing::Test
@@ -58,11 +61,41 @@ protected:
     }
 };
 
+TEST_F(SimpleTest, CollectVec)
+{
+    const auto dup_vec = range(0, int_vec.size())
+        | collect<vector<int>>();
+
+    const auto input_it_pairs = mismatch(
+        cbegin(int_vec), cend(int_vec), cbegin(dup_vec));
+
+    EXPECT_EQ(cend(int_vec), input_it_pairs.first);
+    EXPECT_EQ(cend(dup_vec), input_it_pairs.second);
+}
+
+TEST_F(SimpleTest, CollectMapVecSum)
+{
+    static constexpr auto ADDITIONAL = 0.5;
+
+    const auto dup_vec = range(0, int_vec.size())
+        | map([](const auto value) { return value + ADDITIONAL; })
+        | collect<vector<double>>();
+
+    const auto fold_sum = iter(dup_vec)
+        | fold(0.0, plus<double>());
+
+    const auto expected_sum = accumulate(
+        cbegin(int_vec), cend(int_vec),
+        0.0, [](const double acc, const int value) { return acc + value + ADDITIONAL; });
+
+    EXPECT_EQ(expected_sum, fold_sum);
+}
+
 TEST_F(SimpleTest, Filter)
 {
     int sum = 0;
 
-    iter(intVec)
+    iter(int_vec)
         | filter([](const auto value)
         {
             return value % 2 == 1;
@@ -80,17 +113,17 @@ TEST_F(SimpleTest, Fold)
 {
     static constexpr int FOLD_ACC = 10;
 
-    const auto fold_sum = iter(intVec)
+    const auto fold_sum = iter(int_vec)
         | fold(FOLD_ACC, plus<int>());
 
-    EXPECT_EQ(accumulate(cbegin(intVec), cend(intVec), FOLD_ACC), fold_sum);
+    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), fold_sum);
 }
 
 TEST_F(SimpleTest, FindSome)
 {
     static constexpr auto FIND_VALUE = 5;
 
-    const auto find_some_opt = iter(intVec)
+    const auto find_some_opt = iter(int_vec)
         | find([](const auto value) { return value == FIND_VALUE; });
 
     EXPECT_TRUE(find_some_opt.is_some());
@@ -99,7 +132,7 @@ TEST_F(SimpleTest, FindSome)
 
 TEST_F(SimpleTest, FindNone)
 {
-    const auto find_none_opt = iter(intVec)
+    const auto find_none_opt = iter(int_vec)
         | find([](const auto value) { return value == 6; });
 
     EXPECT_TRUE(find_none_opt.is_none());
@@ -111,7 +144,7 @@ TEST_F(SimpleTest, FindMapSome)
 
     static const auto MAPPER_FN = [](const int value) { return value + 0.5; };
 
-    const auto find_some_opt = iter(intVec)
+    const auto find_some_opt = iter(int_vec)
         | find_map([](const auto value)
         {
             return value == FIND_VALUE
@@ -125,39 +158,37 @@ TEST_F(SimpleTest, FindMapSome)
 
 TEST_F(SimpleTest, FindMapNone)
 {
-    static constexpr auto FIND_VALUE = -1;
+    static constexpr auto CANNOT_FIND_VALUE = -1;
 
-    static const auto MAPPER_FN = [](const int value) { return value + 0.5; };
-
-    const auto find_some_opt = iter(intVec)
-        | find_map([](const auto value)
+    const auto find_none_opt = iter(int_vec)
+        | find_map([](const int value)
         {
-            return value == FIND_VALUE
-                ? Some(MAPPER_FN(value))
+            return value == CANNOT_FIND_VALUE
+                ? Some(value)
                 : None;
         });
 
-    EXPECT_TRUE(find_some_opt.is_none());
+    EXPECT_TRUE(find_none_opt.is_none());
 }
 
 TEST_F(SimpleTest, ForEach)
 {
     int sum = 0;
 
-    iter(intVec)
+    iter(int_vec)
         | for_each([&sum](const auto value)
         {
             sum += value;
         });
 
-    EXPECT_EQ(accumulate(cbegin(intVec), cend(intVec), 0), sum);
+    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
 }
 
 TEST_F(SimpleTest, Map)
 {
     double sum = 0.0;
 
-    iter(intVec)
+    iter(int_vec)
         | map([](const auto value)
         {
             return value * 0.5;
@@ -168,7 +199,7 @@ TEST_F(SimpleTest, Map)
             sum += value;
         });
 
-    EXPECT_EQ(accumulate(cbegin(intVec), cend(intVec), 0) * 0.5, sum);
+    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 0.5, sum);
 }
 
 TEST_F(SimpleTest, Range)
@@ -178,7 +209,7 @@ TEST_F(SimpleTest, Range)
     const auto sum = range(0, 6)
         | fold(FOLD_ACC, plus<int>());
 
-    EXPECT_EQ(accumulate(cbegin(intVec), cend(intVec), FOLD_ACC), sum);
+    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), sum);
 }
 
 TEST_F(ComplexTest, FilterMapFold)
