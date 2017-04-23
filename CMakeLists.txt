@@ -1,6 +1,11 @@
 cmake_minimum_required(VERSION 3.3)
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_COMPILER g++)
+
+if(MSVC)
+  set(CMAKE_CXX_COMPILER cl)
+else()
+  set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ standards to use (11|14)")
+  set(CMAKE_CXX_COMPILER g++ CACHE STRING "Compiler to use")
+endif()
 
 # project variables
 project(rustfp)
@@ -10,18 +15,23 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Builds all non-executable source directori
 
 # libraries finding
 if(${USE_STATIC})
-  if(WIN32)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES .lib .a)
-  else(WIN32)
+  if(MSVC)
+    set(CMAKE_FIND_LIBRARY_SUFFIXES .lib)
+  else()
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-  endif(WIN32)
+  endif()
 endif()
 
-find_library(GTEST_LIB NAMES gtest REQUIRED)
-find_library(PTHREAD_LIB NAMES pthread REQUIRED)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
+find_library(GTEST_LIB_DEBUG NAMES gtest REQUIRED)
+find_library(GTEST_LIB_RELEASE NAMES gtest REQUIRED)
+
+set(GTEST_LIB debug ${GTEST_LIB_DEBUG} optimized ${GTEST_LIB_RELEASE})
 
 # project to libraries mapping
-set(PROJ_LIBS_unit_test GTEST_LIB PTHREAD_LIB)
+set(PROJ_LIBS_unit_test GTEST_LIB)
 
 # general fixed project variables
 set(SRC_ROOT_DIR src)
@@ -30,14 +40,23 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # general fixed compiler settings
-set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall -g")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -Wall -O3")
+if(MSVC)
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Wall")
+else()
+  set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -Wall")
+endif()
 
 # performs static/shared libraries global settings
 if(${USE_STATIC})
-  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
+  if(MSVC)
+    string(REGEX REPLACE "/MDd" "/MTd" CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG})
+    string(REGEX REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE})
+    string(REGEX REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_MINSIZEREL ${CMAKE_CXX_FLAGS_MINSIZEREL})
+    string(REGEX REPLACE "/MD" "/MT" CMAKE_CXX_FLAGS_RELWITHDEBINFO ${CMAKE_CXX_FLAGS_RELWITHDEBINFO})
+  else()
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -static")
+  endif()
 endif()
 
 # recursive build
@@ -69,6 +88,6 @@ foreach(SRC_DIR ${SRC_DIRS})
     endif()
 
     target_include_directories(${PROJ_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/${SRC_ROOT_DIR})
-    target_link_libraries(${PROJ_NAME} ${SUBST_PROJ_LIBS})
+    target_link_libraries(${PROJ_NAME} ${SUBST_PROJ_LIBS} Threads::Threads)
   endif()
 endforeach()
