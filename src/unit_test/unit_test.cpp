@@ -141,7 +141,6 @@ TEST_F(SimpleTest, FindNone)
 TEST_F(SimpleTest, FindMapSome)
 {
     static constexpr auto FIND_MAP_SOME_ACC = 4;
-
     static const auto FIND_MAP_SOME_MAPPER = [](const int value) { return value + 0.5; };
 
     const auto find_some_opt = iter(int_vec)
@@ -151,9 +150,11 @@ TEST_F(SimpleTest, FindMapSome)
                 ? Some(FIND_MAP_SOME_MAPPER(value))
                 : None;
         });
+    
+    const auto expected_value = FIND_MAP_SOME_MAPPER(FIND_MAP_SOME_ACC);
 
     EXPECT_TRUE(find_some_opt.is_some());
-    EXPECT_EQ(FIND_MAP_SOME_MAPPER(FIND_MAP_SOME_ACC), find_some_opt.get_unchecked());
+    EXPECT_EQ(expected_value, find_some_opt.get_unchecked());
 }
 
 TEST_F(SimpleTest, FindMapNone)
