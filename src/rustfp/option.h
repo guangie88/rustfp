@@ -85,10 +85,10 @@ namespace rustfp
             return details::get_ref(*opt);
         }
 
-        auto unwrap_unchecked() -> T
+        auto unwrap_unchecked() -> reverse_decay_t<T>
         {
             // forward moves rref value only, lref remains as lref
-            auto &&value = std::forward<T>(*opt);
+            reverse_decay_t<T> value = std::forward<T>(*opt);
             opt.reset();
             return std::forward<T>(value);
         }
