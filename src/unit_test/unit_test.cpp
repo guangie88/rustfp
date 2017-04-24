@@ -1,6 +1,7 @@
 #include "rustfp/all.h"
 #include "rustfp/any.h"
 #include "rustfp/collect.h"
+#include "rustfp/enumerate.h"
 #include "rustfp/filter.h"
 #include "rustfp/find.h"
 #include "rustfp/find_map.h"
@@ -26,6 +27,7 @@
 using rustfp::all;
 using rustfp::any;
 using rustfp::collect;
+using rustfp::enumerate;
 using rustfp::filter;
 using rustfp::find;
 using rustfp::find_map;
@@ -131,6 +133,23 @@ TEST_F(SimpleTest, CollectMapVecSum)
         0.0, [](const double acc, const int value) { return acc + value + COLLECT_MAP_VEC_SUM_ADD; });
 
     EXPECT_EQ(expected_sum, fold_sum);
+}
+
+TEST_F(SimpleTest, Enumerate)
+{
+    int sum = 0;
+
+    iter(int_vec)
+        | enumerate()
+        | for_each([&sum](const auto pair)
+        {
+            // first and second are the same values
+            sum += pair.first + pair.second;
+        });
+
+    // * 2 because the index and values are the same values
+    // thus adding both together create a * 2 effect
+    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 2, sum);
 }
 
 TEST_F(SimpleTest, Filter)

@@ -25,10 +25,10 @@ namespace rustfp
 
             auto next() -> Option<Item>
             {
-                return it.next().map(
-                    [this](auto &&value)
+                return it.next()
+                    .map([this](auto &&value)
                     {
-                        return fn(std::forward<decltype(value)>(value));
+                        return fn(std::forward<typename Iterator::Item>(value));
                     });
             }
 
