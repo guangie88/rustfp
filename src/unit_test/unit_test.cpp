@@ -140,21 +140,16 @@ TEST_F(SimpleTest, FindNone)
 
 TEST_F(SimpleTest, FindMapSome)
 {
-    static constexpr auto FIND_MAP_SOME_ACC = 4;
-    static const auto FIND_MAP_SOME_MAPPER = [](const int value) { return value + 0.5; };
-
     const auto find_some_opt = iter(int_vec)
         | find_map([](const auto value)
         {
-            return value == FIND_MAP_SOME_ACC
-                ? Some(FIND_MAP_SOME_MAPPER(value))
+            return value == 4
+                ? Some(value + 0.5)
                 : None;
         });
     
-    const auto expected_value = FIND_MAP_SOME_MAPPER(FIND_MAP_SOME_ACC);
-
     EXPECT_TRUE(find_some_opt.is_some());
-    EXPECT_EQ(expected_value, find_some_opt.get_unchecked());
+    EXPECT_EQ(4.5, find_some_opt.get_unchecked());
 }
 
 TEST_F(SimpleTest, FindMapNone)
