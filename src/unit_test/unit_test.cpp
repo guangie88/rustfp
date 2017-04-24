@@ -10,6 +10,8 @@
 #include "rustfp/map.h"
 #include "rustfp/option.h"
 #include "rustfp/range.h"
+#include "rustfp/skip.h"
+#include "rustfp/take.h"
 
 #include "gtest/gtest.h"
 
@@ -32,6 +34,8 @@ using rustfp::for_each;
 using rustfp::iter;
 using rustfp::map;
 using rustfp::range;
+using rustfp::skip;
+using rustfp::take;
 using rustfp::None;
 using rustfp::Some;
 
@@ -45,6 +49,8 @@ using std::plus;
 using std::string;
 using std::to_string;
 using std::vector;
+
+// simple tests
 
 class SimpleTest : public ::testing::Test
 {
@@ -243,6 +249,44 @@ TEST_F(SimpleTest, Range)
 
     EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), RANGE_ACC), sum);
 }
+
+TEST_F(SimpleTest, SkipWithin)
+{
+    const auto sum = iter(int_vec)
+        | skip(3)
+        | fold(0, plus<int>());
+
+    EXPECT_EQ(12, sum);
+}
+
+TEST_F(SimpleTest, SkipPass)
+{
+    const auto sum = iter(int_vec)
+        | skip(100)
+        | fold(0, plus<int>());
+
+    EXPECT_EQ(0, sum);
+}
+
+TEST_F(SimpleTest, TakeWithin)
+{
+    const auto sum = iter(int_vec)
+        | take(3)
+        | fold(0, plus<int>());
+
+    EXPECT_EQ(3, sum);
+}
+
+TEST_F(SimpleTest, TakeExceed)
+{
+    const auto sum = iter(int_vec)
+        | take(100)
+        | fold(0, plus<int>());
+
+    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
+}
+
+// complex tests
 
 TEST_F(ComplexTest, FilterMapFold)
 {
