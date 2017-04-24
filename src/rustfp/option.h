@@ -47,6 +47,8 @@ namespace rustfp
     class Option
     {
     public:
+        using SomeType = T;
+        
         template <class Tx>
         explicit Option(Tx &&value) :
             opt(std::forward<Tx>(value))

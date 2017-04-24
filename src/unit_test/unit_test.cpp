@@ -3,6 +3,7 @@
 #include "rustfp/collect.h"
 #include "rustfp/enumerate.h"
 #include "rustfp/filter.h"
+#include "rustfp/filter_map.h"
 #include "rustfp/find.h"
 #include "rustfp/find_map.h"
 #include "rustfp/fold.h"
@@ -29,6 +30,7 @@ using rustfp::any;
 using rustfp::collect;
 using rustfp::enumerate;
 using rustfp::filter;
+using rustfp::filter_map;
 using rustfp::find;
 using rustfp::find_map;
 using rustfp::fold;
@@ -170,14 +172,24 @@ TEST_F(SimpleTest, Filter)
     EXPECT_EQ(9, sum);
 }
 
-TEST_F(SimpleTest, Fold)
+TEST_F(SimpleTest, FilterMap)
 {
-    static constexpr int FOLD_ACC = 10;
+    double sum = 0;
 
-    const auto fold_sum = iter(int_vec)
-        | fold(FOLD_ACC, plus<int>());
+    iter(int_vec)
+        | filter_map([](const auto value)
+        {
+            return value % 2 == 1
+                ? Some(value + 0.5)
+                : None;
+        })
 
-    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), fold_sum);
+        | for_each([&sum](const auto value)
+        {
+            sum += value;
+        });
+
+    EXPECT_EQ(10.5, sum);
 }
 
 TEST_F(SimpleTest, FindSome)
@@ -226,6 +238,16 @@ TEST_F(SimpleTest, FindMapNone)
         });
 
     EXPECT_TRUE(find_none_opt.is_none());
+}
+
+TEST_F(SimpleTest, Fold)
+{
+    static constexpr int FOLD_ACC = 10;
+
+    const auto fold_sum = iter(int_vec)
+        | fold(FOLD_ACC, plus<int>());
+
+    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), fold_sum);
 }
 
 TEST_F(SimpleTest, ForEach)
