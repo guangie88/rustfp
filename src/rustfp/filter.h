@@ -25,16 +25,22 @@ namespace rustfp
 
             auto next() -> Option<Item>
             {
-                auto next_opt = it.next();
-
-                if (next_opt.is_none())
+                while (true)
                 {
-                    return None;
+                    auto next_opt = it.next();
+
+                    if (next_opt.is_none())
+                    {
+                        break;
+                    }
+
+                    if (pred(next_opt.get_unchecked()))
+                    {
+                        return std::move(next_opt);
+                    }
                 }
 
-                return pred(next_opt.get_unchecked())
-                    ? std::move(next_opt)
-                    : next();
+                return None;
             }
 
         private:

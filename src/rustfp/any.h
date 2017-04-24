@@ -1,6 +1,5 @@
 #pragma once
 
-#include "option.h"
 #include "traits.h"
 
 #include <type_traits>
@@ -11,19 +10,19 @@ namespace rustfp
     namespace details
     {
         template <class Pred>
-        class FindOp
+        class AnyOp
         {
         public:
             template <class Predx>
-            explicit FindOp(Predx &&pred) :
+            AnyOp(Predx &&pred) :
                 pred(std::forward<Predx>(pred))
             {
             }
 
             template <class Iterator>
-            auto operator()(Iterator &&it) && -> Option<typename Iterator::Item>
+            auto operator()(Iterator &&it) && -> bool
             {
-                static_assert(!std::is_lvalue_reference<Iterator>::value, "find can only take rvalue ref object with Iterator traits");
+                static_assert(!std::is_lvalue_reference<Iterator>::value, "any can only take rvalue ref object with Iterator traits");
 
                 while (true)
                 {
@@ -34,13 +33,13 @@ namespace rustfp
                         break;
                     }
 
-                    if (pred(next_opt.get_unchecked()))
+                    if (pred(next_opt.unwrap_unchecked()))
                     {
-                        return std::move(next_opt);
+                        return true;
                     }
                 }
 
-                return None;
+                return false;
             }
 
         private:
@@ -49,8 +48,8 @@ namespace rustfp
     }
 
     template <class Pred>
-    auto find(Pred &&pred) -> details::FindOp<special_decay_t<Pred>>
+    auto any(Pred &&pred) -> details::AnyOp<special_decay_t<Pred>>
     {
-        return details::FindOp<special_decay_t<Pred>>(std::forward<Pred>(pred));
+        return details::AnyOp<special_decay_t<Pred>>(std::forward<Pred>(pred));
     }
 }

@@ -1,3 +1,5 @@
+#include "rustfp/all.h"
+#include "rustfp/any.h"
 #include "rustfp/collect.h"
 #include "rustfp/filter.h"
 #include "rustfp/find.h"
@@ -19,6 +21,8 @@
 #include <vector>
 
 // rustfp
+using rustfp::all;
+using rustfp::any;
 using rustfp::collect;
 using rustfp::filter;
 using rustfp::find;
@@ -60,6 +64,38 @@ protected:
     {
     }
 };
+
+TEST_F(SimpleTest, AllTrue)
+{
+    const auto result = iter(int_vec)
+        | all([](const auto value) { return value < 6; });
+
+    EXPECT_TRUE(result);
+}
+
+TEST_F(SimpleTest, AllFalse)
+{
+    const auto result = iter(int_vec)
+        | all([](const auto value) { return value > 0; });
+
+    EXPECT_FALSE(result);
+}
+
+TEST_F(SimpleTest, AnyTrue)
+{
+    const auto result = iter(int_vec)
+        | any([](const auto value) { return value == 5; });
+
+    EXPECT_TRUE(result);
+}
+
+TEST_F(SimpleTest, AnyFalse)
+{
+    const auto result = iter(int_vec)
+        | any([](const auto value) { return value == 7; });
+
+    EXPECT_FALSE(result);
+}
 
 TEST_F(SimpleTest, CollectVec)
 {
