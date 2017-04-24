@@ -14,6 +14,7 @@
 #include "rustfp/map.h"
 #include "rustfp/option.h"
 #include "rustfp/range.h"
+#include "rustfp/result.h"
 #include "rustfp/skip.h"
 #include "rustfp/take.h"
 #include "rustfp/zip.h"
@@ -49,8 +50,15 @@ using rustfp::range;
 using rustfp::skip;
 using rustfp::take;
 using rustfp::zip;
+
+using rustfp::Option;
 using rustfp::None;
 using rustfp::Some;
+
+using rustfp::if_else_res;
+using rustfp::Result;
+using rustfp::Ok;
+using rustfp::Err;
 
 // std
 using std::accumulate;
@@ -466,6 +474,28 @@ TEST_F(ComplexTest, ZipRefMapFold)
         });
 
     EXPECT_EQ("(0,1) (1,2) (2,3) (3,4) (4,5) ", folded_str);
+}
+
+// option
+
+// result
+
+TEST_F(SimpleTest, IfElseResTrue)
+{
+    const auto res = if_else_res(true,
+        [] { return 1; },
+        [] { return 3.14; });
+
+    EXPECT_TRUE(res.is_ok());
+}
+
+TEST_F(SimpleTest, IfElseResFalse)
+{
+    const auto res = if_else_res(false,
+        [] { return 1; },
+        [] { return 3.14; });
+
+    EXPECT_TRUE(res.is_err());
 }
 
 int main(int argc, char * argv[])

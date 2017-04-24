@@ -121,4 +121,17 @@ namespace rustfp
     {
         return Option<special_decay_t<T>>(std::forward<T>(value));
     }
+
+    template <class SomeFn>
+    auto if_else_opt(const auto cond, SomeFn &&some_fn) -> Option<std::result_of_t<SomeFn()>>
+    {
+        if (cond)
+        {
+            return Some(some_fn());
+        }
+        else
+        {
+            return None;
+        }
+    }
 }
