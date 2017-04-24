@@ -1,5 +1,6 @@
 #include "rustfp/all.h"
 #include "rustfp/any.h"
+#include "rustfp/cloned.h"
 #include "rustfp/collect.h"
 #include "rustfp/enumerate.h"
 #include "rustfp/filter.h"
@@ -18,6 +19,7 @@
 #include "gtest/gtest.h"
 
 #include <algorithm>
+#include <functional>
 #include <iostream>
 #include <iterator>
 #include <numeric>
@@ -27,6 +29,7 @@
 // rustfp
 using rustfp::all;
 using rustfp::any;
+using rustfp::cloned;
 using rustfp::collect;
 using rustfp::enumerate;
 using rustfp::filter;
@@ -50,6 +53,7 @@ using std::cend;
 using std::cout;
 using std::mismatch;
 using std::plus;
+using std::reference_wrapper;
 using std::string;
 using std::to_string;
 using std::vector;
@@ -62,9 +66,11 @@ protected:
     void SetUp() override
     {
         int_vec = vector<int>{0, 1, 2, 3, 4, 5};
+        str_vec = vector<string>{"Hello", "World", "How", "Are", "You"};
     }
 
     vector<int> int_vec;
+    vector<string> str_vec;
 };
 
 class ComplexTest : public ::testing::Test
@@ -107,6 +113,42 @@ TEST_F(SimpleTest, AnyFalse)
     EXPECT_FALSE(result);
 }
 
+TEST_F(SimpleTest, ClonedRef)
+{
+    const auto str_dup_vec = iter(str_vec)
+        | cloned()
+        | collect<vector<string>>();
+
+    const auto input_it_pairs = mismatch(
+        cbegin(str_vec), cend(str_vec), cbegin(str_dup_vec),
+        [](const auto &lhs, const auto &rhs)
+        {
+            // same value but different addresses
+            return (lhs == rhs) && (&lhs != &rhs);
+        });
+
+    EXPECT_EQ(cend(str_vec), input_it_pairs.first);
+    EXPECT_EQ(cend(str_dup_vec), input_it_pairs.second);
+}
+
+TEST_F(SimpleTest, ClonedValue)
+{
+    const auto int_str_vec = iter(int_vec)
+        | map([](const auto value) { return to_string(value); })
+        | cloned() | cloned() | cloned()
+        | collect<vector<string>>();
+
+    const auto input_it_pairs = mismatch(
+        cbegin(int_vec), cend(int_vec), cbegin(int_str_vec),
+        [](const auto &lhs, const auto &rhs)
+        {
+            return to_string(lhs) == rhs;
+        });
+
+    EXPECT_EQ(cend(int_vec), input_it_pairs.first);
+    EXPECT_EQ(cend(int_str_vec), input_it_pairs.second);
+}
+
 TEST_F(SimpleTest, CollectVec)
 {
     const auto dup_vec = range(0, int_vec.size())
@@ -117,6 +159,22 @@ TEST_F(SimpleTest, CollectVec)
 
     EXPECT_EQ(cend(int_vec), input_it_pairs.first);
     EXPECT_EQ(cend(dup_vec), input_it_pairs.second);
+}
+
+TEST_F(SimpleTest, CollectVecRef)
+{
+    const auto str_ref_vec = iter(str_vec)
+        | collect<vector<reference_wrapper<const string>>>();
+
+    const auto input_it_pairs = mismatch(
+        cbegin(str_vec), cend(str_vec), cbegin(str_ref_vec),
+        [](const auto &lhs, const auto &rhs)
+        {
+            return &lhs == &rhs.get();
+        });
+
+    EXPECT_EQ(cend(str_vec), input_it_pairs.first);
+    EXPECT_EQ(cend(str_ref_vec), input_it_pairs.second);
 }
 
 TEST_F(SimpleTest, CollectMapVecSum)
