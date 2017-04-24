@@ -15,6 +15,7 @@
 #include "rustfp/range.h"
 #include "rustfp/skip.h"
 #include "rustfp/take.h"
+#include "rustfp/zip.h"
 
 #include "gtest/gtest.h"
 
@@ -23,7 +24,9 @@
 #include <iostream>
 #include <iterator>
 #include <numeric>
+#include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 // rustfp
@@ -43,6 +46,7 @@ using rustfp::map;
 using rustfp::range;
 using rustfp::skip;
 using rustfp::take;
+using rustfp::zip;
 using rustfp::None;
 using rustfp::Some;
 
@@ -52,9 +56,11 @@ using std::cbegin;
 using std::cend;
 using std::cout;
 using std::mismatch;
+using std::pair;
 using std::plus;
 using std::reference_wrapper;
 using std::string;
+using std::stringstream;
 using std::to_string;
 using std::vector;
 
@@ -78,7 +84,10 @@ class ComplexTest : public ::testing::Test
 protected:
     void SetUp() override
     {
+        int_vec = vector<int>{0, 1, 2, 3, 4, 5};
     }
+
+    vector<int> int_vec;
 };
 
 TEST_F(SimpleTest, AllTrue)
@@ -416,6 +425,30 @@ TEST_F(ComplexTest, FilterMapFind)
 
     EXPECT_TRUE(find_opt.is_some());
     EXPECT_EQ(FILTER_MAP_FIND_VAL, find_opt.get_unchecked());
+}
+
+TEST_F(ComplexTest, ZipRefMapFold)
+{
+    const auto zipped_int_vec = iter(int_vec)
+        | zip(iter(int_vec) | skip(1))
+        | collect<vector<pair<const int &, const int &>>>();
+
+    const auto folded_str = iter(zipped_int_vec)
+        | map([](const auto &index_value_pair)
+        {
+            stringstream ss;
+            ss << '(' << index_value_pair.first << ',' << index_value_pair.second << ')';
+            return ss.str();
+        })
+
+        | fold(string{}, [](const auto acc, const auto value)
+        {
+            stringstream ss;
+            ss << acc << value << ' ';
+            return ss.str();
+        });
+
+    EXPECT_EQ("(0,1) (1,2) (2,3) (3,4) (4,5) ", folded_str);
 }
 
 int main(int argc, char * argv[])
