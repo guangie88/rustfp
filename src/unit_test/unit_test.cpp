@@ -1,6 +1,7 @@
 #include "rustfp/all.h"
 #include "rustfp/any.h"
 #include "rustfp/cloned.h"
+#include "rustfp/cycle.h"
 #include "rustfp/collect.h"
 #include "rustfp/enumerate.h"
 #include "rustfp/filter.h"
@@ -34,6 +35,7 @@ using rustfp::all;
 using rustfp::any;
 using rustfp::cloned;
 using rustfp::collect;
+using rustfp::cycle;
 using rustfp::enumerate;
 using rustfp::filter;
 using rustfp::filter_map;
@@ -55,6 +57,7 @@ using std::accumulate;
 using std::cbegin;
 using std::cend;
 using std::cout;
+using std::cref;
 using std::mismatch;
 using std::pair;
 using std::plus;
@@ -202,6 +205,20 @@ TEST_F(SimpleTest, CollectMapVecSum)
         0.0, [](const double acc, const int value) { return acc + value + COLLECT_MAP_VEC_SUM_ADD; });
 
     EXPECT_EQ(expected_sum, fold_sum);
+}
+
+TEST_F(SimpleTest, Cycle)
+{
+    const int copyable_value = 7;
+
+    const auto sum = cycle(cref(copyable_value))
+        | take(1000)
+        | fold(0, [](const auto acc, const auto value)
+        {
+            return acc + value.get();
+        });
+
+    EXPECT_EQ(7000, sum);
 }
 
 TEST_F(SimpleTest, Enumerate)
