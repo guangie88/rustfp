@@ -549,6 +549,42 @@ TEST(Result, ErrNone)
     EXPECT_TRUE(opt.is_none());
 }
 
+TEST(Result, MapOk)
+{
+    Result<int, string> res = Ok(1);
+    const auto mapped_res = move(res).map([](const auto value) { return value + 0.5; });
+
+    EXPECT_TRUE(mapped_res.is_ok());
+    EXPECT_EQ(1.5, mapped_res.get_unchecked());
+}
+
+TEST(Result, MapErr)
+{
+    Result<int, string> res = Err(string{"Error"});
+    const auto mapped_res = move(res).map([](const auto value) { return to_string(value); });
+
+    EXPECT_TRUE(mapped_res.is_err());
+    EXPECT_EQ("Error", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, MapErrErr)
+{
+    Result<int, string> res = Err(string{"Error"});
+    const auto mapped_res = move(res).map_err([](const auto value) { return value + " value"; });
+
+    EXPECT_TRUE(mapped_res.is_err());
+    EXPECT_EQ("Error value", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, MapErrOk)
+{
+    Result<int, int> res = Ok(-1);
+    const auto mapped_res = move(res).map_err([](const auto value) { return to_string(value); });
+
+    EXPECT_TRUE(mapped_res.is_ok());
+    EXPECT_EQ(-1, mapped_res.get_unchecked());
+}
+
 int main(int argc, char * argv[])
 {
     testing::InitGoogleTest(&argc, argv);

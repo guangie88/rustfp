@@ -92,6 +92,18 @@ namespace rustfp
             return std::move(value_err.template get_unchecked<details::ErrImpl<E>>()).move();
         }
     }
+
+    template <class T>
+    auto Ok(T &&value) -> details::OkImpl<special_decay_t<T>>
+    {
+        return details::OkImpl<special_decay_t<T>>(std::forward<T>(value));
+    }
+
+    template <class E>
+    auto Err(E &&error) -> details::ErrImpl<special_decay_t<E>>
+    {
+        return details::ErrImpl<special_decay_t<E>>(std::forward<E>(error));
+    }
     
     template <class T, class E>
     class Result
@@ -131,6 +143,32 @@ namespace rustfp
             return details::get_err_unchecked(value_err);
         }
 
+        template <class FnToNewT>
+        auto map(FnToNewT &&fn) && -> Result<std::result_of_t<FnToNewT(T &&)>, E>
+        {
+            if (is_ok())
+            {
+                return Ok(fn(details::move_unchecked(std::move(value_err))));
+            }
+            else
+            {
+                return Err(details::move_err_unchecked(std::move(value_err)));
+            }
+        }
+
+        template <class FnToNewE>
+        auto map_err(FnToNewE &&fn) && -> Result<T, std::result_of_t<FnToNewE(E &&)>>
+        {
+            if (is_err())
+            {
+                return Err(fn(details::move_err_unchecked(std::move(value_err))));
+            }
+            else
+            {
+                return Ok(details::move_unchecked(std::move(value_err)));
+            }
+        }
+
         auto ok() && -> Option<T>
         {
             return is_ok()
@@ -148,18 +186,6 @@ namespace rustfp
     private:
         mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> value_err;
     };
-
-    template <class T>
-    auto Ok(T &&value) -> details::OkImpl<special_decay_t<T>>
-    {
-        return details::OkImpl<special_decay_t<T>>(std::forward<T>(value));
-    }
-
-    template <class E>
-    auto Err(E &&error) -> details::ErrImpl<special_decay_t<E>>
-    {
-        return details::ErrImpl<special_decay_t<E>>(std::forward<E>(error));
-    }
 
     template <class OkFn, class ErrFn>
     auto if_else_res(const bool cond, OkFn &&ok_fn, ErrFn &&err_fn) -> Result<std::result_of_t<OkFn()>, std::result_of_t<ErrFn()>>
