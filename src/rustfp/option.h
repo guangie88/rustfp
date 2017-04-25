@@ -123,7 +123,7 @@ namespace rustfp
     }
 
     template <class SomeFn>
-    auto if_else_opt(const auto cond, SomeFn &&some_fn) -> Option<std::result_of_t<SomeFn()>>
+    auto if_else_opt(const bool cond, SomeFn &&some_fn) -> Option<std::result_of_t<SomeFn()>>
     {
         if (cond)
         {
