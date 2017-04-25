@@ -67,6 +67,7 @@ using std::cend;
 using std::cout;
 using std::cref;
 using std::mismatch;
+using std::move;
 using std::pair;
 using std::plus;
 using std::reference_wrapper;
@@ -480,7 +481,7 @@ TEST_F(ComplexTest, ZipRefMapFold)
 
 // result
 
-TEST_F(SimpleTest, IfElseResTrue)
+TEST(Result, IfElseResTrue)
 {
     const auto res = if_else_res(true,
         [] { return 1; },
@@ -489,13 +490,63 @@ TEST_F(SimpleTest, IfElseResTrue)
     EXPECT_TRUE(res.is_ok());
 }
 
-TEST_F(SimpleTest, IfElseResFalse)
+TEST(Result, IfElseResFalse)
 {
     const auto res = if_else_res(false,
         [] { return 1; },
         [] { return 3.14; });
 
     EXPECT_TRUE(res.is_err());
+}
+
+TEST(Result, GetUnchecked)
+{
+    const Result<int, string> res = Ok(7);
+
+    EXPECT_TRUE(res.is_ok());
+    EXPECT_EQ(7, res.get_unchecked());
+}
+
+TEST(Result, GetErrUnchecked)
+{
+    const Result<int, string> res = Err(string{"Hello"});
+
+    EXPECT_TRUE(res.is_err());
+    EXPECT_EQ("Hello", res.get_err_unchecked());
+}
+
+TEST(Result, OkSome)
+{
+    Result<int, string> res = Ok(8);
+    const auto opt = move(res).ok();
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ(8, opt.get_unchecked());
+}
+
+TEST(Result, OkNone)
+{
+    Result<int, string> res = Err(string{"World"});
+    const auto opt = move(res).ok();
+
+    EXPECT_TRUE(opt.is_none());
+}
+
+TEST(Result, ErrSome)
+{
+    Result<int, string> res = Err(string{"World"});
+    const auto opt = move(res).err();
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ("World", opt.get_unchecked());
+}
+
+TEST(Result, ErrNone)
+{
+    Result<int, string> res = Ok(9);
+    const auto opt = move(res).err();
+
+    EXPECT_TRUE(opt.is_none());
 }
 
 int main(int argc, char * argv[])

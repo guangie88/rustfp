@@ -135,3 +135,5 @@ namespace rustfp
         }
     }
 }
+
+#include "result.h"
