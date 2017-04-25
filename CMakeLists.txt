@@ -33,6 +33,9 @@ set(GTEST_LIB debug ${GTEST_LIB_DEBUG} optimized ${GTEST_LIB_RELEASE})
 # project to libraries mapping
 set(PROJ_LIBS_unit_test GTEST_LIB)
 
+# project to locally built libraries mapping
+# set(LOCAL_PROJ_LIBS_projname local_lib_proj_name)
+
 # general fixed project variables
 set(SRC_ROOT_DIR src)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -88,6 +91,6 @@ foreach(SRC_DIR ${SRC_DIRS})
     endif()
 
     target_include_directories(${PROJ_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/${SRC_ROOT_DIR})
-    target_link_libraries(${PROJ_NAME} ${SUBST_PROJ_LIBS} Threads::Threads)
+    target_link_libraries(${PROJ_NAME} ${LOCAL_PROJ_LIBS_${PROJ_NAME}} ${SUBST_PROJ_LIBS} Threads::Threads)
   endif()
 endforeach()
