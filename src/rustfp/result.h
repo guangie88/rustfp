@@ -27,12 +27,12 @@ namespace rustfp
             {
             }
 
-            auto get() const -> const T &
+            inline auto get() const -> const T &
             {
                 return value;
             }
 
-            auto move() && -> reverse_decay_t<T>
+            inline auto move() && -> reverse_decay_t<T>
             {
                 return std::move(value);
             }
@@ -54,12 +54,12 @@ namespace rustfp
             {
             }
 
-            auto get() const -> const E &
+            inline auto get() const -> const E &
             {
                 return err;
             }
 
-            auto move() && -> reverse_decay_t<E>
+            inline auto move() && -> reverse_decay_t<E>
             {
                 return std::move(err);
             }
@@ -69,25 +69,25 @@ namespace rustfp
         };
 
         template <class T, class E>
-        auto get_unchecked(const mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> &value_err) -> const T &
+        inline auto get_unchecked(const mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> &value_err) -> const T &
         {
             return value_err.template get_unchecked<details::OkImpl<T>>().get();
         }
 
         template <class T, class E>
-        auto get_err_unchecked(const mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> &value_err) -> const E &
+        inline auto get_err_unchecked(const mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> &value_err) -> const E &
         {
             return value_err.template get_unchecked<details::ErrImpl<E>>().get();
         }
 
         template <class T, class E>
-        auto move_unchecked(mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> &&value_err) -> reverse_decay_t<T>
+        inline auto move_unchecked(mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> &&value_err) -> reverse_decay_t<T>
         {
             return std::move(value_err.template get_unchecked<details::OkImpl<T>>()).move();
         }
 
         template <class T, class E>
-        auto move_err_unchecked(mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> &&value_err) -> reverse_decay_t<E>
+        inline auto move_err_unchecked(mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> &&value_err) -> reverse_decay_t<E>
         {
             return std::move(value_err.template get_unchecked<details::ErrImpl<E>>()).move();
         }
@@ -109,6 +109,9 @@ namespace rustfp
     class Result
     {
     public:
+        using OkType = T;
+        using ErrType = E;
+
         template <class Tx>
         Result(details::OkImpl<Tx> &&value) :
             value_err(std::move(value))
@@ -162,6 +165,32 @@ namespace rustfp
             if (is_err())
             {
                 return Err(fn(details::move_err_unchecked(std::move(value_err))));
+            }
+            else
+            {
+                return Ok(details::move_unchecked(std::move(value_err)));
+            }
+        }
+
+        template <class FnToResNewT>
+        auto and_then(FnToResNewT &&fn) && -> Result<typename std::result_of_t<FnToResNewT(T &&)>::OkType, E>
+        {
+            if (is_ok())
+            {
+                return fn(details::move_unchecked(std::move(value_err)));
+            }
+            else
+            {
+                return Err(details::move_err_unchecked(std::move(value_err)));
+            }
+        }
+
+        template <class FnToResNewE>
+        auto or_else(FnToResNewE &&fn) && -> Result<T, typename std::result_of_t<FnToResNewE(E &&)>::ErrType>
+        {
+            if (is_err())
+            {
+                return fn(details::move_err_unchecked(std::move(value_err)));
             }
             else
             {

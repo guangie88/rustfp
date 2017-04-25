@@ -585,6 +585,72 @@ TEST(Result, MapErrOk)
     EXPECT_EQ(-1, mapped_res.get_unchecked());
 }
 
+TEST(Result, AndThenOkToOk)
+{
+    Result<int, string> res = Ok(1);
+
+    const auto mapped_res = move(res)
+        .and_then([](const auto value) -> Result<string, string> { return Ok(to_string(value)); });
+
+    EXPECT_TRUE(mapped_res.is_ok());
+    EXPECT_EQ("1", mapped_res.get_unchecked());
+}
+
+TEST(Result, AndThenOkToErr)
+{
+    Result<int, string> res = Ok(2);
+
+    const auto mapped_res = move(res)
+        .and_then([](const auto value) -> Result<int, string> { return Err(to_string(value)); });
+
+    EXPECT_TRUE(mapped_res.is_err());
+    EXPECT_EQ("2", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, AndThenErr)
+{
+    Result<int, string> res = Err(string{"Error"});
+
+    const auto mapped_res = move(res)
+        .and_then([](const auto value) -> Result<int, string> { return Ok(value); });
+
+    EXPECT_TRUE(mapped_res.is_err());
+    EXPECT_EQ("Error", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, OrElseErrToOk)
+{
+    Result<int, string> res = Err(string{"Error"});
+
+    const auto mapped_res = move(res)
+        .or_else([](const auto value) -> Result<int, int> { return Ok(7); });
+
+    EXPECT_TRUE(mapped_res.is_ok());
+    EXPECT_EQ(7, mapped_res.get_unchecked());
+}
+
+TEST(Result, OrElseErrToErr)
+{
+    Result<int, string> res = Err(string{"Error"});
+
+    const auto mapped_res = move(res)
+        .or_else([](const auto value) -> Result<int, string> { return Err(string{"Still error"}); });
+
+    EXPECT_TRUE(mapped_res.is_err());
+    EXPECT_EQ("Still error", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, OrElseOk)
+{
+    Result<int, string> res = Ok(5);
+
+    const auto mapped_res = move(res)
+        .or_else([](const auto value) -> Result<int, double> { return Ok(6); });
+
+    EXPECT_TRUE(mapped_res.is_ok());
+    EXPECT_EQ(5, mapped_res.get_unchecked());
+}
+
 int main(int argc, char * argv[])
 {
     testing::InitGoogleTest(&argc, argv);
