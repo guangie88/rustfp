@@ -25,6 +25,7 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <numeric>
 #include <sstream>
 #include <string>
@@ -66,6 +67,7 @@ using std::cbegin;
 using std::cend;
 using std::cout;
 using std::cref;
+using std::make_unique;
 using std::mismatch;
 using std::move;
 using std::pair;
@@ -74,6 +76,7 @@ using std::reference_wrapper;
 using std::string;
 using std::stringstream;
 using std::to_string;
+using std::unique_ptr;
 using std::vector;
 
 // simple tests
@@ -649,6 +652,52 @@ TEST(Result, OrElseOk)
 
     EXPECT_TRUE(mapped_res.is_ok());
     EXPECT_EQ(5, mapped_res.get_unchecked());
+}
+
+TEST(Result, MatchOk)
+{
+    Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
+
+    const auto match_res = move(res).match(
+        [](unique_ptr<int> value) { return true; },
+        [](unique_ptr<string> value) { return false; });
+
+    EXPECT_TRUE(match_res);
+}
+
+TEST(Result, MatchErr)
+{
+    Result<int, string> res = Err(string{"Hello"});
+
+    const auto match_res = move(res).match(
+        [](const auto value) { return 0.5; },
+        [](const auto value) { return 0.25; });
+
+    EXPECT_EQ(0.25, match_res);
+}
+
+TEST(Result, MatchOkRef)
+{
+    Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(777));
+
+    const auto match_res = res.match(
+        [](const auto &value) { return to_string(*value); },
+        [](const auto &value) { return *value; });
+
+    EXPECT_EQ("777", match_res);
+}
+
+TEST(Result, MatchErrRef)
+{
+    Result<string, string> res = Err(string{"World"});
+
+    const auto match_res = res.match(
+        [](const auto &value) { return cref(value); },
+        [](const auto &value) { return cref(value); });
+
+    EXPECT_TRUE(res.is_err());
+    EXPECT_EQ(&res.get_err_unchecked(), &match_res.get());
+    EXPECT_EQ("World", match_res.get());
 }
 
 int main(int argc, char * argv[])

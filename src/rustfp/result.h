@@ -212,6 +212,22 @@ namespace rustfp
                 : None;
         }
 
+        template <class OkFn, class ErrFn> 
+        auto match(OkFn &&ok_fn, ErrFn &&err_fn) && -> std::common_type_t<std::result_of_t<OkFn(OkType)>, std::result_of_t<ErrFn(ErrType)>>
+        {
+            return is_ok()
+                ? ok_fn(details::move_unchecked(std::move(value_err)))
+                : err_fn(details::move_err_unchecked(std::move(value_err)));
+        }
+
+        template <class OkFn, class ErrFn> 
+        auto match(OkFn &&ok_fn, ErrFn &&err_fn) const & -> std::common_type_t<std::result_of_t<OkFn(const OkType &)>, std::result_of_t<ErrFn(const ErrType &)>>
+        {
+            return is_ok()
+                ? ok_fn(details::get_unchecked(value_err))
+                : err_fn(details::get_err_unchecked(value_err));
+        }
+
     private:
         mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> value_err;
     };

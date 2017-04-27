@@ -7,6 +7,8 @@ else()
   set(CMAKE_CXX_COMPILER g++ CACHE STRING "Compiler to use")
 endif()
 
+include(CMakeToolsHelpers OPTIONAL)
+
 # project variables
 project(rustfp)
 set(BIN_DIRS unit_test)
