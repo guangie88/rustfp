@@ -233,7 +233,7 @@ namespace rustfp
     };
 
     template <class OkFn, class ErrFn>
-    auto if_else_res(const bool cond, OkFn &&ok_fn, ErrFn &&err_fn) -> Result<std::result_of_t<OkFn()>, std::result_of_t<ErrFn()>>
+    auto res_if_else(const bool cond, OkFn &&ok_fn, ErrFn &&err_fn) -> Result<std::result_of_t<OkFn()>, std::result_of_t<ErrFn()>>
     {
         if (cond)
         {

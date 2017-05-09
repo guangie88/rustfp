@@ -56,7 +56,7 @@ using rustfp::Option;
 using rustfp::None;
 using rustfp::Some;
 
-using rustfp::if_else_res;
+using rustfp::res_if_else;
 using rustfp::Result;
 using rustfp::Ok;
 using rustfp::Err;
@@ -484,18 +484,18 @@ TEST_F(ComplexTest, ZipRefMapFold)
 
 // result
 
-TEST(Result, IfElseResTrue)
+TEST(Result, ResIfElseTrue)
 {
-    const auto res = if_else_res(true,
+    const auto res = res_if_else(true,
         [] { return 1; },
         [] { return 3.14; });
 
     EXPECT_TRUE(res.is_ok());
 }
 
-TEST(Result, IfElseResFalse)
+TEST(Result, ResIfElseFalse)
 {
-    const auto res = if_else_res(false,
+    const auto res = res_if_else(false,
         [] { return 1; },
         [] { return 3.14; });
 

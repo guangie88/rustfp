@@ -32,3 +32,5 @@
 .lock-waf_linux2_build
 .vscode/
 build/
+html/
+latex/

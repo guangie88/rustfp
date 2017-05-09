@@ -4,10 +4,14 @@
 
 namespace rustfp
 {
-    // declaration section
+    // forwarding section
 
     template <class T>
     class Option;
 
-    struct none_t;
+    struct none_t {};
+    const none_t None;
+
+    template <class T>
+    auto Some(T &&value) -> Option<special_decay_t<T>>;
 }
