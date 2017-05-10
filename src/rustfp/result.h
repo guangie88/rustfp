@@ -1,17 +1,90 @@
 #pragma once
 
+//! Contains Rust Result enum implementation
+/*! @author Chen Weiguang
+ *  @version 0.1.0
+ */
+
 #include "mapbox/variant.hpp"
 
+#include "option_fwd.h"
+#include "result_fwd.h"
 #include "traits.h"
 
 #include <cassert>
 #include <type_traits>
 #include <utility>
 
-#include "option_fwd.h"
-
 namespace rustfp
 {
+    // declaration section
+
+    //! Simulates the Rust Result enum.
+    /*! Wraps either a valid or error value/reference and provides various monadic operations on the wrapped item.
+     *  @param T Ok item type to wrap over
+     *  @param E Err item type to wrap over
+     */
+    template <class T, class E>
+    class Result
+    {
+    public:
+        //! Alias to the Ok/valid item type to be wrapped. OkType == T.
+        using OkType = T;
+
+        //! Alias to the Err/error item type to be wrapped. ErrType == E.
+        using ErrType = E;
+
+        template <class Tx>
+        Result(details::OkImpl<Tx> &&value);
+
+        template <class Ex>
+        Result(details::ErrImpl<Ex> &&err);
+
+        auto is_ok() const -> bool;
+
+        auto is_err() const -> bool;
+
+        auto get_unchecked() const -> const T &;
+
+        auto get_err_unchecked() const -> const E &;
+
+        template <class FnTToTx>
+        auto map(FnTToTx &&fn) && -> Result<std::result_of_t<FnTToTx(T &&)>, E>;
+
+        template <class FnEToEx>
+        auto map_err(FnEToEx &&fn) && -> Result<T, std::result_of_t<FnEToEx(E &&)>>;
+
+        template <class FnTToResTx>
+        auto and_then(FnTToResTx &&fn) && -> Result<typename std::result_of_t<FnTToResTx(T &&)>::OkType, E>;
+
+        template <class FnEToResEx>
+        auto or_else(FnEToResEx &&fn) && -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::ErrType>;
+
+        auto ok() && -> Option<T>;
+
+        auto err() && -> Option<E>;
+
+        template <class OkFn, class ErrFn> 
+        auto match(OkFn &&ok_fn, ErrFn &&err_fn) && -> std::common_type_t<std::result_of_t<OkFn(OkType)>, std::result_of_t<ErrFn(ErrType)>>;
+
+        template <class OkFn, class ErrFn> 
+        auto match(OkFn &&ok_fn, ErrFn &&err_fn) const & -> std::common_type_t<std::result_of_t<OkFn(const OkType &)>, std::result_of_t<ErrFn(const ErrType &)>>;
+
+    private:
+        mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> value_err;
+    };
+
+    template <class T>
+    auto Ok(T &&value) -> details::OkImpl<special_decay_t<T>>;
+
+    template <class E>
+    auto Err(E &&error) -> details::ErrImpl<special_decay_t<E>>;
+
+    template <class OkFn, class ErrFn>
+    auto res_if_else(const bool cond, OkFn &&ok_fn, ErrFn &&err_fn) -> Result<std::result_of_t<OkFn()>, std::result_of_t<ErrFn()>>;
+
+    // implementation section
+
     namespace details
     {
         template <class T>
@@ -93,6 +166,136 @@ namespace rustfp
         }
     }
 
+    template <class T, class E>
+    template <class Tx>
+    Result<T, E>::Result(details::OkImpl<Tx> &&value) :
+        value_err(std::move(value))
+    {
+    }
+
+    template <class T, class E>
+    template <class Ex>
+    Result<T, E>::Result(details::ErrImpl<Ex> &&err) :
+        value_err(std::move(err))
+    {
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::is_ok() const -> bool
+    {
+        return value_err.which() == 0;
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::is_err() const -> bool
+    {
+        return value_err.which() == 1;
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::get_unchecked() const -> const T &
+    {
+        assert(is_ok());
+        return details::get_unchecked(value_err);
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::get_err_unchecked() const -> const E &
+    {
+        assert(is_err());
+        return details::get_err_unchecked(value_err);
+    }
+
+    template <class T, class E>
+    template <class FnTToTx>
+    auto Result<T, E>::map(FnTToTx &&fn) && -> Result<std::result_of_t<FnTToTx(T &&)>, E>
+    {
+        if (is_ok())
+        {
+            return Ok(fn(details::move_unchecked(std::move(value_err))));
+        }
+        else
+        {
+            return Err(details::move_err_unchecked(std::move(value_err)));
+        }
+    }
+
+    template <class T, class E>
+    template <class FnEToEx>
+    auto Result<T, E>::map_err(FnEToEx &&fn) && -> Result<T, std::result_of_t<FnEToEx(E &&)>>
+    {
+        if (is_err())
+        {
+            return Err(fn(details::move_err_unchecked(std::move(value_err))));
+        }
+        else
+        {
+            return Ok(details::move_unchecked(std::move(value_err)));
+        }
+    }
+
+    template <class T, class E>
+    template <class FnTToResTx>
+    auto Result<T, E>::and_then(FnTToResTx &&fn) && -> Result<typename std::result_of_t<FnTToResTx(T &&)>::OkType, E>
+    {
+        if (is_ok())
+        {
+            return fn(details::move_unchecked(std::move(value_err)));
+        }
+        else
+        {
+            return Err(details::move_err_unchecked(std::move(value_err)));
+        }
+    }
+
+    template <class T, class E>
+    template <class FnEToResEx>
+    auto Result<T, E>::or_else(FnEToResEx &&fn) && -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::ErrType>
+    {
+        if (is_err())
+        {
+            return fn(details::move_err_unchecked(std::move(value_err)));
+        }
+        else
+        {
+            return Ok(details::move_unchecked(std::move(value_err)));
+        }
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::ok() && -> Option<T>
+    {
+        return is_ok()
+            ? Some(details::move_unchecked(std::move(value_err)))
+            : None;
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::err() && -> Option<E>
+    {
+        return is_err()
+            ? Some(details::move_err_unchecked(std::move(value_err)))
+            : None;
+    }
+
+    template <class T, class E>
+    template <class OkFn, class ErrFn> 
+    auto Result<T, E>::match(OkFn &&ok_fn, ErrFn &&err_fn) && -> std::common_type_t<std::result_of_t<OkFn(OkType)>, std::result_of_t<ErrFn(ErrType)>>
+    {
+        return is_ok()
+            ? ok_fn(details::move_unchecked(std::move(value_err)))
+            : err_fn(details::move_err_unchecked(std::move(value_err)));
+    }
+
+    template <class T, class E>
+    template <class OkFn, class ErrFn> 
+    auto Result<T, E>::match(OkFn &&ok_fn, ErrFn &&err_fn) const & -> std::common_type_t<std::result_of_t<OkFn(const OkType &)>, std::result_of_t<ErrFn(const ErrType &)>>
+    {
+        return is_ok()
+            ? ok_fn(details::get_unchecked(value_err))
+            : err_fn(details::get_err_unchecked(value_err));
+    }
+
     template <class T>
     auto Ok(T &&value) -> details::OkImpl<special_decay_t<T>>
     {
@@ -104,133 +307,6 @@ namespace rustfp
     {
         return details::ErrImpl<special_decay_t<E>>(std::forward<E>(error));
     }
-    
-    template <class T, class E>
-    class Result
-    {
-    public:
-        using OkType = T;
-        using ErrType = E;
-
-        template <class Tx>
-        Result(details::OkImpl<Tx> &&value) :
-            value_err(std::move(value))
-        {
-        }
-
-        template <class Ex>
-        Result(details::ErrImpl<Ex> &&err) :
-            value_err(std::move(err))
-        {
-        }
-
-        auto is_ok() const -> bool
-        {
-            return value_err.which() == 0;
-        }
-
-        auto is_err() const -> bool
-        {
-            return value_err.which() == 1;
-        }
-
-        auto get_unchecked() const -> const T &
-        {
-            assert(is_ok());
-            return details::get_unchecked(value_err);
-        }
-
-        auto get_err_unchecked() const -> const E &
-        {
-            assert(is_err());
-            return details::get_err_unchecked(value_err);
-        }
-
-        template <class FnTToTx>
-        auto map(FnTToTx &&fn) && -> Result<std::result_of_t<FnTToTx(T &&)>, E>
-        {
-            if (is_ok())
-            {
-                return Ok(fn(details::move_unchecked(std::move(value_err))));
-            }
-            else
-            {
-                return Err(details::move_err_unchecked(std::move(value_err)));
-            }
-        }
-
-        template <class FnEToEx>
-        auto map_err(FnEToEx &&fn) && -> Result<T, std::result_of_t<FnEToEx(E &&)>>
-        {
-            if (is_err())
-            {
-                return Err(fn(details::move_err_unchecked(std::move(value_err))));
-            }
-            else
-            {
-                return Ok(details::move_unchecked(std::move(value_err)));
-            }
-        }
-
-        template <class FnTToResTx>
-        auto and_then(FnTToResTx &&fn) && -> Result<typename std::result_of_t<FnTToResTx(T &&)>::OkType, E>
-        {
-            if (is_ok())
-            {
-                return fn(details::move_unchecked(std::move(value_err)));
-            }
-            else
-            {
-                return Err(details::move_err_unchecked(std::move(value_err)));
-            }
-        }
-
-        template <class FnEToResEx>
-        auto or_else(FnEToResEx &&fn) && -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::ErrType>
-        {
-            if (is_err())
-            {
-                return fn(details::move_err_unchecked(std::move(value_err)));
-            }
-            else
-            {
-                return Ok(details::move_unchecked(std::move(value_err)));
-            }
-        }
-
-        auto ok() && -> Option<T>
-        {
-            return is_ok()
-                ? Some(details::move_unchecked(std::move(value_err)))
-                : None;
-        }
-
-        auto err() && -> Option<E>
-        {
-            return is_err()
-                ? Some(details::move_err_unchecked(std::move(value_err)))
-                : None;
-        }
-
-        template <class OkFn, class ErrFn> 
-        auto match(OkFn &&ok_fn, ErrFn &&err_fn) && -> std::common_type_t<std::result_of_t<OkFn(OkType)>, std::result_of_t<ErrFn(ErrType)>>
-        {
-            return is_ok()
-                ? ok_fn(details::move_unchecked(std::move(value_err)))
-                : err_fn(details::move_err_unchecked(std::move(value_err)));
-        }
-
-        template <class OkFn, class ErrFn> 
-        auto match(OkFn &&ok_fn, ErrFn &&err_fn) const & -> std::common_type_t<std::result_of_t<OkFn(const OkType &)>, std::result_of_t<ErrFn(const ErrType &)>>
-        {
-            return is_ok()
-                ? ok_fn(details::get_unchecked(value_err))
-                : err_fn(details::get_err_unchecked(value_err));
-        }
-
-    private:
-        mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> value_err;
-    };
 
     template <class OkFn, class ErrFn>
     auto res_if_else(const bool cond, OkFn &&ok_fn, ErrFn &&err_fn) -> Result<std::result_of_t<OkFn()>, std::result_of_t<ErrFn()>>

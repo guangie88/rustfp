@@ -6,7 +6,9 @@
  */
 
 #include "option_fwd.h"
+#include "result_fwd.h"
 #include "traits.h"
+#include "unit.h"
 
 #include "akrzemi1/optional.hpp"
 
@@ -133,6 +135,14 @@ namespace rustfp
         template <class FnToOptTx>
         auto or_else(FnToOptTx &&fn) && -> Option<T>;
 
+        //! Upgrades from Option to Result.
+        /*! Some(item) maps to Ok(item) while None maps to Err(function generated value), given that fn: () -> Ex.
+         *  @param FnToEx function type which maps from () to Ex, where Ex is the new error type.
+         *  @param fn function that takes in no argument to generate an error item.
+         */
+        template <class FnToEx>
+        auto ok_or_else(FnToEx &&fn) && -> Result<T, typename std::result_of_t<FnToEx()>>;
+
         //! Returns true if the Option instance contains an item. Otherwise returns false.
         /*! is_some() == ! is_none().
          *  @see is_none
@@ -154,7 +164,7 @@ namespace rustfp
         auto get_unchecked() const -> const T &;
 
         //! Returns the moved contained item of type T if T is not a lvalue reference, otherwise returns std::reference_wrapper<T> to the contained item.
-        /*! This causes is_none() to become true because the contained item will be moved.
+        /*! This causes is_none() to become true after invoking because the contained item will be moved.
          *  Asserts that is_some() == true. If is_none() == true and the assertion does not take place,
          *  this would cause an undefined behaviour.
          *  @see SomeType
@@ -162,6 +172,75 @@ namespace rustfp
          *  @see is_none
          */
         auto unwrap_unchecked() -> reverse_decay_t<T>;
+
+        //! Matches the corresponding function to invoke depending on whether is_some() or is_none().
+        /*! If is_some(), some_fn will be invoked. Otherwise none_fn() will be invoked.
+         *  This causes is_none() to become true after invoking because the contained item will be moved.
+         *  The return type of both functions must be convertible to each other.
+         *  @param SomeFn T -> R1, where R1 is the function result type, convertible to R2
+         *  @param NoneFn () -> R2, where R2 is the function result type, convertible to R1
+         *  @param some_fn takes in the moved item and generates R1 value
+         *  @param none_fn takes in no argument and generates R2 value
+         *  @see is_some
+         *  @see is_none
+         */
+        template <class SomeFn, class NoneFn>
+        auto match(SomeFn &&some_fn, NoneFn &&none_fn) && -> std::common_type_t<std::result_of_t<SomeFn(SomeType)>, std::result_of_t<NoneFn()>>;
+
+        //! Matches the corresponding function to invoke depending on whether is_some() or is_none().
+        /*! If is_some(), some_fn will be invoked. Otherwise none_fn() will be invoked.
+         *  This does not move the contained item, and generates only the const lvalue reference if is_some().
+         *  The return type of both functions must be convertible to each other.
+         *  @param SomeFn const T & -> R1, where R1 is the function result type, convertible to R2
+         *  @param NoneFn () -> R2, where R2 is the function result type, convertible to R1
+         *  @param some_fn takes in the const lvalue item reference and generates R1 value
+         *  @param none_fn takes in no argument and generates R2 value
+         *  @see is_some
+         *  @see is_none
+         */
+        template <class SomeFn, class NoneFn>
+        auto match(SomeFn &&some_fn, NoneFn &&none_fn) const & -> std::common_type_t<std::result_of_t<SomeFn(const SomeType &)>, std::result_of_t<NoneFn()>>;
+
+        //! Attempts to invoke function if is_some().
+        /*! If is_some(), some_fn will be invoked. Otherwise nothing happens.
+         *  This causes is_none() to become true after invoking because the contained item will be moved.
+         *  @param SomeFn T -> R, where R is the function result type
+         *  @param some_fn takes in the moved item and generates R value
+         *  @see is_some
+         *  @see is_none
+         */
+        template <class SomeFn>
+        auto match_some(SomeFn &&some_fn) && -> unit_t;
+
+        //! Attempts to invoke function if is_some().
+        /*! If is_some(), some_fn will be invoked. Otherwise nothing happens.
+         *  This does not move the contained item, and generates only the const lvalue reference if is_some().
+         *  @param SomeFn const T & -> R, where R is the function result type
+         *  @param some_fn takes in the const lvalue item reference and generates R value
+         *  @see is_some
+         */
+        template <class SomeFn>
+        auto match_some(SomeFn &&some_fn) const & -> unit_t;
+
+        //! Attempts to invoke function if is_none().
+        /*! Moved version, works similarly to const lvalue reference version.
+         *  If is_none(), none_fn will be invoked. Otherwise nothing happens.
+         *  @param NoneFn () -> R, where R is the function result type
+         *  @param none_fn takes in no argument and generates R value
+         *  @see is_none
+         */
+        template <class NoneFn>
+        auto match_none(NoneFn &&none_fn) && -> unit_t;
+
+        //! Attempts to invoke function if is_none().
+        /*! Const lvalue referene version, works similarly to moved version.
+         *  If is_none(), none_fn will be invoked. Otherwise nothing happens.
+         *  @param NoneFn () -> R, where R is the function result type
+         *  @param none_fn takes in no argument and generates R value
+         *  @see is_none
+         */
+        template <class NoneFn>
+        auto match_none(NoneFn &&none_fn) const & -> unit_t;
 
     private:
         std::experimental::optional<reverse_decay_t<T>> opt;
@@ -379,6 +458,20 @@ namespace rustfp
     }
 
     template <class T>
+    template <class FnToEx>
+    auto Option<T>::ok_or_else(FnToEx &&fn) && -> Result<T, typename std::result_of_t<FnToEx()>>
+    {
+        if (is_some())
+        {
+            return Ok(unwrap_unchecked());
+        }
+        else
+        {
+            return Err(fn());
+        }
+    }
+
+    template <class T>
     auto Option<T>::is_some() const -> bool
     {
         return opt.has_value();
@@ -403,6 +496,72 @@ namespace rustfp
         reverse_decay_t<T> value = std::forward<T>(*opt);
         opt.reset();
         return std::move(value);
+    }
+
+    template <class T>
+    template <class SomeFn, class NoneFn>
+    auto Option<T>::match(SomeFn &&some_fn, NoneFn &&none_fn) && -> std::common_type_t<std::result_of_t<SomeFn(SomeType)>, std::result_of_t<NoneFn()>>
+    {
+        return is_some()
+            ? some_fn(unwrap_unchecked())
+            : none_fn();
+    }
+
+    template <class T>
+    template <class SomeFn, class NoneFn>
+    auto Option<T>::match(SomeFn &&some_fn, NoneFn &&none_fn) const & -> std::common_type_t<std::result_of_t<SomeFn(const SomeType &)>, std::result_of_t<NoneFn()>>
+    {
+        return is_some()
+            ? some_fn(get_unchecked())
+            : none_fn();
+    }
+
+    template <class T>
+    template <class SomeFn>
+    auto Option<T>::match_some(SomeFn &&some_fn) && -> unit_t
+    {
+        if (is_some())
+        {
+            some_fn(unwrap_unchecked());
+        }
+
+        return Unit;
+    }
+
+    template <class T>
+    template <class SomeFn>
+    auto Option<T>::match_some(SomeFn &&some_fn) const & -> unit_t
+    {
+        if (is_some())
+        {
+            some_fn(get_unchecked());
+        }
+
+        return Unit;
+    }
+
+    template <class T>
+    template <class NoneFn>
+    auto Option<T>::match_none(NoneFn &&none_fn) && -> unit_t
+    {
+        if (is_none())
+        {
+            none_fn();
+        }
+
+        return Unit;
+    }
+
+    template <class T>
+    template <class NoneFn>
+    auto Option<T>::match_none(NoneFn &&none_fn) const & -> unit_t
+    {
+        if (is_none())
+        {
+            none_fn();
+        }
+
+        return Unit;
     }
 
     template <class T>

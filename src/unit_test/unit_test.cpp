@@ -630,11 +630,213 @@ TEST(Option, OrElseNoneToSome)
     EXPECT_EQ(7, *opt.get_unchecked());
 }
 
+TEST(Option, OkOrElseSome)
+{
+    const auto res = Some(7)
+        .ok_or_else([] { return string("Hello"); });
+
+    EXPECT_TRUE(res.is_ok());
+    EXPECT_EQ(7, res.get_unchecked());
+}
+
+TEST(Option, OkOrElseNone)
+{
+    const auto res = Option<int>(None)
+        .ok_or_else([] { return string("Hello"); });
+
+    EXPECT_TRUE(res.is_err());
+    EXPECT_EQ("Hello", res.get_err_unchecked());
+}
+
 TEST(Option, OrElseSome)
 {
     const auto opt = Some(7)
         .or_else([] { return None; });
 
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, MatchXValueSome)
+{
+    const auto value = Some(7).match(
+        [](const auto value) { return to_string(value); },
+        [] { return "NONE"; });
+
+    EXPECT_EQ("7", value);
+}
+
+TEST(Option, MatchMoveSome)
+{
+    auto opt = Some(make_unique<int>(8));
+
+    const auto value = move(opt).match(
+        [](const auto &value) { return to_string(*value); },
+        [] { return "NONE"; });
+
+    EXPECT_TRUE(opt.is_none());
+    EXPECT_EQ("8", value);
+}
+
+TEST(Option, MatchXValueNone)
+{
+    const auto value = Option<int>(None).match(
+        [](const auto value) { return to_string(value); },
+        [] { return "NONE"; });
+
+    EXPECT_EQ("NONE", value);
+}
+
+TEST(Option, MatchRefSome)
+{
+    const auto opt = Some(7);
+
+    const auto value = opt.match(
+        [](const auto value) { return to_string(value); },
+        [] { return "NONE"; });
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ("7", value);
+}
+
+TEST(Option, MatchRefNone)
+{
+    const auto opt = Option<int>(None);
+    
+    const auto value = opt.match(
+        [](const auto value) { return to_string(value); },
+        [] { return "NONE"; });
+
+    EXPECT_TRUE(opt.is_none());
+    EXPECT_EQ("NONE", value);
+}
+
+TEST(Option, MatchSomeXValueSomeAssignBack)
+{
+    auto ptr = make_unique<int>(7);
+
+    Some(move(ptr))
+        .match_some([&ptr](auto &&value)
+        {
+            // assign back so that there is something to test
+            ptr = move(value);
+        });
+
+    EXPECT_TRUE(static_cast<bool>(ptr));
+    EXPECT_EQ(7, *ptr);
+}
+
+TEST(Option, MatchSomeXValueSomeNoEffect)
+{
+    auto ptr = make_unique<int>(7);
+
+    Some(move(ptr))
+        .match_some([&ptr](auto &&value)
+        {
+            // do nothing
+        });
+
+    EXPECT_FALSE(static_cast<bool>(ptr));
+}
+
+TEST(Option, MatchSomeXValueNone)
+{
+    auto ptr = make_unique<int>(7);
+
+    Option<int>(None)
+        .match_some([&ptr](auto &&value)
+        {
+            // not happening
+            ptr = nullptr;
+        });
+
+    EXPECT_TRUE(static_cast<bool>(ptr));
+    EXPECT_EQ(7, *ptr);
+}
+
+TEST(Option, MatchSomeRefDoSomething)
+{
+    const auto opt = Some(make_unique<int>(7));
+    bool flag = false;
+
+    opt.match_some([&flag](auto &&value)
+    {
+        flag = true;
+    });
+
+    EXPECT_TRUE(flag);
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ(7, *opt.get_unchecked());
+}
+
+TEST(Option, MatchSomeRefNoEffect)
+{
+    const auto opt = Option<int>(None);
+    bool flag = false;
+
+    opt.match_some([&flag](auto &&value)
+    {
+        flag = true;
+    });
+
+    EXPECT_FALSE(flag);
+    EXPECT_TRUE(opt.is_none());
+}
+
+TEST(Option, MatchNoneXValueNoneDoSomething)
+{
+    unique_ptr<int> ptr;
+
+    Option<int>(None)
+        .match_none([&ptr]
+        {
+            // assign back so that there is something to test
+            ptr = make_unique<int>(8);
+        });
+
+    EXPECT_TRUE(static_cast<bool>(ptr));
+    EXPECT_EQ(8, *ptr);
+}
+
+TEST(Option, MatchNoneXValueSomeNoEffect)
+{
+    unique_ptr<int> ptr;
+
+    Some(777)
+        .match_none([&ptr]
+        {
+            // assign back so that there is something to test
+            ptr = make_unique<int>(777);
+        });
+
+    EXPECT_FALSE(static_cast<bool>(ptr));
+}
+
+TEST(Option, MatchNoneRefDoSomething)
+{
+    const auto opt = Option<int>(None);
+    bool flag = false;
+
+    opt.match_none([&flag]
+    {
+        flag = true;
+    });
+
+    EXPECT_TRUE(flag);
+    EXPECT_TRUE(opt.is_none());
+}
+
+TEST(Option, MatchNoneRefNoEffect)
+{
+    const auto opt = Some(7);
+    bool flag = false;
+
+    opt.match_none([&flag]
+    {
+        flag = true;
+    });
+
+    EXPECT_FALSE(flag);
     EXPECT_TRUE(opt.is_some());
     EXPECT_EQ(7, opt.get_unchecked());
 }
