@@ -1,5 +1,10 @@
 #pragma once
 
+//! Contains Rust Option enum implementation
+/*! @author Chen Weiguang
+ *  @version 0.1.0
+ */
+
 #include "option_fwd.h"
 #include "traits.h"
 
@@ -12,6 +17,12 @@ namespace rustfp
 {
     // declaration section
 
+    namespace details
+    {
+        template <class T>
+        class SomeImpl;
+    }
+
     //! Simulates the Rust Option enum.
     /*! Wraps a value or reference in a nullable wrapper and provides various monadic operations on the wrapped item.
      *  @param T item type to wrap over
@@ -23,27 +34,30 @@ namespace rustfp
         //! Alias to the item type to be wrapped. SomeType == T.
         using SomeType = T;
         
-        //! Constructor to take in the perfect forwarded item and the constructed instance is_some() will return true.
-        /*! @param value perfect forwarded item to be passed into the Option wrapper. The item must be convertible to T.
+        //! Constructor to take in the Some wrapped item and the constructed instance is_some() will return true.
+        /*! @param value Some wrapped item to be passed into the Option wrapper. The item must be convertible to T.
          *  @see is_some
          */
         template <class Tx>
-        explicit Option(Tx &&value);
+        Option(details::SomeImpl<Tx> &&value);
 
-        //! Copy constructor to target RHS non-const Option.
-        /*! Required because of the previous perfect forwarding constructor.
-         *  @param RHS option to be copy constructed from. RHS Tx item type must be convertible to T.
+        //! Copy constructor to target RHS Option.
+        /*! @param RHS option to be copy constructed from.
          */
-        template <class Tx>
-        Option(Option<Tx> &rhs);
+        Option(const Option<T> &rhs);
 
-        //! Copy constructor to target RHS const Option.
+        //! Copy constructor template to target RHS Option.
         /*! @param RHS option to be copy constructed from. RHS Tx item type must be convertible to T.
          */
         template <class Tx>
         Option(const Option<Tx> &rhs);
 
-        //! Move constructor to target RHS non-const Option.
+        //! Move constructor to target RHS moving Option.
+        /*! @param RHS option to be move constructed from.
+         */
+        Option(Option<T> &&rhs);
+
+        //! Move constructor template to target RHS moving Option.
         /*! @param RHS option to be move constructed from. RHS Tx item type must be convertible to T.
          */
         template <class Tx>
@@ -56,13 +70,68 @@ namespace rustfp
          */
         Option(const none_t &);
 
+        //! Assignment to take in the Some wrapped item and the assigned instance is_some() will return true.
+        /*! @param value Some wrapped item to be passed into the Option wrapper. The item must be convertible to T.
+         *  @see is_some
+         */
+        template <class Tx>
+        auto operator=(details::SomeImpl<Tx> &&value) -> Option<T> &;
+
+        //! Copy assignment to target RHS Option.
+        /*! @param RHS option to be copy assigned from.
+         */
+        auto operator=(const Option<T> &rhs) -> Option<T> &;
+
+        //! Copy assignment template to target RHS Option.
+        /*! @param RHS option to be copy assigned from. RHS Tx item type must be convertible to T.
+         */
+        template <class Tx>
+        auto operator=(const Option<Tx> &rhs) -> Option<T> &;
+
+        //! Move assignment to target RHS Option.
+        /*! @param RHS option to be move assigned from.
+         */
+        auto operator=(Option<T> &&rhs) -> Option<T> &;
+
+        //! Move assignment template to target RHS Option.
+        /*! @param RHS option to be move assigned from. RHS Tx item type must be convertible to T.
+         */
+        template <class Tx>
+        auto operator=(Option<Tx> &&rhs) -> Option<T> &;
+
+        //! Assignment to take in None value and the assigned instance is_none() will return true.
+        /*! Since there is already a predefined None value whose type is none_t, None value should only be the one used
+         *  for this assignment rather than creating another none_t value type.
+         *  @see is_none
+         */
+        auto operator=(const none_t &) -> Option<T> &;
+
         //! Performs a map of current item type to another item type.
         /*! Only performs the given fn if is_some() == true. Changes the output type to Option<Tx>, given that fn: T -> Tx.
+         *  @param FnTToTx function type which maps from T to Tx.
          *  @param fn function that takes in a rvalue reference of T to generate a new item type in the new Option.
          *  @see is_some
          */
-        template <class FnToType>
-        auto map(FnToType &&fn) && -> Option<std::result_of_t<FnToType(T &&)>>;
+        template <class FnTToTx>
+        auto map(FnTToTx &&fn) && -> Option<std::result_of_t<FnTToTx(T &&)>>;
+
+        //! Performs a map of current item type to a new Option with another item type or no item.
+        /*! Only performs the given fn if is_some() == true. Changes the output type to Option<Tx>, given that fn: T -> Option<Tx>.
+         *  @param FnTToOptTx function type which maps from T to Option<Tx>.
+         *  @param fn function that takes in a rvalue reference of T to generate an Option with new item type.
+         *  @see is_some
+         */
+        template <class FnTToOptTx>
+        auto and_then(FnTToOptTx &&fn) && -> Option<typename std::result_of_t<FnTToOptTx(T &&)>::SomeType>;
+
+        //! Performs a map of no item to a new Option with another item type or no item.
+        /*! Only performs the given fn if is_none() == true. Changes the output type to Option<Tx>, given that fn: () -> Option<Tx>.
+         *  @param FnToOptTx function type which maps from () to Option<Tx>.
+         *  @param fn function that takes in no argument to generate an Option with new item type.
+         *  @see is_none
+         */
+        template <class FnToOptTx>
+        auto or_else(FnToOptTx &&fn) && -> Option<T>;
 
         //! Returns true if the Option instance contains an item. Otherwise returns false.
         /*! is_some() == ! is_none().
@@ -124,6 +193,33 @@ namespace rustfp
     namespace details
     {
         template <class T>
+        class SomeImpl
+        {
+            template <class Tx>
+            friend class Option;
+
+        public:
+            template <class Tx>
+            explicit SomeImpl(Tx &&value) :
+                value(std::forward<Tx>(value))
+            {
+            }
+
+            inline auto get() const -> const T &
+            {
+                return value;
+            }
+
+            inline auto move() && -> reverse_decay_t<T>
+            {
+                return std::move(value);
+            }
+
+        private:
+            reverse_decay_t<T> value;
+        };
+
+        template <class T>
         inline auto get_ref(T &value) -> T &
         {
             return value;
@@ -144,18 +240,17 @@ namespace rustfp
 
     template <class T>
     template <class Tx>
-    Option<T>::Option(Tx &&value) :
-        opt(std::forward<Tx>(value))
+    Option<T>::Option(details::SomeImpl<Tx> &&value) :
+        opt(std::move(value).move())
     {
+        static_assert(std::is_convertible<Tx, T>::value, "Tx is not convertible to T in value constructor of Option<T>");
     }
 
     template <class T>
-    template <class Tx>
-    Option<T>::Option(Option<Tx> &rhs) :
+    Option<T>::Option(const Option<T> &rhs) :
         opt(rhs.opt)
     {
-        static_assert(std::is_copy_constructible<Tx>::value, "Option<T> is not copy constructible");
-        static_assert(std::is_convertible<Tx, T>::value, "Tx is not convertible to T in non-const copy constructor of Option<T>");
+        static_assert(std::is_copy_constructible<T>::value, "T is not copy constructible");
     }
 
     template <class T>
@@ -163,8 +258,16 @@ namespace rustfp
     Option<T>::Option(const Option<Tx> &rhs) :
         opt(rhs.opt)
     {
-        static_assert(std::is_copy_constructible<T>::value, "Option<T> is not copy constructible");
-        static_assert(std::is_convertible<Tx, T>::Value, "Tx is not convertible to T in const copy constructor of Option<T>");
+        static_assert(std::is_copy_constructible<Tx>::value, "Tx is not copy constructible");
+        static_assert(std::is_convertible<Tx, T>::value, "Tx is not convertible to T in copy constructor of Option<T>");
+    }
+
+    template <class T>
+    Option<T>::Option(Option<T> &&rhs) :
+        opt(std::move(rhs.opt))
+    {
+        static_assert(std::is_move_constructible<T>::value, "T is not move constructible");
+        rhs.opt.reset();
     }
 
     template <class T>
@@ -172,18 +275,77 @@ namespace rustfp
     Option<T>::Option(Option<Tx> &&rhs) :
         opt(std::move(rhs.opt))
     {
-        static_assert(std::is_convertible<Tx, T>::Value, "Tx is not convertible to T in move constructor of Option<T>");
+        static_assert(std::is_move_constructible<Tx>::value, "Tx is not move constructible");
+        static_assert(std::is_convertible<Tx, T>::value, "Tx is not convertible to T in move constructor of Option<T>");
+        rhs.opt.reset();
     }
 
     template <class T>
     Option<T>::Option(const none_t &) :
-        opt()
+        opt(std::experimental::nullopt)
     {
     }
 
     template <class T>
-    template <class FnToType>
-    auto Option<T>::map(FnToType &&fn) && -> Option<std::result_of_t<FnToType(T &&)>>
+    template <class Tx>
+    auto Option<T>::operator=(details::SomeImpl<Tx> &&value) -> Option<T> &
+    {
+        static_assert(std::is_convertible<Tx, T>::value, "Tx is not convertible to T in value assignment of Option<T>");
+
+        opt = std::move(value).move();
+        return *this;
+    }
+
+    template <class T>
+    auto Option<T>::operator=(const Option<T> &rhs) -> Option<T> &
+    {
+        static_assert(std::is_copy_assignable<T>::value, "T is not copy assignable");
+
+        opt = rhs.opt;
+        return *this;
+    }
+
+    template <class T>
+    template <class Tx>
+    auto Option<T>::operator=(const Option<Tx> &rhs) -> Option<T> &
+    {
+        static_assert(std::is_copy_assignable<Tx>::value, "Tx is not copy assignable");
+        static_assert(std::is_convertible<Tx, T>::value, "Tx is not convertible to T in copy assignment of Option<T>");
+
+        opt = rhs.opt;
+        return *this;
+    }
+
+    template <class T>
+    auto Option<T>::operator=(Option<T> &&rhs) -> Option<T> &
+    {
+        static_assert(std::is_move_assignable<T>::value, "T is not move assignable");
+
+        opt = std::move(rhs.opt);
+        return *this;
+    }
+
+    template <class T>
+    template <class Tx>
+    auto Option<T>::operator=(Option<Tx> &&rhs) -> Option<T> &
+    {
+        static_assert(std::is_move_constructible<Tx>::value, "Tx is not move constructible");
+        static_assert(std::is_convertible<Tx, T>::value, "Tx is not convertible to T in move assignment of Option<T>");
+
+        opt = std::move(rhs.opt);
+        return *this;
+    }
+
+    template <class T>
+    auto Option<T>::operator=(const none_t &) -> Option<T> &
+    {
+        opt.reset();
+        return *this;
+    }
+
+    template <class T>
+    template <class FnTToTx>
+    auto Option<T>::map(FnTToTx &&fn) && -> Option<std::result_of_t<FnTToTx(T &&)>>
     {
         return is_some()
             ? [this, &fn]
@@ -195,15 +357,37 @@ namespace rustfp
     }
 
     template <class T>
+    template <class FnTToOptTx>
+    auto Option<T>::and_then(FnTToOptTx &&fn) && -> Option<typename std::result_of_t<FnTToOptTx(T &&)>::SomeType>
+    {
+        return is_some()
+            ? [this, &fn]
+            {
+                return fn(unwrap_unchecked());
+            }()
+
+            : None;
+    }
+
+    template <class T>
+    template <class FnToOptTx>
+    auto Option<T>::or_else(FnToOptTx &&fn) && -> Option<T>
+    {
+        return is_none()
+            ? fn()
+            : std::move(*this);
+    }
+
+    template <class T>
     auto Option<T>::is_some() const -> bool
     {
-        return static_cast<bool>(opt);
+        return opt.has_value();
     }
 
     template <class T>
     auto Option<T>::is_none() const -> bool
     {
-        return !is_some();
+        return !opt.has_value();
     }
 
     template <class T>
@@ -224,7 +408,7 @@ namespace rustfp
     template <class T>
     auto Some(T &&value) -> Option<special_decay_t<T>>
     {
-        return Option<special_decay_t<T>>(std::forward<T>(value));
+        return Option<special_decay_t<T>>(details::SomeImpl<special_decay_t<T>>(std::forward<T>(value)));
     }
 
     template <class SomeFn>

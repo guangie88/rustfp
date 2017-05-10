@@ -146,8 +146,8 @@ namespace rustfp
             return details::get_err_unchecked(value_err);
         }
 
-        template <class FnToNewT>
-        auto map(FnToNewT &&fn) && -> Result<std::result_of_t<FnToNewT(T &&)>, E>
+        template <class FnTToTx>
+        auto map(FnTToTx &&fn) && -> Result<std::result_of_t<FnTToTx(T &&)>, E>
         {
             if (is_ok())
             {
@@ -159,8 +159,8 @@ namespace rustfp
             }
         }
 
-        template <class FnToNewE>
-        auto map_err(FnToNewE &&fn) && -> Result<T, std::result_of_t<FnToNewE(E &&)>>
+        template <class FnEToEx>
+        auto map_err(FnEToEx &&fn) && -> Result<T, std::result_of_t<FnEToEx(E &&)>>
         {
             if (is_err())
             {
@@ -172,8 +172,8 @@ namespace rustfp
             }
         }
 
-        template <class FnToResNewT>
-        auto and_then(FnToResNewT &&fn) && -> Result<typename std::result_of_t<FnToResNewT(T &&)>::OkType, E>
+        template <class FnTToResTx>
+        auto and_then(FnTToResTx &&fn) && -> Result<typename std::result_of_t<FnTToResTx(T &&)>::OkType, E>
         {
             if (is_ok())
             {
@@ -185,8 +185,8 @@ namespace rustfp
             }
         }
 
-        template <class FnToResNewE>
-        auto or_else(FnToResNewE &&fn) && -> Result<T, typename std::result_of_t<FnToResNewE(E &&)>::ErrType>
+        template <class FnEToResEx>
+        auto or_else(FnEToResEx &&fn) && -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::ErrType>
         {
             if (is_err())
             {

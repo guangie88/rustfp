@@ -52,6 +52,7 @@ using rustfp::skip;
 using rustfp::take;
 using rustfp::zip;
 
+using rustfp::opt_if;
 using rustfp::Option;
 using rustfp::None;
 using rustfp::Some;
@@ -81,7 +82,7 @@ using std::vector;
 
 // simple tests
 
-class SimpleTest : public ::testing::Test
+class Ops : public ::testing::Test
 {
 protected:
     void SetUp() override
@@ -94,7 +95,7 @@ protected:
     vector<string> str_vec;
 };
 
-class ComplexTest : public ::testing::Test
+class ComplexOps : public ::testing::Test
 {
 protected:
     void SetUp() override
@@ -105,7 +106,7 @@ protected:
     vector<int> int_vec;
 };
 
-TEST_F(SimpleTest, AllTrue)
+TEST_F(Ops, AllTrue)
 {
     const auto result = iter(int_vec)
         | all([](const auto value) { return value < 6; });
@@ -113,7 +114,7 @@ TEST_F(SimpleTest, AllTrue)
     EXPECT_TRUE(result);
 }
 
-TEST_F(SimpleTest, AllFalse)
+TEST_F(Ops, AllFalse)
 {
     const auto result = iter(int_vec)
         | all([](const auto value) { return value > 0; });
@@ -121,7 +122,7 @@ TEST_F(SimpleTest, AllFalse)
     EXPECT_FALSE(result);
 }
 
-TEST_F(SimpleTest, AnyTrue)
+TEST_F(Ops, AnyTrue)
 {
     const auto result = iter(int_vec)
         | any([](const auto value) { return value == 5; });
@@ -129,7 +130,7 @@ TEST_F(SimpleTest, AnyTrue)
     EXPECT_TRUE(result);
 }
 
-TEST_F(SimpleTest, AnyFalse)
+TEST_F(Ops, AnyFalse)
 {
     const auto result = iter(int_vec)
         | any([](const auto value) { return value == 7; });
@@ -137,7 +138,7 @@ TEST_F(SimpleTest, AnyFalse)
     EXPECT_FALSE(result);
 }
 
-TEST_F(SimpleTest, ClonedRef)
+TEST_F(Ops, ClonedRef)
 {
     const auto str_dup_vec = iter(str_vec)
         | cloned()
@@ -155,7 +156,7 @@ TEST_F(SimpleTest, ClonedRef)
     EXPECT_EQ(cend(str_dup_vec), input_it_pairs.second);
 }
 
-TEST_F(SimpleTest, ClonedValue)
+TEST_F(Ops, ClonedValue)
 {
     const auto int_str_vec = iter(int_vec)
         | map([](const auto value) { return to_string(value); })
@@ -173,7 +174,7 @@ TEST_F(SimpleTest, ClonedValue)
     EXPECT_EQ(cend(int_str_vec), input_it_pairs.second);
 }
 
-TEST_F(SimpleTest, CollectVec)
+TEST_F(Ops, CollectVec)
 {
     const auto dup_vec = range(0, int_vec.size())
         | collect<vector<int>>();
@@ -185,7 +186,7 @@ TEST_F(SimpleTest, CollectVec)
     EXPECT_EQ(cend(dup_vec), input_it_pairs.second);
 }
 
-TEST_F(SimpleTest, CollectVecRef)
+TEST_F(Ops, CollectVecRef)
 {
     const auto str_ref_vec = iter(str_vec)
         | collect<vector<reference_wrapper<const string>>>();
@@ -201,7 +202,7 @@ TEST_F(SimpleTest, CollectVecRef)
     EXPECT_EQ(cend(str_ref_vec), input_it_pairs.second);
 }
 
-TEST_F(SimpleTest, CollectMapVecSum)
+TEST_F(Ops, CollectMapVecSum)
 {
     static constexpr auto COLLECT_MAP_VEC_SUM_ADD = 0.5;
 
@@ -219,7 +220,7 @@ TEST_F(SimpleTest, CollectMapVecSum)
     EXPECT_EQ(expected_sum, fold_sum);
 }
 
-TEST_F(SimpleTest, Cycle)
+TEST_F(Ops, Cycle)
 {
     const int copyable_value = 7;
 
@@ -233,7 +234,7 @@ TEST_F(SimpleTest, Cycle)
     EXPECT_EQ(7000, sum);
 }
 
-TEST_F(SimpleTest, Enumerate)
+TEST_F(Ops, Enumerate)
 {
     int sum = 0;
 
@@ -250,7 +251,7 @@ TEST_F(SimpleTest, Enumerate)
     EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 2, sum);
 }
 
-TEST_F(SimpleTest, Filter)
+TEST_F(Ops, Filter)
 {
     int sum = 0;
 
@@ -268,7 +269,7 @@ TEST_F(SimpleTest, Filter)
     EXPECT_EQ(9, sum);
 }
 
-TEST_F(SimpleTest, FilterMap)
+TEST_F(Ops, FilterMap)
 {
     double sum = 0;
 
@@ -288,7 +289,7 @@ TEST_F(SimpleTest, FilterMap)
     EXPECT_EQ(10.5, sum);
 }
 
-TEST_F(SimpleTest, FindSome)
+TEST_F(Ops, FindSome)
 {
     static constexpr auto FIND_SOME_ACC = 5;
 
@@ -299,7 +300,7 @@ TEST_F(SimpleTest, FindSome)
     EXPECT_EQ(FIND_SOME_ACC, find_some_opt.get_unchecked());
 }
 
-TEST_F(SimpleTest, FindNone)
+TEST_F(Ops, FindNone)
 {
     const auto find_none_opt = iter(int_vec)
         | find([](const auto value) { return value == 6; });
@@ -307,7 +308,7 @@ TEST_F(SimpleTest, FindNone)
     EXPECT_TRUE(find_none_opt.is_none());
 }
 
-TEST_F(SimpleTest, FindMapSome)
+TEST_F(Ops, FindMapSome)
 {
     const auto find_some_opt = iter(int_vec)
         | find_map([](const auto value)
@@ -321,7 +322,7 @@ TEST_F(SimpleTest, FindMapSome)
     EXPECT_EQ(4.5, find_some_opt.get_unchecked());
 }
 
-TEST_F(SimpleTest, FindMapNone)
+TEST_F(Ops, FindMapNone)
 {
     static constexpr auto FIND_MAP_NONE_VAL = -1;
 
@@ -336,7 +337,7 @@ TEST_F(SimpleTest, FindMapNone)
     EXPECT_TRUE(find_none_opt.is_none());
 }
 
-TEST_F(SimpleTest, Fold)
+TEST_F(Ops, Fold)
 {
     static constexpr int FOLD_ACC = 10;
 
@@ -346,7 +347,7 @@ TEST_F(SimpleTest, Fold)
     EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), fold_sum);
 }
 
-TEST_F(SimpleTest, ForEach)
+TEST_F(Ops, ForEach)
 {
     int sum = 0;
 
@@ -359,7 +360,7 @@ TEST_F(SimpleTest, ForEach)
     EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
 }
 
-TEST_F(SimpleTest, Map)
+TEST_F(Ops, Map)
 {
     double sum = 0.0;
 
@@ -377,7 +378,7 @@ TEST_F(SimpleTest, Map)
     EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 0.5, sum);
 }
 
-TEST_F(SimpleTest, Range)
+TEST_F(Ops, Range)
 {
     static constexpr int RANGE_ACC = 5;
 
@@ -387,7 +388,7 @@ TEST_F(SimpleTest, Range)
     EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), RANGE_ACC), sum);
 }
 
-TEST_F(SimpleTest, SkipWithin)
+TEST_F(Ops, SkipWithin)
 {
     const auto sum = iter(int_vec)
         | skip(3)
@@ -396,7 +397,7 @@ TEST_F(SimpleTest, SkipWithin)
     EXPECT_EQ(12, sum);
 }
 
-TEST_F(SimpleTest, SkipPass)
+TEST_F(Ops, SkipPass)
 {
     const auto sum = iter(int_vec)
         | skip(100)
@@ -405,7 +406,7 @@ TEST_F(SimpleTest, SkipPass)
     EXPECT_EQ(0, sum);
 }
 
-TEST_F(SimpleTest, TakeWithin)
+TEST_F(Ops, TakeWithin)
 {
     const auto sum = iter(int_vec)
         | take(3)
@@ -414,7 +415,7 @@ TEST_F(SimpleTest, TakeWithin)
     EXPECT_EQ(3, sum);
 }
 
-TEST_F(SimpleTest, TakeExceed)
+TEST_F(Ops, TakeExceed)
 {
     const auto sum = iter(int_vec)
         | take(100)
@@ -425,7 +426,7 @@ TEST_F(SimpleTest, TakeExceed)
 
 // complex tests
 
-TEST_F(ComplexTest, FilterMapFold)
+TEST_F(ComplexOps, FilterMapFold)
 {
     const auto eleven_div_str = range(1, 100)
         | filter([](const auto value) { return value % 11 == 0; })
@@ -438,7 +439,7 @@ TEST_F(ComplexTest, FilterMapFold)
     EXPECT_EQ("11 22 33 44 55 66 77 88 99 ", eleven_div_str);
 }
 
-TEST_F(ComplexTest, FilterMapFind)
+TEST_F(ComplexOps, FilterMapFind)
 {
     // .5 is a easily representable value in mantissa
     // so that the floating float comparison can directly compare the values
@@ -456,7 +457,7 @@ TEST_F(ComplexTest, FilterMapFind)
     EXPECT_EQ(FILTER_MAP_FIND_VAL, find_opt.get_unchecked());
 }
 
-TEST_F(ComplexTest, ZipRefMapFold)
+TEST_F(ComplexOps, ZipRefMapFold)
 {
     const auto zipped_int_vec = iter(int_vec)
         | zip(iter(int_vec) | skip(1))
@@ -481,6 +482,171 @@ TEST_F(ComplexTest, ZipRefMapFold)
 }
 
 // option
+
+TEST(Option, Assignment)
+{
+    auto opt = Some(1);
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ(1, opt.get_unchecked());
+
+    opt = None;
+    EXPECT_TRUE(opt.is_none());
+
+    opt = Some(7);
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, CtorNone)
+{
+    Option<int> opt(None);
+
+    EXPECT_TRUE(opt.is_none());
+}
+
+TEST(Option, CtorLRef)
+{
+    auto opt_rhs = Some(7);
+    const auto opt(opt_rhs);
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_TRUE(opt_rhs.is_some());
+
+    EXPECT_EQ(7, opt.get_unchecked());
+    EXPECT_EQ(7, opt_rhs.get_unchecked());
+}
+
+TEST(Option, CtorConstLRef)
+{
+    const auto opt_rhs = Some(7);
+    const auto opt(opt_rhs);
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_TRUE(opt_rhs.is_some());
+
+    EXPECT_EQ(7, opt.get_unchecked());
+    EXPECT_EQ(7, opt_rhs.get_unchecked());
+}
+
+TEST(Option, CtorMoveSimple)
+{
+    Option<int> opt_rhs(Some(7));
+    const Option<int> opt(move(opt_rhs));
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_TRUE(opt_rhs.is_none());
+
+    EXPECT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, CtorMoveComplex)
+{
+    auto opt_rhs = Some(make_unique<int>(7));
+    const Option<unique_ptr<int>> opt(move(opt_rhs));
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_TRUE(opt_rhs.is_none());
+
+    EXPECT_EQ(7, *opt.get_unchecked());
+}
+
+TEST(Option, MapSome)
+{
+    const auto opt = Some(make_unique<int>(777))
+        .map([](auto &&value)
+        {
+            return make_unique<string>(to_string(*value));
+        })
+        .map([](auto &&value)
+        {
+            return "*" + *value + "*";
+        });
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ("*777*", opt.get_unchecked());
+}
+
+TEST(Option, MapNone)
+{
+    auto opt = Option<int>(None);
+
+    move(opt)
+        .map([](auto &&value)
+        {
+            return "Hello";
+        });
+
+    EXPECT_TRUE(opt.is_none());
+}
+
+TEST(Option, AndThenSomeToSome)
+{
+    const auto opt = Some(make_unique<int>(777))
+        .and_then([](auto &&value)
+        {
+            return Some(make_unique<string>(to_string(*value)));
+        });
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ("777", *opt.get_unchecked());
+}
+
+TEST(Option, AndThenSomeToNone)
+{
+    const auto opt = Some(make_unique<int>(777))
+        .and_then([](auto &&value) -> Option<string>
+        {
+            return None;
+        });
+
+    EXPECT_TRUE(opt.is_none());
+}
+
+TEST(Option, AndThenNone)
+{
+    const auto opt = Option<unique_ptr<int>>(None)
+        .and_then([](auto &&value)
+        {
+            return Some(make_unique<string>(to_string(*value)));
+        });
+
+    EXPECT_TRUE(opt.is_none());
+}
+
+TEST(Option, OrElseNoneToNone)
+{
+    const auto opt = Option<unique_ptr<int>>(None)
+        .or_else([] { return None; });
+
+    EXPECT_TRUE(opt.is_none());
+}
+
+TEST(Option, OrElseNoneToSome)
+{
+    const auto opt = Option<unique_ptr<int>>(None)
+        .or_else([] { return Some(make_unique<int>(7)); });
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ(7, *opt.get_unchecked());
+}
+
+TEST(Option, OrElseSome)
+{
+    const auto opt = Some(7)
+        .or_else([] { return None; });
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, OptIfTrue)
+{
+    const auto opt = opt_if(true,
+        [] { return 7; });
+
+    EXPECT_TRUE(opt.is_some());
+    EXPECT_EQ(7, opt.get_unchecked());
+}
 
 // result
 
