@@ -10,6 +10,7 @@
 #include "option_fwd.h"
 #include "result_fwd.h"
 #include "traits.h"
+#include "unit.h"
 
 #include <cassert>
 #include <type_traits>
@@ -40,14 +41,6 @@ namespace rustfp
         template <class Ex>
         Result(details::ErrImpl<Ex> &&err);
 
-        auto is_ok() const -> bool;
-
-        auto is_err() const -> bool;
-
-        auto get_unchecked() const -> const T &;
-
-        auto get_err_unchecked() const -> const E &;
-
         template <class FnTToTx>
         auto map(FnTToTx &&fn) && -> Result<std::result_of_t<FnTToTx(T &&)>, E>;
 
@@ -64,11 +57,31 @@ namespace rustfp
 
         auto err() && -> Option<E>;
 
+        auto is_ok() const -> bool;
+
+        auto is_err() const -> bool;
+
+        auto get_unchecked() const -> const T &;
+
+        auto get_err_unchecked() const -> const E &;
+
         template <class OkFn, class ErrFn> 
         auto match(OkFn &&ok_fn, ErrFn &&err_fn) && -> std::common_type_t<std::result_of_t<OkFn(OkType)>, std::result_of_t<ErrFn(ErrType)>>;
 
         template <class OkFn, class ErrFn> 
         auto match(OkFn &&ok_fn, ErrFn &&err_fn) const & -> std::common_type_t<std::result_of_t<OkFn(const OkType &)>, std::result_of_t<ErrFn(const ErrType &)>>;
+
+        template <class OkFn>
+        auto match_ok(OkFn &&ok_fn) && -> unit_t;
+
+        template <class OkFn>
+        auto match_ok(OkFn &&ok_fn) const & -> unit_t;
+
+        template <class ErrFn>
+        auto match_err(ErrFn &&err_fn) && -> unit_t;
+
+        template <class ErrFn>
+        auto match_err(ErrFn &&err_fn) const & -> unit_t;
 
     private:
         mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> value_err;
@@ -181,32 +194,6 @@ namespace rustfp
     }
 
     template <class T, class E>
-    auto Result<T, E>::is_ok() const -> bool
-    {
-        return value_err.which() == 0;
-    }
-
-    template <class T, class E>
-    auto Result<T, E>::is_err() const -> bool
-    {
-        return value_err.which() == 1;
-    }
-
-    template <class T, class E>
-    auto Result<T, E>::get_unchecked() const -> const T &
-    {
-        assert(is_ok());
-        return details::get_unchecked(value_err);
-    }
-
-    template <class T, class E>
-    auto Result<T, E>::get_err_unchecked() const -> const E &
-    {
-        assert(is_err());
-        return details::get_err_unchecked(value_err);
-    }
-
-    template <class T, class E>
     template <class FnTToTx>
     auto Result<T, E>::map(FnTToTx &&fn) && -> Result<std::result_of_t<FnTToTx(T &&)>, E>
     {
@@ -279,6 +266,32 @@ namespace rustfp
     }
 
     template <class T, class E>
+    auto Result<T, E>::is_ok() const -> bool
+    {
+        return value_err.which() == 0;
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::is_err() const -> bool
+    {
+        return value_err.which() == 1;
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::get_unchecked() const -> const T &
+    {
+        assert(is_ok());
+        return details::get_unchecked(value_err);
+    }
+
+    template <class T, class E>
+    auto Result<T, E>::get_err_unchecked() const -> const E &
+    {
+        assert(is_err());
+        return details::get_err_unchecked(value_err);
+    }
+
+    template <class T, class E>
     template <class OkFn, class ErrFn> 
     auto Result<T, E>::match(OkFn &&ok_fn, ErrFn &&err_fn) && -> std::common_type_t<std::result_of_t<OkFn(OkType)>, std::result_of_t<ErrFn(ErrType)>>
     {
@@ -294,6 +307,54 @@ namespace rustfp
         return is_ok()
             ? ok_fn(details::get_unchecked(value_err))
             : err_fn(details::get_err_unchecked(value_err));
+    }
+
+    template <class T, class E>
+    template <class OkFn>
+    auto Result<T, E>::match_ok(OkFn &&ok_fn) && -> unit_t
+    {
+        if (is_ok())
+        {
+            ok_fn(details::move_unchecked(std::move(value_err)));
+        }
+
+        return Unit;
+    }
+
+    template <class T, class E>
+    template <class OkFn>
+    auto Result<T, E>::match_ok(OkFn &&ok_fn) const & -> unit_t
+    {
+        if (is_ok())
+        {
+            ok_fn(details::get_unchecked(value_err));
+        }
+
+        return Unit;
+    }
+
+    template <class T, class E>
+    template <class ErrFn>
+    auto Result<T, E>::match_err(ErrFn &&err_fn) && -> unit_t
+    {
+        if (is_err())
+        {
+            err_fn(details::move_err_unchecked(std::move(value_err)));
+        }
+        
+        return Unit;
+    }
+
+    template <class T, class E>
+    template <class ErrFn>
+    auto Result<T, E>::match_err(ErrFn &&err_fn) const & -> unit_t
+    {
+        if (is_err())
+        {
+            err_fn(details::get_err_unchecked(value_err));
+        }
+        
+        return Unit;
     }
 
     template <class T>

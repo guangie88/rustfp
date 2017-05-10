@@ -1068,6 +1068,124 @@ TEST(Result, MatchErrRef)
     EXPECT_EQ("World", match_res.get());
 }
 
+TEST(Result, MatchOkOk)
+{
+    Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
+    unique_ptr<int> ptr;
+
+    move(res)
+        .match_ok([&ptr](auto &&value)
+        {
+            ptr = move(value);
+        });
+
+    EXPECT_TRUE(static_cast<bool>(ptr));
+    EXPECT_EQ(2, *ptr);
+}
+
+TEST(Result, MatchOkErr)
+{
+    Result<unique_ptr<int>, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    unique_ptr<int> ptr;
+
+    move(res)
+        .match_ok([&ptr](auto &&value)
+        {
+            ptr = move(value);
+        });
+
+    EXPECT_FALSE(static_cast<bool>(ptr));
+}
+
+TEST(Result, MatchOkRefOk)
+{
+    const Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
+    int value = 0;
+
+    res.match_ok([&value](auto &&res_value)
+    {
+        value = *res_value;
+    });
+
+    EXPECT_EQ(2, value);
+    EXPECT_TRUE(res.is_ok());
+    EXPECT_EQ(2, *res.get_unchecked());
+}
+
+TEST(Result, MatchOkRefErr)
+{
+    const Result<unique_ptr<int>, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    int value = 7;
+
+    res.match_ok([&value](auto &&res_value)
+    {
+        value = *res_value;
+    });
+
+    EXPECT_EQ(7, value);
+    EXPECT_TRUE(res.is_err());
+    EXPECT_EQ("Hello", *res.get_err_unchecked());
+}
+
+TEST(Result, MatchErrOk)
+{
+    Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
+    unique_ptr<string> ptr;
+
+    move(res)
+        .match_err([&ptr](auto &&value)
+        {
+            ptr = move(value);
+        });
+
+    EXPECT_FALSE(static_cast<bool>(ptr));
+}
+
+TEST(Result, MatchErrErr)
+{
+    Result<unique_ptr<int>, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    unique_ptr<string> ptr;
+
+    move(res)
+        .match_err([&ptr](auto &&value)
+        {
+            ptr = move(value);
+        });
+
+    EXPECT_TRUE(static_cast<bool>(ptr));
+    EXPECT_EQ("Hello", *ptr);
+}
+
+TEST(Result, MatchErrRefOk)
+{
+    const Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
+    string value = "World";
+
+    res.match_err([&value](auto &&res_value)
+    {
+        value = *res_value;
+    });
+
+    EXPECT_EQ("World", value);
+    EXPECT_TRUE(res.is_ok());
+    EXPECT_EQ(2, *res.get_unchecked());
+}
+
+TEST(Result, MatchErrRefErr)
+{
+    const Result<unique_ptr<int>, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    string value = "World";
+
+    res.match_err([&value](auto &&res_value)
+    {
+        value = *res_value;
+    });
+
+    EXPECT_EQ("Hello", value);
+    EXPECT_TRUE(res.is_err());
+    EXPECT_EQ("Hello", *res.get_err_unchecked());
+}
+
 int main(int argc, char * argv[])
 {
     testing::InitGoogleTest(&argc, argv);
