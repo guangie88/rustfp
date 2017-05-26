@@ -6,35 +6,33 @@
 #include <type_traits>
 #include <utility>
 
-namespace rustfp
-{
-    namespace details
-    {
+namespace rustfp {
+    
+    // implementation section
+
+    namespace details {
         template <class FnToVoid>
-        class ForEachOp
-        {
+        class ForEachOp {
         public:
             template <class FnToVoidx>
             ForEachOp(FnToVoidx &&fn) :
-                fn(std::forward<FnToVoidx>(fn))
-            {
+                fn(std::forward<FnToVoidx>(fn)) {
+
             }
 
             template <class Iterator>
-            auto operator()(Iterator &&it) && -> unit_t
-            {
-                static_assert(!std::is_lvalue_reference<Iterator>::value, "for_each can only take rvalue ref object with Iterator traits");
+            auto operator()(Iterator &&it) && -> unit_t {
+                static_assert(!std::is_lvalue_reference<Iterator>::value,
+                    "for_each can only take rvalue ref object with Iterator traits");
 
-                while (true)
-                {
-                    auto valueOpt = it.next();
+                while (true) {
+                    auto value_opt = it.next();
 
-                    if (valueOpt.is_none())
-                    {
+                    if (value_opt.is_none()) {
                         break;
                     }
 
-                    fn(valueOpt.unwrap_unchecked());
+                    fn(std::move(value_opt).unwrap_unchecked());
                 }
 
                 return Unit;
@@ -46,8 +44,10 @@ namespace rustfp
     }
 
     template <class FnToVoid>
-    auto for_each(FnToVoid &&fn) -> details::ForEachOp<std::remove_reference_t<std::remove_const_t<FnToVoid>>>
-    {
-        return details::ForEachOp<std::remove_reference_t<std::remove_const_t<FnToVoid>>>(std::forward<FnToVoid>(fn));
+    auto for_each(FnToVoid &&fn)
+        -> details::ForEachOp<std::remove_reference_t<std::remove_const_t<FnToVoid>>> {
+    
+        return details::ForEachOp<std::remove_reference_t<std::remove_const_t<FnToVoid>>>(
+            std::forward<FnToVoid>(fn));
     }
 }

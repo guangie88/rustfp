@@ -6,24 +6,23 @@
 #include <type_traits>
 #include <utility>
 
-namespace rustfp
-{
-    namespace details
-    {
+namespace rustfp {
+
+    // implementation section
+
+    namespace details {
         template <class Copyable>
-        class Cycle
-        {
+        class Cycle {
         public:
             using Item = Copyable;
 
             template <class Copyablex>
             Cycle(Copyablex &&copyable) :
-                copyable(std::forward<Copyablex>(copyable))
-            {
+                copyable(std::forward<Copyablex>(copyable)) {
+
             }
 
-            auto next() -> Option<Item>
-            {
+            auto next() -> Option<Item> {
                 return Some(reverse_decay_t<Copyable>(copyable));
             }
 
@@ -33,8 +32,7 @@ namespace rustfp
     }
 
     template <class Copyable>
-    auto cycle(Copyable &&copyable) -> details::Cycle<special_decay_t<Copyable>>
-    {
+    auto cycle(Copyable &&copyable) -> details::Cycle<special_decay_t<Copyable>> {
         return details::Cycle<special_decay_t<Copyable>>(std::forward<Copyable>(copyable));
     }
 }

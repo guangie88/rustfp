@@ -6,25 +6,25 @@
 #include <type_traits>
 #include <utility>
 
-namespace rustfp
-{
-    namespace details
-    {
+namespace rustfp {
+
+    // implementation section
+
+    namespace details {
         template <class Acc, class AccRhsToAcc>
-        class FoldOp
-        {
+        class FoldOp {
         public:
             template <class Accx, class AccRhsToAccx>
             FoldOp(Accx &&acc, AccRhsToAccx &&fn) :
                 acc(std::forward<Accx>(acc)),
-                fn(std::forward<AccRhsToAccx>(fn))
-            {
+                fn(std::forward<AccRhsToAccx>(fn)) {
+
             }
 
             template <class Iterator>
-            auto operator()(Iterator &&it) && -> Acc
-            {
-                static_assert(!std::is_lvalue_reference<Iterator>::value, "fold can only take rvalue ref object with Iterator traits");
+            auto operator()(Iterator &&it) && -> Acc {
+                static_assert(!std::is_lvalue_reference<Iterator>::value,
+                    "fold can only take rvalue ref object with Iterator traits");
 
                 auto op_acc = std::move(acc);
 
@@ -32,12 +32,11 @@ namespace rustfp
                 {
                     auto next_opt = it.next();
 
-                    if (next_opt.is_none())
-                    {
+                    if (next_opt.is_none()) {
                         break;
                     }
 
-                    op_acc = fn(std::move(op_acc), next_opt.unwrap_unchecked());
+                    op_acc = fn(std::move(op_acc), std::move(next_opt).unwrap_unchecked());
                 }
 
                 return op_acc;
@@ -50,8 +49,9 @@ namespace rustfp
     }
 
     template <class Acc, class AccRhsToAcc>
-    auto fold(Acc &&acc, AccRhsToAcc &&fn) -> details::FoldOp<special_decay_t<Acc>, special_decay_t<AccRhsToAcc>>
-    {
+    auto fold(Acc &&acc, AccRhsToAcc &&fn)
+        -> details::FoldOp<special_decay_t<Acc>, special_decay_t<AccRhsToAcc>> {
+
         return details::FoldOp<
             special_decay_t<Acc>,
             special_decay_t<AccRhsToAcc>>(std::forward<Acc>(acc), std::forward<AccRhsToAcc>(fn));

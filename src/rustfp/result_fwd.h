@@ -2,12 +2,11 @@
 
 #include "traits.h"
 
-namespace rustfp
-{
+namespace rustfp {
+
     // forwarding section
 
-    namespace details
-    {
+    namespace details {
         template <class T>
         class OkImpl;
 

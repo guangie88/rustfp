@@ -3,31 +3,25 @@
 #include <functional>
 #include <type_traits>
 
-namespace rustfp
-{
-    namespace details
-    {
+namespace rustfp {
+    namespace details {
         template <class T>
-        struct special_decay_impl
-        {
+        struct special_decay_impl {
             using type = std::decay_t<T>;
         };
 
         template <class T>
-        struct special_decay_impl<std::reference_wrapper<T>>
-        {
+        struct special_decay_impl<std::reference_wrapper<T>> {
             using type = T &;
         };
 
         template <class T>
-        struct reverse_decay_impl
-        {
+        struct reverse_decay_impl {
             using type = T;
         };
 
         template <class T>
-        struct reverse_decay_impl<T &>
-        {
+        struct reverse_decay_impl<T &> {
             using type = std::reference_wrapper<T>;
         };
     }

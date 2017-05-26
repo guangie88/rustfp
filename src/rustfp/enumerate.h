@@ -7,30 +7,29 @@
 #include <type_traits>
 #include <utility>
 
-namespace rustfp
-{
-    namespace details
-    {
+namespace rustfp {
+
+    // implementation section
+
+    namespace details {
         template <class Iterator>
-        class Enumerate
-        {
+        class Enumerate {
         public:
             using Item = std::pair<size_t, typename Iterator::Item>;
 
             template <class Iteratorx>
             Enumerate(Iteratorx &&it) :
                 it(std::forward<Iteratorx>(it)),
-                index(0)
-            {
+                index(0) {
+
             }
 
-            auto next() -> Option<Item>
-            {
-                return it.next()
-                    .map([this](auto &&value)
-                    {
-                        return std::pair<size_t, typename Iterator::Item>(index++, std::forward<typename Iterator::Item>(value));
-                    });
+            auto next() -> Option<Item> {
+                return it.next().map([this](auto &&value) {
+                    return std::pair<size_t, typename Iterator::Item>(
+                        index++,
+                        std::forward<typename Iterator::Item>(value));
+                });
             }
 
         private:
@@ -38,20 +37,19 @@ namespace rustfp
             size_t index;
         };
 
-        class EnumerateOp
-        {
+        class EnumerateOp {
         public:
             template <class Iterator>
-            auto operator()(Iterator &&it) && -> Enumerate<Iterator>
-            {
-                static_assert(!std::is_lvalue_reference<Iterator>::value, "enumerate can only take rvalue ref object with Iterator traits");
+            auto operator()(Iterator &&it) && -> Enumerate<Iterator> {
+                static_assert(!std::is_lvalue_reference<Iterator>::value,
+                    "enumerate can only take rvalue ref object with Iterator traits");
+
                 return Enumerate<Iterator>(std::move(it));
             }
         };
     }
 
-    inline auto enumerate() -> details::EnumerateOp
-    {
+    inline auto enumerate() -> details::EnumerateOp {
         return details::EnumerateOp();
     }
 }

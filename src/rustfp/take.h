@@ -7,27 +7,25 @@
 #include <type_traits>
 #include <utility>
 
-namespace rustfp
-{
-    namespace details
-    {
+namespace rustfp {
+    
+    // implementation section
+
+    namespace details {
         template <class Iterator>
-        class Take
-        {
+        class Take {
         public:
             using Item = typename Iterator::Item;
 
             template <class Iteratorx>
             Take(Iteratorx &&it, const size_t count) :
                 it(std::forward<Iteratorx>(it)),
-                count(count)
-            {
+                count(count) {
+
             }
 
-            auto next() -> Option<Item>
-            {
-                if (count > 0)
-                {
+            auto next() -> Option<Item> {
+                if (count > 0) {
                     --count;
                     return it.next();
                 }
@@ -40,18 +38,18 @@ namespace rustfp
             size_t count;
         };
 
-        class TakeOp
-        {
+        class TakeOp {
         public:
             explicit TakeOp(const size_t count) :
-                count(count)
-            {
+                count(count) {
+
             }
 
             template <class Iterator>
-            auto operator()(Iterator &&it) && -> Take<Iterator>
-            {
-                static_assert(!std::is_lvalue_reference<Iterator>::value, "take can only take rvalue ref object with Iterator traits");
+            auto operator()(Iterator &&it) && -> Take<Iterator> {
+                static_assert(!std::is_lvalue_reference<Iterator>::value,
+                    "take can only take rvalue ref object with Iterator traits");
+
                 return Take<Iterator>(std::move(it), count);
             }
 
@@ -60,8 +58,7 @@ namespace rustfp
         };
     }
 
-    inline auto take(const size_t count) -> details::TakeOp
-    {
+    inline auto take(const size_t count) -> details::TakeOp {
         return details::TakeOp(count);
     }
 }
