@@ -15,7 +15,7 @@ namespace rustfp {
         template <class Iterator, class OptPred>
         class FilterMap {
         public:
-            using Item = typename std::result_of_t<OptPred(typename Iterator::Item)>::SomeType;
+            using Item = typename std::result_of_t<OptPred(typename Iterator::Item)>::some_t;
 
             template <class Iteratorx, class OptPredx>
             FilterMap(Iteratorx &&it, OptPredx &&opt_pred) :

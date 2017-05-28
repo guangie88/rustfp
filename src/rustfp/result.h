@@ -32,11 +32,11 @@ namespace rustfp {
     template <class T, class E>
     class Result {
     public:
-        /** Alias to the Ok/valid item type to be wrapped. OkType == T. */
-        using OkType = T;
+        /** Alias to the Ok/valid item type to be wrapped. ok_t == T. */
+        using ok_t = T;
 
-        /** Alias to the Err/error item type to be wrapped. ErrType == E. */
-        using ErrType = E;
+        /** Alias to the Err/error item type to be wrapped. err_t == E. */
+        using err_t = E;
 
         template <class Tx>
         Result(details::OkImpl<Tx> &&value);
@@ -52,11 +52,11 @@ namespace rustfp {
 
         template <class FnTToResTx>
         auto and_then(FnTToResTx &&fn) &&
-            -> Result<typename std::result_of_t<FnTToResTx(T &&)>::OkType, E>;
+            -> Result<typename std::result_of_t<FnTToResTx(T &&)>::ok_t, E>;
 
         template <class FnEToResEx>
         auto or_else(FnEToResEx &&fn) &&
-            -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::ErrType>;
+            -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::err_t>;
 
         auto ok() && -> Option<T>;
 
@@ -77,14 +77,14 @@ namespace rustfp {
         template <class OkFn, class ErrFn> 
         auto match(OkFn &&ok_fn, ErrFn &&err_fn) &&
             -> std::common_type_t<
-                std::result_of_t<OkFn(OkType)>,
-                std::result_of_t<ErrFn(ErrType)>>;
+                std::result_of_t<OkFn(ok_t)>,
+                std::result_of_t<ErrFn(err_t)>>;
 
         template <class OkFn, class ErrFn> 
         auto match(OkFn &&ok_fn, ErrFn &&err_fn) const &
             -> std::common_type_t<
-                std::result_of_t<OkFn(const OkType &)>,
-                std::result_of_t<ErrFn(const ErrType &)>>;
+                std::result_of_t<OkFn(const ok_t &)>,
+                std::result_of_t<ErrFn(const err_t &)>>;
 
         template <class OkFn>
         auto match_ok(OkFn &&ok_fn) && -> unit_t;
@@ -235,7 +235,7 @@ namespace rustfp {
     template <class T, class E>
     template <class FnTToResTx>
     auto Result<T, E>::and_then(FnTToResTx &&fn) &&
-        -> Result<typename std::result_of_t<FnTToResTx(T &&)>::OkType, E> {
+        -> Result<typename std::result_of_t<FnTToResTx(T &&)>::ok_t, E> {
 
         if (is_ok()) {
             return fn(details::move_unchecked(std::move(value_err)));
@@ -248,7 +248,7 @@ namespace rustfp {
     template <class T, class E>
     template <class FnEToResEx>
     auto Result<T, E>::or_else(FnEToResEx &&fn) &&
-        -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::ErrType> {
+        -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::err_t> {
 
         if (is_err()) {
             return fn(details::move_err_unchecked(std::move(value_err)));
@@ -310,8 +310,8 @@ namespace rustfp {
     template <class OkFn, class ErrFn> 
     auto Result<T, E>::match(OkFn &&ok_fn, ErrFn &&err_fn) &&
         -> std::common_type_t<
-            std::result_of_t<OkFn(OkType)>,
-            std::result_of_t<ErrFn(ErrType)>> {
+            std::result_of_t<OkFn(ok_t)>,
+            std::result_of_t<ErrFn(err_t)>> {
 
         return is_ok()
             ? ok_fn(details::move_unchecked(std::move(value_err)))
@@ -322,8 +322,8 @@ namespace rustfp {
     template <class OkFn, class ErrFn> 
     auto Result<T, E>::match(OkFn &&ok_fn, ErrFn &&err_fn) const &
         -> std::common_type_t<
-            std::result_of_t<OkFn(const OkType &)>,
-            std::result_of_t<ErrFn(const ErrType &)>> {
+            std::result_of_t<OkFn(const ok_t &)>,
+            std::result_of_t<ErrFn(const err_t &)>> {
 
         return is_ok()
             ? ok_fn(details::get_unchecked(value_err))

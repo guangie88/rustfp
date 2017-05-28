@@ -35,8 +35,8 @@ namespace rustfp {
     template <class T>
     class Option {
     public:
-        /** Alias to the item type to be wrapped. SomeType == T. */
-        using SomeType = T;
+        /** Alias to the item type to be wrapped. some_t == T. */
+        using some_t = T;
         
         /**
          * Constructor to take in the Some wrapped item and
@@ -162,7 +162,7 @@ namespace rustfp {
          */
         template <class FnTToOptTx>
         auto and_then(FnTToOptTx &&fn) &&
-            -> Option<typename std::result_of_t<FnTToOptTx(T &&)>::SomeType>;
+            -> Option<typename std::result_of_t<FnTToOptTx(T &&)>::some_t>;
 
         /**
          * Performs a map of no item to a new Option with another item type or no item.
@@ -229,7 +229,7 @@ namespace rustfp {
          * Asserts that is_some() == true.
          * If is_none() == true and the assertion does not take place,
          * this would cause an undefined behaviour.
-         * @see SomeType
+         * @see some_t
          * @see is_some
          * @see is_none
          */
@@ -253,7 +253,7 @@ namespace rustfp {
          */
         template <class SomeFn, class NoneFn>
         auto match(SomeFn &&some_fn, NoneFn &&none_fn) &&
-            -> std::common_type_t<std::result_of_t<SomeFn(SomeType)>, std::result_of_t<NoneFn()>>;
+            -> std::common_type_t<std::result_of_t<SomeFn(some_t)>, std::result_of_t<NoneFn()>>;
 
         /**
          * Matches the corresponding function to invoke depending on whether is_some() or is_none().
@@ -271,7 +271,7 @@ namespace rustfp {
         template <class SomeFn, class NoneFn>
         auto match(SomeFn &&some_fn, NoneFn &&none_fn) const &
             -> std::common_type_t<
-                std::result_of_t<SomeFn(const SomeType &)>,
+                std::result_of_t<SomeFn(const some_t &)>,
                 std::result_of_t<NoneFn()>>;
 
         /**
@@ -532,7 +532,7 @@ namespace rustfp {
     template <class T>
     template <class FnTToOptTx>
     auto Option<T>::and_then(FnTToOptTx &&fn) &&
-        -> Option<typename std::result_of_t<FnTToOptTx(T &&)>::SomeType> {
+        -> Option<typename std::result_of_t<FnTToOptTx(T &&)>::some_t> {
 
         if (is_some()) {
             return fn(std::move(*this).unwrap_unchecked());
@@ -587,7 +587,7 @@ namespace rustfp {
     template <class T>
     template <class SomeFn, class NoneFn>
     auto Option<T>::match(SomeFn &&some_fn, NoneFn &&none_fn) &&
-        -> std::common_type_t<std::result_of_t<SomeFn(SomeType)>, std::result_of_t<NoneFn()>> {
+        -> std::common_type_t<std::result_of_t<SomeFn(some_t)>, std::result_of_t<NoneFn()>> {
 
         return is_some()
             ? some_fn(std::move(*this).unwrap_unchecked())
@@ -598,7 +598,7 @@ namespace rustfp {
     template <class SomeFn, class NoneFn>
     auto Option<T>::match(SomeFn &&some_fn, NoneFn &&none_fn) const &
         -> std::common_type_t<
-            std::result_of_t<SomeFn(const SomeType &)>,
+            std::result_of_t<SomeFn(const some_t &)>,
             std::result_of_t<NoneFn()>> {
 
         return is_some()
