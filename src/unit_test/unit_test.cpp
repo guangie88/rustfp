@@ -12,6 +12,7 @@
 #include "rustfp/for_each.h"
 #include "rustfp/iter.h"
 #include "rustfp/map.h"
+#include "rustfp/once.h"
 #include "rustfp/option.h"
 #include "rustfp/range.h"
 #include "rustfp/result.h"
@@ -47,6 +48,7 @@ using rustfp::fold;
 using rustfp::for_each;
 using rustfp::iter;
 using rustfp::map;
+using rustfp::once;
 using rustfp::range;
 using rustfp::skip;
 using rustfp::take;
@@ -215,6 +217,17 @@ TEST_F(Ops, Cycle) {
         });
 
     EXPECT_EQ(7000, sum);
+}
+
+TEST_F(Ops, Once) {
+    auto movable_value = make_unique<string>("Hello");
+
+    const auto vec = once(move(movable_value))
+        | take(5)
+        | collect<vector<unique_ptr<string>>>();
+
+    EXPECT_EQ(1, vec.size());
+    EXPECT_EQ("Hello", *vec[0]);
 }
 
 TEST_F(Ops, Enumerate) {
