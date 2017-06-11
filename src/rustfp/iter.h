@@ -9,6 +9,47 @@
 
 namespace rustfp {
 
+    // declaration section
+
+    namespace details {
+        template <class StdInputIterable>
+        class Iter;
+
+        template <class StdInputIterable>
+        class IterMut;
+
+        template <class MovedStdInputIterable>
+        class IntoIter;
+    }
+
+    /**
+     * Wraps a C++ STL type that has iterator, into rustfp iterator that
+     * generates immutable reference to the original values in the STL container.
+     */
+    template <class StdInputIterable>
+    auto iter(StdInputIterable &&inputIterable)
+        -> details::Iter<std::remove_reference_t<StdInputIterable>>;
+
+    /**
+     * Wraps a C++ STL type that has iterator, into rustfp iterator that
+     * generates mutable reference to the original values in the STL container.
+     */
+    template <
+        class StdInputIterable,
+        class = std::enable_if_t<!std::is_const<StdInputIterable>::value>>
+    auto iter_mut(StdInputIterable &inputIterable)
+        -> details::IterMut<std::remove_reference_t<StdInputIterable>>;
+
+    /**
+     * Wraps a C++ STL type that has iterator, into rustfp iterator that
+     * moves each of the original values in the STL container.
+     */
+    template <
+        class MovedStdInputIterable,
+        class = std::enable_if_t<!std::is_lvalue_reference<MovedStdInputIterable>::value>>
+    auto into_iter(MovedStdInputIterable &&movedInputIterable)
+        -> details::IntoIter<MovedStdInputIterable>;
+
     // implementation section
 
     namespace details {
@@ -23,31 +64,59 @@ namespace rustfp {
 
             Iter(const StdInputIterable &inputIterable) :
                 inputIterableRef(inputIterable),
-                currIt(std::cbegin(inputIterable)) {
+                curr_it(std::cbegin(inputIterable)) {
 
             }
 
             auto next() -> Option<Item> {
-                if (currIt != std::cend(inputIterableRef.get())) {
-                    const auto prevIt = currIt;
-                    ++currIt;
-                    return Some(std::cref(*prevIt));
-                }
-                else {
+                if (curr_it != std::cend(inputIterableRef.get())) {
+                    const auto prev_it = curr_it;
+                    ++curr_it;
+                    return Some(std::cref(*prev_it));
+                } else {
                     return None;
                 }
             }
 
         private:
             std::reference_wrapper<const StdInputIterable> inputIterableRef; 
-            typename StdInputIterable::const_iterator currIt;
+            typename StdInputIterable::const_iterator curr_it;
         };
 
         template <class StdInputIterable>
-        class IterMut;
+        class IterMut {
+        };
 
         template <class MovedStdInputIterable>
-        class IntoIter;
+        class IntoIter {
+        public:
+            using Item = typename std::iterator_traits<
+                typename MovedStdInputIterable::iterator>::value_type;
+
+            static_assert(!std::is_reference<MovedStdInputIterable>::value,
+                "IntoIter can only take moved iterable "
+                "whose iterator dereferences to a value type");
+
+            IntoIter(MovedStdInputIterable &&inputIterable) :
+                inputIterable(std::move(inputIterable)),
+                curr_it(std::begin(this->inputIterable)) {
+
+            }
+
+            auto next() -> Option<Item> {
+                if (curr_it != std::end(inputIterable)) {
+                    auto prev_it = curr_it;
+                    ++curr_it;
+                    return Some(std::move(*prev_it));
+                } else {
+                    return None;
+                }
+            }
+
+        private:
+            MovedStdInputIterable inputIterable;
+            typename MovedStdInputIterable::iterator curr_it;
+        };
     }
 
     template <class StdInputIterable>
@@ -63,19 +132,23 @@ namespace rustfp {
     /**
      * Not implemented yet
      */
-    template <
-        class StdInputIterable,
-        class = std::enable_if_t<!std::is_const<StdInputIterable>::value>>
-    auto iter_mut(StdInputIterable &inputIterable) {
+    template <class StdInputIterable, class>
+    auto iter_mut(StdInputIterable &inputIterable)
+        -> details::IterMut<std::remove_reference_t<StdInputIterable>> {
+
         static_assert(!std::is_const<StdInputIterable>::value,
             "rustfp::iter_mut() must be invoked on non-const lvalue reference only");
+
+        return details::IterMut<std::remove_reference_t<StdInputIterable>>(inputIterable);
     }
 
-    /**
-     * Not implemented yet
-     */
-    template <
-        class MovedStdInputIterable,
-        class = std::enable_if_t<!std::is_lvalue_reference<MovedStdInputIterable>::value>>
-    auto into_iter(MovedStdInputIterable &&movedInputIterable);
+    template <class MovedStdInputIterable, class>
+    auto into_iter(MovedStdInputIterable &&movedInputIterable)
+        -> details::IntoIter<MovedStdInputIterable> {
+
+        static_assert(!std::is_reference<MovedStdInputIterable>::value,
+            "rustfp::into_iter() must be invoked on rvalue reference only");
+
+        return details::IntoIter<MovedStdInputIterable>(std::move(movedInputIterable));
+    }
 }

@@ -30,6 +30,7 @@
 #include <numeric>
 #include <sstream>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -46,6 +47,7 @@ using rustfp::find;
 using rustfp::find_map;
 using rustfp::fold;
 using rustfp::for_each;
+using rustfp::into_iter;
 using rustfp::iter;
 using rustfp::map;
 using rustfp::once;
@@ -70,6 +72,7 @@ using std::cbegin;
 using std::cend;
 using std::cout;
 using std::cref;
+using std::is_same;
 using std::make_unique;
 using std::mismatch;
 using std::move;
@@ -77,6 +80,7 @@ using std::pair;
 using std::plus;
 using std::ref;
 using std::reference_wrapper;
+using std::remove_reference_t;
 using std::string;
 using std::stringstream;
 using std::to_string;
@@ -104,6 +108,84 @@ protected:
 
     vector<int> int_vec;
 };
+
+TEST_F(Ops, Iter) {
+    auto it = iter(int_vec);
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(it)>::Item,
+        const int &>::value,
+        "Ops::Iter failed Iter type checking!");
+
+    const auto opt0 = it.next();
+    EXPECT_TRUE(opt0.is_some());
+    EXPECT_EQ(0, opt0.get_unchecked());
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(opt0)>::some_t,
+        const int &>::value,
+        "Ops::Iter failed Option type checking!");
+    
+    const auto opt1 = it.next();
+    EXPECT_TRUE(opt1.is_some());
+    EXPECT_EQ(1, opt1.get_unchecked());
+
+    const auto opt2 = it.next();
+    EXPECT_TRUE(opt2.is_some());
+    EXPECT_EQ(2, opt2.get_unchecked());
+
+    const auto opt3 = it.next();
+    EXPECT_TRUE(opt3.is_some());
+    EXPECT_EQ(3, opt3.get_unchecked());
+
+    const auto opt4 = it.next();
+    EXPECT_TRUE(opt4.is_some());
+    EXPECT_EQ(4, opt4.get_unchecked());
+
+    const auto opt5 = it.next();
+    EXPECT_TRUE(opt5.is_some());
+    EXPECT_EQ(5, opt5.get_unchecked());
+
+    const auto opt6 = it.next();
+    EXPECT_TRUE(opt6.is_none());
+}
+
+TEST_F(Ops, IntoIter) {
+    vector<unique_ptr<int>> v;
+    v.push_back(make_unique<int>(0));
+    v.push_back(make_unique<int>(1));
+    v.push_back(make_unique<int>(2));
+
+    auto it = into_iter(move(v));
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(it)>::Item,
+        unique_ptr<int>>::value,
+        "Ops::IntoIter failed IntoIter type checking!");
+
+    auto opt0 = it.next();
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(opt0)>::some_t,
+        unique_ptr<int>>::value,
+        "Ops::IntoIter failed Option type checking!");
+
+    EXPECT_TRUE(opt0.is_some());
+    auto val0(move(opt0).unwrap_unchecked());
+    EXPECT_EQ(0, *val0);
+
+    auto opt1 = it.next();
+    EXPECT_TRUE(opt1.is_some());
+    auto val1(move(opt1).unwrap_unchecked());
+    EXPECT_EQ(1, *val1);
+
+    auto opt2 = it.next();
+    EXPECT_TRUE(opt2.is_some());
+    auto val2(move(opt2).unwrap_unchecked());
+    EXPECT_EQ(2, *val2);
+
+    EXPECT_TRUE(it.next().is_none());
+}
 
 TEST_F(Ops, AllTrue) {
     const auto result = iter(int_vec)
