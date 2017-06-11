@@ -1,6 +1,7 @@
 #pragma once
 
 #include "option.h"
+#include "traits.h"
 
 #include <functional>
 #include <iterator>
@@ -14,8 +15,8 @@ namespace rustfp {
         template <class StdInputIterable>
         class Iter {
         public:
-            using Item = typename std::iterator_traits<
-                typename StdInputIterable::const_iterator>::reference;
+            using Item = simplify_ref_t<typename std::iterator_traits<
+                typename StdInputIterable::const_iterator>::reference>;
 
             static_assert(std::is_lvalue_reference<Item>::value,
                 "Iter can only take iterable whose iterator dereferences to a reference type");

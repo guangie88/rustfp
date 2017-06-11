@@ -34,6 +34,13 @@ namespace rustfp {
      */
     template <class T>
     class Option {
+        /**
+         * Allows all other Option specializations to have access
+         * to all the fields of this Option type.
+         */
+        template <class Tx>
+        friend class Option;
+
     public:
         /** Alias to the item type to be wrapped. some_t == T. */
         using some_t = T;

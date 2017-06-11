@@ -394,6 +394,40 @@ TEST_F(Ops, TakeExceed) {
 
 // complex tests
 
+TEST_F(ComplexOps, ManyIterCollect) {
+    vector<unique_ptr<int>> v;
+    v.push_back(make_unique<int>(0));
+    v.push_back(make_unique<int>(1));
+    v.push_back(make_unique<int>(2));
+    v.push_back(make_unique<int>(3));
+    v.push_back(make_unique<int>(4));
+
+    // collect as reference once
+    const auto v2 = iter(v)
+        | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
+
+    // collect as reference twice
+    // note how reference_wrapper<reference_wrapper>
+    // got collapsed back into just reference_wrapper
+    // this is because c++ does not allow reference_wrapper<reference_wrapper>
+    // so it is a must to collapse anyway
+    // which makes a slightly deviation from Rust ref of ref (which is possible)
+
+    const auto v3 = iter(v2)
+        | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
+
+    const auto v4 = iter(v3)
+        | map([](const auto &r_ptr) { return cref(*r_ptr); })
+        | filter([](const auto &r) { return r % 2 == 1; })
+        | collect<vector<reference_wrapper<const int>>>();
+
+    // no copy of any value was ever done from the original v
+
+    EXPECT_EQ(2, v4.size());
+    EXPECT_EQ(1, v4.at(0).get());
+    EXPECT_EQ(3, v4.at(1).get());
+}
+
 TEST_F(ComplexOps, FilterMapFold) {
     const auto eleven_div_str = range(1, 100)
         | filter([](const auto value) { return value % 11 == 0; })
