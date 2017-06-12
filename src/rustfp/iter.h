@@ -53,6 +53,17 @@ namespace rustfp {
     // implementation section
 
     namespace details {
+        template <class Item, class InputIterable, class InputIterator>
+        auto next_impl(InputIterable &inputIterable, InputIterator &curr_it) -> Option<Item> {
+            if (curr_it != std::end(inputIterable)) {
+                const auto prev_it = curr_it;
+                ++curr_it;
+                return Some(std::ref(*prev_it));
+            } else {
+                return None;
+            }
+        }
+
         template <class StdInputIterable>
         class Iter {
         public:
@@ -69,13 +80,7 @@ namespace rustfp {
             }
 
             auto next() -> Option<Item> {
-                if (curr_it != std::cend(inputIterableRef.get())) {
-                    const auto prev_it = curr_it;
-                    ++curr_it;
-                    return Some(std::cref(*prev_it));
-                } else {
-                    return None;
-                }
+                return next_impl<Item>(inputIterableRef.get(), curr_it);
             }
 
         private:
@@ -85,6 +90,26 @@ namespace rustfp {
 
         template <class StdInputIterable>
         class IterMut {
+        public:
+            using Item = simplify_ref_t<typename std::iterator_traits<
+                typename StdInputIterable::iterator>::reference>;
+
+            static_assert(std::is_lvalue_reference<Item>::value,
+                "IterMut can only take iterable whose iterator dereferences to a reference type");
+
+            IterMut(StdInputIterable &inputIterable) :
+                inputIterableRef(inputIterable),
+                curr_it(std::begin(inputIterable)) {
+
+            }
+
+            auto next() -> Option<Item> {
+                return next_impl<Item>(inputIterableRef.get(), curr_it);
+            }
+
+        private:
+            std::reference_wrapper<StdInputIterable> inputIterableRef; 
+            typename StdInputIterable::iterator curr_it;
         };
 
         template <class MovedStdInputIterable>

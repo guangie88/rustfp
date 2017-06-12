@@ -66,9 +66,9 @@ namespace rustfp {
 
         auto is_err() const -> bool;
 
-        auto unwrap_unchecked() && -> reverse_decay_t<T>;
+        auto unwrap_unchecked() && -> T;
 
-        auto unwrap_err_unchecked() && -> reverse_decay_t<E>;
+        auto unwrap_err_unchecked() && -> E;
 
         auto get_unchecked() const -> const T &;
 
@@ -295,14 +295,20 @@ namespace rustfp {
     }
 
     template <class T, class E>
-    auto Result<T, E>::unwrap_unchecked() && -> reverse_decay_t<T> {
+    auto Result<T, E>::unwrap_unchecked() && -> T {
         assert(is_ok());
+
+        // reference_wrapper can be implicitly converted to direct reference
+        // if T is a reference type
         return details::move_unchecked(std::move(value_err));
     }
 
     template <class T, class E>
-    auto Result<T, E>::unwrap_err_unchecked() && -> reverse_decay_t<E> {
+    auto Result<T, E>::unwrap_err_unchecked() && -> E {
         assert(is_err());
+
+        // reference_wrapper can be implicitly converted to direct reference
+        // if E is a reference type
         return details::move_err_unchecked(std::move(value_err));
     }
 

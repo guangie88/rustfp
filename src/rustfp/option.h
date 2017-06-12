@@ -227,9 +227,9 @@ namespace rustfp {
         auto get_unchecked() const -> const T &;
 
         /**
-         * Returns the moved contained item of type T if
-         * T is not a lvalue reference,
-         * otherwise returns std::reference_wrapper<T> to the contained item.
+         * Returns the moved contained item of type T
+         * which may possibly be a reference type without any move operation
+         * performed if T was originally a reference type.
          *
          * This causes is_none() to become true
          * after invoking because the contained item will be moved.
@@ -240,7 +240,7 @@ namespace rustfp {
          * @see is_some
          * @see is_none
          */
-        auto unwrap_unchecked() && -> reverse_decay_t<T>;
+        auto unwrap_unchecked() && -> T;
 
         /**
          * Matches the corresponding function to invoke depending on whether
@@ -266,7 +266,8 @@ namespace rustfp {
          * Matches the corresponding function to invoke depending on whether is_some() or is_none().
          *
          * If is_some(), some_fn will be invoked. Otherwise none_fn() will be invoked.
-         * This does not move the contained item, and generates only the const lvalue reference if is_some().
+         * This does not move the contained item, and generates only the 
+         * const lvalue reference if is_some().
          * The return type of both functions must be convertible to each other.
          * @param SomeFn const T & -> R1, where R1 is the function result type, convertible to R2
          * @param NoneFn () -> R2, where R2 is the function result type, convertible to R1
@@ -392,21 +393,6 @@ namespace rustfp {
         private:
             reverse_decay_t<T> value;
         };
-
-        template <class T>
-        inline auto get_ref(T &value) -> T & {
-            return value;
-        }
-        
-        template <class T>
-        inline auto get_ref(std::reference_wrapper<T> &ref) -> T & {
-            return ref.get();
-        }
-
-        template <class T>
-        inline auto get_ref(const std::reference_wrapper<T> &ref) -> const T & {
-            return ref.get();
-        }
     }
 
     template <class T>
@@ -580,14 +566,17 @@ namespace rustfp {
 
     template <class T>
     auto Option<T>::get_unchecked() const -> const T & {
-        return details::get_ref(*opt);
+        // reference_wrapper can implicitly convert into reference
+        return *opt;
     }
 
     template <class T>
-    auto Option<T>::unwrap_unchecked() && -> reverse_decay_t<T> {
+    auto Option<T>::unwrap_unchecked() && -> T {
         // forward moves rref value only, lref remains as lref
         reverse_decay_t<T> value = std::forward<T>(*opt);
         opt.reset();
+
+        // no effect on reference_wrapper, only affects value type
         return std::move(value);
     }
 

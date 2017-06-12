@@ -49,6 +49,7 @@ using rustfp::fold;
 using rustfp::for_each;
 using rustfp::into_iter;
 using rustfp::iter;
+using rustfp::iter_mut;
 using rustfp::map;
 using rustfp::once;
 using rustfp::range;
@@ -148,6 +149,82 @@ TEST_F(Ops, Iter) {
 
     const auto opt6 = it.next();
     EXPECT_TRUE(opt6.is_none());
+}
+
+TEST_F(Ops, IterMut) {
+    auto v = int_vec;
+
+    // modify the values
+    iter_mut(v)
+        // can either explicitly state the reference type
+        | map([](int &val) {
+            val *= val;
+            return ref(val);
+        })
+        // or use auto to infer
+        | for_each([](auto &val) {
+            val += 1;
+        });
+
+    auto it = iter_mut(v);
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(it)>::Item,
+        int &>::value,
+        "Ops::IterMut failed Iter type checking!");
+
+    const auto opt0 = it.next();
+    EXPECT_TRUE(opt0.is_some());
+    EXPECT_EQ(1, opt0.get_unchecked());
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(opt0)>::some_t,
+        int &>::value,
+        "Ops::IterMut failed Option type checking!");
+    
+    const auto opt1 = it.next();
+    EXPECT_TRUE(opt1.is_some());
+    EXPECT_EQ(2, opt1.get_unchecked());
+
+    const auto opt2 = it.next();
+    EXPECT_TRUE(opt2.is_some());
+    EXPECT_EQ(5, opt2.get_unchecked());
+
+    const auto opt3 = it.next();
+    EXPECT_TRUE(opt3.is_some());
+    EXPECT_EQ(10, opt3.get_unchecked());
+
+    const auto opt4 = it.next();
+    EXPECT_TRUE(opt4.is_some());
+    EXPECT_EQ(17, opt4.get_unchecked());
+
+    const auto opt5 = it.next();
+    EXPECT_TRUE(opt5.is_some());
+    EXPECT_EQ(26, opt5.get_unchecked());
+
+    const auto opt6 = it.next();
+    EXPECT_TRUE(opt6.is_none());
+}
+
+TEST_F(Ops, IterMutChain) {
+    auto v = int_vec;
+
+    // modify the values
+    const auto v2 = iter_mut(v)
+        | filter([](auto val) {
+            return val >= 2;
+        })
+        | map([](int &val) {
+            val -= 2;
+            return ref(val);
+        })
+        | collect<vector<reference_wrapper<int>>>();
+
+    EXPECT_EQ(4, v2.size());
+    EXPECT_EQ(0, v2.at(0));
+    EXPECT_EQ(1, v2.at(1));
+    EXPECT_EQ(2, v2.at(2));
+    EXPECT_EQ(3, v2.at(3));
 }
 
 TEST_F(Ops, IntoIter) {
@@ -295,7 +372,7 @@ TEST_F(Ops, Cycle) {
     const auto sum = cycle(cref(copyable_value))
         | take(1000)
         | fold(0, [](const auto acc, const auto value) {
-            return acc + value.get();
+            return acc + value;
         });
 
     EXPECT_EQ(7000, sum);
@@ -506,8 +583,8 @@ TEST_F(ComplexOps, ManyIterCollect) {
     // no copy of any value was ever done from the original v
 
     EXPECT_EQ(2, v4.size());
-    EXPECT_EQ(1, v4.at(0).get());
-    EXPECT_EQ(3, v4.at(1).get());
+    EXPECT_EQ(1, v4.at(0));
+    EXPECT_EQ(3, v4.at(1));
 }
 
 TEST_F(ComplexOps, FilterMapFold) {
@@ -875,7 +952,7 @@ TEST(Option, UnwrapUnchecked) {
     auto opt = Some(ref(x));
 
     EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ("Hello", move(opt).unwrap_unchecked().get());
+    EXPECT_EQ("Hello", move(opt).unwrap_unchecked());
 }
 
 TEST(Option, OptIfTrue) {
@@ -1184,9 +1261,15 @@ TEST(Result, UnwrapUnchecked) {
     int x = 7;
     Result<int &, int> res = Ok(ref(x));
 
-    // to show that it returns reference_wrapper
     EXPECT_TRUE(res.is_ok());
-    EXPECT_EQ(7, move(res).unwrap_unchecked().get());
+
+    // to show that it returns reference
+    static_assert(is_same<
+        decltype(move(res).unwrap_unchecked()),
+        int &>::value,
+        "Result::UnwrapUnchecked does not return reference directly!");
+
+    EXPECT_EQ(7, move(res).unwrap_unchecked());
 }
 
 TEST(Result, UnwrapErrUnchecked) {
