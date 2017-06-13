@@ -171,9 +171,6 @@ namespace rustfp {
         auto CollectOp<Result<OkInto, ErrType>>::operator()(Iterator &&it) &&
             -> Result<OkInto, ErrType> {
 
-            using Item = typename Iterator::Item;
-            using iter_err_t = typename Item::err_t;
-
             static_assert(!std::is_lvalue_reference<Iterator>::value,
                 "CollectOp<Result<OkInto, Err>> for types with push method "
                 "can only take rvalue ref object with Iterator traits");
@@ -194,7 +191,7 @@ namespace rustfp {
                     // because error type may be a reference
                     // must perform reverse decay here since Err will special
                     // decay the given type
-                    return Err(reverse_decay_t<iter_err_t>(
+                    return Err(reverse_decay(
                         std::move(next_res).unwrap_err_unchecked()));
                 }
 

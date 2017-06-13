@@ -1,3 +1,5 @@
+#define RUSTFP_SIMPLIFIED_LET
+
 #include "rustfp/all.h"
 #include "rustfp/any.h"
 #include "rustfp/cloned.h"
@@ -11,6 +13,7 @@
 #include "rustfp/fold.h"
 #include "rustfp/for_each.h"
 #include "rustfp/iter.h"
+#include "rustfp/let.h"
 #include "rustfp/map.h"
 #include "rustfp/once.h"
 #include "rustfp/option.h"
@@ -1459,6 +1462,106 @@ TEST(Result, UnwrapErrUnchecked) {
     // to prove that the pointer can move
     auto err_ptr = move(res).unwrap_err_unchecked();
     EXPECT_EQ("Hello", *err_ptr);
+}
+
+TEST(Macro, Let) {
+    const auto fn = [](const bool flag) -> Result<int, string> {
+        auto res = flag
+            ? Result<double, string>(Ok(3.14))
+            : Err(string("Hello"));
+
+        let(value, res);
+        return Ok(static_cast<int>(value));
+    };
+
+    {
+        const auto res = fn(true);
+        EXPECT_TRUE(res.is_ok());
+        EXPECT_EQ(3, res.get_unchecked());
+    }
+
+    {
+        const auto res = fn(false);
+        EXPECT_TRUE(res.is_err());
+        EXPECT_EQ("Hello", res.get_err_unchecked());
+    }
+}
+
+TEST(Macro, LetMut) {
+    const auto fn = [](const bool flag) -> Result<int, string> {
+        auto res = flag
+            ? Result<double, string>(Ok(3.14))
+            : Err(string("Hello"));
+
+        let_mut(value, res);
+        value += 10;
+        return Ok(static_cast<int>(value));
+    };
+
+    {
+        const auto res = fn(true);
+        EXPECT_TRUE(res.is_ok());
+        EXPECT_EQ(13, res.get_unchecked());
+    }
+
+    {
+        const auto res = fn(false);
+        EXPECT_TRUE(res.is_err());
+        EXPECT_EQ("Hello", res.get_err_unchecked());
+    }
+}
+
+TEST(Macro, LetRef) {
+    static const int VAL = 7;
+
+    const auto fn = [](const bool flag) -> Result<const int &, string> {
+        auto res = flag
+            ? Result<const int &, string>(Ok(cref(VAL)))
+            : Err(string("Hello"));
+
+        let_ref(value, res);
+        return Ok(cref(value));
+    };
+
+    {
+        const auto res = fn(true);
+        EXPECT_TRUE(res.is_ok());
+        EXPECT_EQ(VAL, res.get_unchecked());
+        EXPECT_EQ(&VAL, &res.get_unchecked());
+    }
+
+    {
+        const auto res = fn(false);
+        EXPECT_TRUE(res.is_err());
+        EXPECT_EQ("Hello", res.get_err_unchecked());
+    }
+}
+
+TEST(Macro, LetMutRef) {
+    static int VAL = 7;
+
+    const auto fn = [](const bool flag) -> Result<const int &, string> {
+        auto res = flag
+            ? Result<int &, string>(Ok(ref(VAL)))
+            : Err(string("Hello"));
+
+        let_mut_ref(value, res);
+        value += 10;
+        return Ok(cref(value));
+    };
+
+    {
+        const auto res = fn(true);
+        EXPECT_TRUE(res.is_ok());
+        EXPECT_EQ(17, res.get_unchecked());
+        EXPECT_EQ(&VAL, &res.get_unchecked());
+    }
+
+    {
+        const auto res = fn(false);
+        EXPECT_TRUE(res.is_err());
+        EXPECT_EQ("Hello", res.get_err_unchecked());
+    }
 }
 
 int main(int argc, char * argv[]) {

@@ -67,4 +67,9 @@ namespace rustfp {
 
     template <class T>
     using special_move_t = T &&;
+
+    template <class T>
+    inline auto reverse_decay(T &&val) -> reverse_decay_t<T> {
+        return reverse_decay_t<T>(std::forward<T>(val));
+    }
 }
