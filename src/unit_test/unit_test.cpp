@@ -484,6 +484,41 @@ TEST_F(Ops, CollectQueue) {
     }
 }
 
+TEST_F(Ops, CollectResultOk) {
+    vector<Result<int, string>> res_vec{
+        Ok(0), Ok(1), Ok(2)
+    };
+
+    auto collected_res = into_iter(move(res_vec))
+        | collect<Result<vector<int>, string>>();
+
+    EXPECT_TRUE(collected_res.is_ok());
+
+    const auto collected = move(collected_res).unwrap_unchecked();
+    EXPECT_EQ(3, collected.size());
+    EXPECT_EQ(0, collected.at(0));
+    EXPECT_EQ(1, collected.at(1));
+    EXPECT_EQ(2, collected.at(2));
+}
+
+TEST_F(Ops, CollectResultErr) {
+    static const int ZERO = 0;
+    static const int TWO = 2;
+    static const string ERR_MSG("ERROR!");
+
+    vector<Result<const int &, const string &>> res_vec{
+        Ok(cref(ZERO)), Err(cref(ERR_MSG)), Ok(cref(TWO))
+    };
+
+    auto collected_res = into_iter(move(res_vec))
+        | collect<Result<vector<reference_wrapper<const int>>, const string &>>();
+
+    EXPECT_TRUE(collected_res.is_err());
+
+    const auto collected = move(collected_res).unwrap_err_unchecked();
+    EXPECT_EQ("ERROR!", collected);
+}
+
 TEST_F(Ops, CollectVecRef) {
     const auto str_ref_vec = iter(str_vec)
         | collect<vector<reference_wrapper<const string>>>();

@@ -154,9 +154,6 @@ namespace rustfp {
         return details::Iter<std::remove_reference_t<StdInputIterable>>(inputIterable);
     }
 
-    /**
-     * Not implemented yet
-     */
     template <class StdInputIterable, class>
     auto iter_mut(StdInputIterable &inputIterable)
         -> details::IterMut<std::remove_reference_t<StdInputIterable>> {
