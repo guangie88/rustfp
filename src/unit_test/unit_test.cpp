@@ -26,11 +26,19 @@
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <deque>
+#include <list>
+#include <map>
 #include <memory>
 #include <numeric>
+#include <queue>
+#include <set>
 #include <sstream>
+#include <stack>
 #include <string>
 #include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -73,20 +81,86 @@ using std::cbegin;
 using std::cend;
 using std::cout;
 using std::cref;
+using std::deque;
+using std::forward;
 using std::is_same;
+using std::list;
 using std::make_unique;
 using std::mismatch;
 using std::move;
 using std::pair;
 using std::plus;
+using std::queue;
 using std::ref;
 using std::reference_wrapper;
 using std::remove_reference_t;
+using std::set;
+using std::stack;
 using std::string;
 using std::stringstream;
 using std::to_string;
 using std::unique_ptr;
+using std::unordered_map;
+using std::unordered_set;
 using std::vector;
+
+// helper functions
+
+namespace details {
+    template <class IterableLhs, class IterableRhs>
+    auto no_mismatch_values(IterableLhs &&lhs, IterableRhs &&rhs) -> bool {
+        const auto input_it_pairs = mismatch(
+            cbegin(lhs), cend(lhs), cbegin(rhs));
+
+        return input_it_pairs.first == lhs.cend() &&
+            input_it_pairs.second == rhs.cend();
+    }
+
+    template <class IterableLhs, class IterableRhs, class CompFn>
+    auto no_mismatch_values(IterableLhs &&lhs, IterableRhs &&rhs, CompFn &&comp_fn) -> bool {
+        const auto input_it_pairs = mismatch(
+            cbegin(lhs), cend(lhs), cbegin(rhs), forward<CompFn>(comp_fn));
+
+        return input_it_pairs.first == lhs.cend() &&
+            input_it_pairs.second == rhs.cend();
+    }
+
+    // weaker than no_mismatch_values,
+    // does not check for ordering and possibly repeated entries
+    template <class IterableLhs, class IterableRhs>
+    auto similar_values(IterableLhs &&lhs, IterableRhs &&rhs) -> bool {
+        if (lhs.size() != rhs.size()) {
+            return false;
+        }
+
+        for (const auto &l_val : lhs) {
+            if (std::find(cbegin(rhs), cend(rhs), l_val) == rhs.cend()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    template <class IterableLhs, class IterableRhs, class CompFn>
+    auto similar_values(IterableLhs &&lhs, IterableRhs &&rhs, CompFn &&comp_fn) -> bool {
+        if (lhs.size() != rhs.size()) {
+            return false;
+        }
+
+        for (const auto &l_val : lhs) {
+            const auto unary_pred = [&l_val, &comp_fn](const auto &r_val) {
+                return comp_fn(l_val, r_val);
+            };
+
+            if (std::find_if(cbegin(rhs), cend(rhs), unary_pred) == rhs.cend()) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}
 
 // simple tests
 
@@ -94,7 +168,7 @@ class Ops : public ::testing::Test {
 protected:
     void SetUp() override {
         int_vec = vector<int>{0, 1, 2, 3, 4, 5};
-        str_vec = vector<string>{"Hello", "World", "How", "Are", "You"};
+        str_vec = vector<string>{"Hello", "World", "How", "Are", "You", "?"};
     }
 
     vector<int> int_vec;
@@ -297,15 +371,11 @@ TEST_F(Ops, ClonedRef) {
         | cloned()
         | collect<vector<string>>();
 
-    const auto input_it_pairs = mismatch(
-        cbegin(str_vec), cend(str_vec), cbegin(str_dup_vec),
+    EXPECT_TRUE(details::no_mismatch_values(str_vec, str_dup_vec,
         [](const auto &lhs, const auto &rhs) {
             // same value but different addresses
             return (lhs == rhs) && (&lhs != &rhs);
-        });
-
-    EXPECT_EQ(cend(str_vec), input_it_pairs.first);
-    EXPECT_EQ(cend(str_dup_vec), input_it_pairs.second);
+        }));
 }
 
 TEST_F(Ops, ClonedValue) {
@@ -314,39 +384,114 @@ TEST_F(Ops, ClonedValue) {
         | cloned() | cloned() | cloned()
         | collect<vector<string>>();
 
-    const auto input_it_pairs = mismatch(
-        cbegin(int_vec), cend(int_vec), cbegin(int_str_vec),
+    EXPECT_TRUE(details::no_mismatch_values(int_vec, int_str_vec,
         [](const auto &lhs, const auto &rhs) {
             return to_string(lhs) == rhs;
-        });
-
-    EXPECT_EQ(cend(int_vec), input_it_pairs.first);
-    EXPECT_EQ(cend(int_str_vec), input_it_pairs.second);
+        }));
 }
 
 TEST_F(Ops, CollectVec) {
     const auto dup_vec = range(0, int_vec.size())
         | collect<vector<int>>();
 
-    const auto input_it_pairs = mismatch(
-        cbegin(int_vec), cend(int_vec), cbegin(dup_vec));
+    EXPECT_TRUE(details::no_mismatch_values(int_vec, dup_vec));
+}
 
-    EXPECT_EQ(cend(int_vec), input_it_pairs.first);
-    EXPECT_EQ(cend(dup_vec), input_it_pairs.second);
+TEST_F(Ops, CollectList) {
+    const auto dup_cont = iter(int_vec)
+        | collect<list<reference_wrapper<const int>>>();
+
+    EXPECT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
+}
+
+TEST_F(Ops, CollectSet) {
+    const auto dup_cont = iter(int_vec)
+        | collect<set<reference_wrapper<const int>>>();
+
+    EXPECT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
+}
+
+TEST_F(Ops, CollectUnorderedSet) {
+    // unordered_set cannot take in reference_wrapper as template type by default
+    const auto dup_cont = iter(int_vec)
+        | collect<unordered_set<int>>();
+
+    EXPECT_TRUE(details::similar_values(int_vec, dup_cont));
+}
+
+TEST_F(Ops, CollectMap) {
+    const auto dup_cont = iter(int_vec)
+        | zip(iter(str_vec))
+        | collect<std::map<reference_wrapper<const int>, reference_wrapper<const string>>>();
+
+    // check the keys
+    EXPECT_TRUE(details::no_mismatch_values(int_vec, dup_cont,
+        [](const auto &lhs, const auto &rhs) {
+            return lhs == rhs.first.get();
+        }));
+
+    // check the values
+    const auto dup_vals = iter(dup_cont)
+        | map([](const auto &p) { return cref(p.second); })
+        | collect<vector<reference_wrapper<const string>>>();
+
+    EXPECT_TRUE(details::no_mismatch_values(str_vec, dup_vals,
+        [](const auto &lhs, const auto &rhs) {
+            return lhs == rhs.get();
+        }));
+}
+
+TEST_F(Ops, CollectUnorderedMap) {
+    const auto dup_cont = iter(int_vec)
+        | zip(iter(str_vec))
+        | collect<unordered_map<int, reference_wrapper<const string>>>();
+
+    // check the keys
+    const auto dup_keys = iter(dup_cont)
+        | map([](const auto &p) { return cref(p.first); })
+        | collect<vector<reference_wrapper<const int>>>();
+
+    EXPECT_TRUE(details::similar_values(int_vec, dup_keys));
+ 
+    // check the values
+    const auto dup_vals = iter(dup_cont)
+        | map([](const auto &p) { return cref(p.second); })
+        | collect<vector<reference_wrapper<const string>>>();
+
+    EXPECT_TRUE(details::similar_values(str_vec, dup_vals,
+        [](const auto &lhs, const auto &rhs) { return lhs == rhs.get(); }));
+}
+
+TEST_F(Ops, CollectStack) {
+    auto dup_cont = iter(int_vec)
+        | collect<stack<reference_wrapper<const int>>>();
+
+    while (!dup_cont.empty()) {
+        const auto top = dup_cont.top();
+        EXPECT_EQ(int_vec[dup_cont.size() - 1], top);
+        dup_cont.pop();
+    }
+}
+
+TEST_F(Ops, CollectQueue) {
+    auto dup_cont = iter(int_vec)
+        | collect<queue<reference_wrapper<const int>>>();
+
+    for (size_t i = 0; i < int_vec.size(); ++i) {
+        const auto front = dup_cont.front();
+        EXPECT_EQ(int_vec[i], front);
+        dup_cont.pop();
+    }
 }
 
 TEST_F(Ops, CollectVecRef) {
     const auto str_ref_vec = iter(str_vec)
         | collect<vector<reference_wrapper<const string>>>();
 
-    const auto input_it_pairs = mismatch(
-        cbegin(str_vec), cend(str_vec), cbegin(str_ref_vec),
+    EXPECT_TRUE(details::no_mismatch_values(str_vec, str_ref_vec,
         [](const auto &lhs, const auto &rhs) {
             return &lhs == &rhs.get();
-        });
-
-    EXPECT_EQ(cend(str_vec), input_it_pairs.first);
-    EXPECT_EQ(cend(str_ref_vec), input_it_pairs.second);
+        }));
 }
 
 TEST_F(Ops, CollectMapVecSum) {
