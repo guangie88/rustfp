@@ -9,52 +9,22 @@
 #include <vector>
 
 namespace rustfp {
-    namespace details {
-        
-        // declaration section
 
+    // declaration section
+
+    namespace details {
         template <class Into>
         class CollectOp {
         public:
             /**
-             * Uses expression SFINAE to accept only container types with method
-             * push_back(value) to collect the values into.
+             * Use expression SFINAE to accept only container types with method
+             * push_back(value), insert(value) or push(value) to collect the values.
              * @param it moved rustfp iterator.
              * @return specified container type with all the values collected
              * via push_back. Order of insertion is done via the order of .next().
              */
-            template <class Iterator, class Intox = Into>
-            auto operator()(
-                Iterator &&it,
-                decltype(std::declval<Intox>().push_back(
-                    std::declval<typename Intox::value_type>())) * = nullptr) && -> Intox;
-
-            /**
-             * Uses expression SFINAE to accept only container types with method
-             * insert(value) to collect the values into.
-             * @param it moved rustfp iterator.
-             * @return specified container type with all the values collected
-             * via insert. Order of insertion is done via the order of .next() and
-             * collecting into set types can remove any subsequent repeated entries.
-             */
-            template <class Iterator, class Intox = Into>
-            auto operator()(
-                Iterator &&it,
-                decltype(std::declval<Intox>().insert(
-                    std::declval<typename Intox::value_type>())) * = nullptr) && -> Intox;
-
-            /**
-             * Uses expression SFINAE to accept only container types with method
-             * push(value) to collect the values into.
-             * @param it moved rustfp iterator.
-             * @return specified container type with all the values collected
-             * via insert. Order of insertion is done via the order of .next().
-             */
-            template <class Iterator, class Intox = Into>
-            auto operator()(
-                Iterator &&it,
-                decltype(std::declval<Intox>().push(
-                    std::declval<typename Intox::value_type>())) * = nullptr) && -> Intox;
+            template <class Iterator>
+            auto operator()(Iterator &&it) && -> Into;
         };
 
         template <class OkInto, class ErrType>
@@ -72,98 +42,76 @@ namespace rustfp {
             template <class Iterator>
             auto operator()(Iterator &&it) && -> Result<OkInto, ErrType>;
         };
+    }
 
-        // implementation section
+    /**
+     * Collect into any container type that is able to invoke
+     * push_back(value), insert(value) or push(value) method.
+     * Can also collect into Result<container type, error type>.
+     */
+    template <class Into>
+    auto collect() -> details::CollectOp<Into>;
 
-        namespace details {
-            template <class Into, class Item>
-            auto inserter(decltype(std::declval<Into>().push_back(
-                std::declval<typename Into::value_type>())) * = nullptr) {
+    // implementation section
 
-                return [](Into &container, Item item) { 
-                    return container.push_back(std::forward<Item>(item));
-                };
-            }
+    namespace details {
+        template <class Into, class Item>
+        auto inserter(decltype(std::declval<Into>().push_back(
+            std::declval<typename Into::value_type>())) * = nullptr) {
 
-            template <class Into, class Item>
-            auto inserter(decltype(std::declval<Into>().insert(
-                std::declval<typename Into::value_type>())) * = nullptr) {
+            return [](Into &container, Item item) { 
+                return container.push_back(std::forward<Item>(item));
+            };
+        }
 
-                return [](Into &container, Item item) { 
-                    return container.insert(std::forward<Item>(item));
-                };
-            }
+        template <class Into, class Item>
+        auto inserter(decltype(std::declval<Into>().insert(
+            std::declval<typename Into::value_type>())) * = nullptr,
+            void * = nullptr) {
 
-            template <class Into, class Item>
-            auto inserter(decltype(std::declval<Into>().push(
-                std::declval<typename Into::value_type>())) * = nullptr) {
+            return [](Into &container, Item item) { 
+                return container.insert(std::forward<Item>(item));
+            };
+        }
 
-                return [](Into &container, Item item) { 
-                    return container.push(std::forward<Item>(item));
-                };
-            }
+        template <class Into, class Item>
+        auto inserter(decltype(std::declval<Into>().push(
+            std::declval<typename Into::value_type>())) * = nullptr,
+            void * = nullptr,
+            void * = nullptr) {
 
-            template <class Into, class Iterator, class InsertFn>
-            auto collect_impl(Iterator &&it, InsertFn &&insert_fn) -> Into {
-                Into container;
+            return [](Into &container, Item item) { 
+                return container.push(std::forward<Item>(item));
+            };
+        }
 
-                while (true) {
-                    auto next_opt = it.next();
+        template <class Into, class Iterator, class InsertFn>
+        auto collect_impl(Iterator &&it, InsertFn &&insert_fn) -> Into {
+            Into container;
 
-                    if (next_opt.is_none()) {
-                        break;
-                    }
+            while (true) {
+                auto next_opt = it.next();
 
-                    insert_fn(container, std::move(next_opt).unwrap_unchecked());
+                if (next_opt.is_none()) {
+                    break;
                 }
 
-                return container;
+                insert_fn(container, std::move(next_opt).unwrap_unchecked());
             }
+
+            return container;
         }
 
         template <class Into>
-        template <class Iterator, class Intox>
-        auto CollectOp<Into>::operator()(
-            Iterator &&it,
-            decltype(std::declval<Intox>().push_back(
-                std::declval<typename Intox::value_type>())) *) && -> Intox {
+        template <class Iterator>
+        auto CollectOp<Into>::operator()(Iterator &&it) && -> Into {
 
             static_assert(!std::is_lvalue_reference<Iterator>::value,
-                "CollectOp<Into> for types with push_back method "
+                "CollectOp<Into> for types with push_back, insert or push method "
                 "can only take rvalue ref object with Iterator traits");
 
-            return details::collect_impl<Intox>(std::move(it),
-                details::inserter<Intox, typename Iterator::Item>());
-        }
-
-        template <class Into>
-        template <class Iterator, class Intox>
-        auto CollectOp<Into>::operator()(
-            Iterator &&it,
-            decltype(std::declval<Intox>().insert(
-                std::declval<typename Intox::value_type>())) *) && -> Intox {
-
-            static_assert(!std::is_lvalue_reference<Iterator>::value,
-                "CollectOp<Into> for types with insert method "
-                "can only take rvalue ref object with Iterator traits");
-
-            return details::collect_impl<Intox>(std::move(it),
-                details::inserter<Intox, typename Iterator::Item>());
-        }
-
-        template <class Into>
-        template <class Iterator, class Intox>
-        auto CollectOp<Into>::operator()(
-            Iterator &&it,
-            decltype(std::declval<Intox>().push(
-                std::declval<typename Intox::value_type>())) *) && -> Intox {
-
-            static_assert(!std::is_lvalue_reference<Iterator>::value,
-                "CollectOp<Into> for types with push method "
-                "can only take rvalue ref object with Iterator traits");
-
-            return details::collect_impl<Intox>(std::move(it),
-                details::inserter<Intox, typename Iterator::Item>());
+            return details::collect_impl<Into>(std::move(it),
+                details::inserter<Into, typename Iterator::Item>());
         }
 
         template <class OkInto, class ErrType>
