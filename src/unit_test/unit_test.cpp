@@ -15,6 +15,7 @@
 #include "rustfp/iter.h"
 #include "rustfp/let.h"
 #include "rustfp/map.h"
+#include "rustfp/min.h"
 #include "rustfp/once.h"
 #include "rustfp/option.h"
 #include "rustfp/range.h"
@@ -62,6 +63,8 @@ using rustfp::into_iter;
 using rustfp::iter;
 using rustfp::iter_mut;
 using rustfp::map;
+using rustfp::min;
+using rustfp::min_by;
 using rustfp::once;
 using rustfp::range;
 using rustfp::skip;
@@ -196,8 +199,8 @@ TEST_F(Ops, Iter) {
         "Ops::Iter failed Iter type checking!");
 
     const auto opt0 = it.next();
-    EXPECT_TRUE(opt0.is_some());
-    EXPECT_EQ(0, opt0.get_unchecked());
+    ASSERT_TRUE(opt0.is_some());
+    ASSERT_EQ(0, opt0.get_unchecked());
 
     static_assert(is_same<
         typename remove_reference_t<decltype(opt0)>::some_t,
@@ -205,27 +208,27 @@ TEST_F(Ops, Iter) {
         "Ops::Iter failed Option type checking!");
     
     const auto opt1 = it.next();
-    EXPECT_TRUE(opt1.is_some());
-    EXPECT_EQ(1, opt1.get_unchecked());
+    ASSERT_TRUE(opt1.is_some());
+    ASSERT_EQ(1, opt1.get_unchecked());
 
     const auto opt2 = it.next();
-    EXPECT_TRUE(opt2.is_some());
-    EXPECT_EQ(2, opt2.get_unchecked());
+    ASSERT_TRUE(opt2.is_some());
+    ASSERT_EQ(2, opt2.get_unchecked());
 
     const auto opt3 = it.next();
-    EXPECT_TRUE(opt3.is_some());
-    EXPECT_EQ(3, opt3.get_unchecked());
+    ASSERT_TRUE(opt3.is_some());
+    ASSERT_EQ(3, opt3.get_unchecked());
 
     const auto opt4 = it.next();
-    EXPECT_TRUE(opt4.is_some());
-    EXPECT_EQ(4, opt4.get_unchecked());
+    ASSERT_TRUE(opt4.is_some());
+    ASSERT_EQ(4, opt4.get_unchecked());
 
     const auto opt5 = it.next();
-    EXPECT_TRUE(opt5.is_some());
-    EXPECT_EQ(5, opt5.get_unchecked());
+    ASSERT_TRUE(opt5.is_some());
+    ASSERT_EQ(5, opt5.get_unchecked());
 
     const auto opt6 = it.next();
-    EXPECT_TRUE(opt6.is_none());
+    ASSERT_TRUE(opt6.is_none());
 }
 
 TEST_F(Ops, IterMut) {
@@ -251,8 +254,8 @@ TEST_F(Ops, IterMut) {
         "Ops::IterMut failed Iter type checking!");
 
     const auto opt0 = it.next();
-    EXPECT_TRUE(opt0.is_some());
-    EXPECT_EQ(1, opt0.get_unchecked());
+    ASSERT_TRUE(opt0.is_some());
+    ASSERT_EQ(1, opt0.get_unchecked());
 
     static_assert(is_same<
         typename remove_reference_t<decltype(opt0)>::some_t,
@@ -260,27 +263,27 @@ TEST_F(Ops, IterMut) {
         "Ops::IterMut failed Option type checking!");
     
     const auto opt1 = it.next();
-    EXPECT_TRUE(opt1.is_some());
-    EXPECT_EQ(2, opt1.get_unchecked());
+    ASSERT_TRUE(opt1.is_some());
+    ASSERT_EQ(2, opt1.get_unchecked());
 
     const auto opt2 = it.next();
-    EXPECT_TRUE(opt2.is_some());
-    EXPECT_EQ(5, opt2.get_unchecked());
+    ASSERT_TRUE(opt2.is_some());
+    ASSERT_EQ(5, opt2.get_unchecked());
 
     const auto opt3 = it.next();
-    EXPECT_TRUE(opt3.is_some());
-    EXPECT_EQ(10, opt3.get_unchecked());
+    ASSERT_TRUE(opt3.is_some());
+    ASSERT_EQ(10, opt3.get_unchecked());
 
     const auto opt4 = it.next();
-    EXPECT_TRUE(opt4.is_some());
-    EXPECT_EQ(17, opt4.get_unchecked());
+    ASSERT_TRUE(opt4.is_some());
+    ASSERT_EQ(17, opt4.get_unchecked());
 
     const auto opt5 = it.next();
-    EXPECT_TRUE(opt5.is_some());
-    EXPECT_EQ(26, opt5.get_unchecked());
+    ASSERT_TRUE(opt5.is_some());
+    ASSERT_EQ(26, opt5.get_unchecked());
 
     const auto opt6 = it.next();
-    EXPECT_TRUE(opt6.is_none());
+    ASSERT_TRUE(opt6.is_none());
 }
 
 TEST_F(Ops, IterMutChain) {
@@ -297,11 +300,11 @@ TEST_F(Ops, IterMutChain) {
         })
         | collect<vector<reference_wrapper<int>>>();
 
-    EXPECT_EQ(4, v2.size());
-    EXPECT_EQ(0, v2.at(0));
-    EXPECT_EQ(1, v2.at(1));
-    EXPECT_EQ(2, v2.at(2));
-    EXPECT_EQ(3, v2.at(3));
+    ASSERT_EQ(4, v2.size());
+    ASSERT_EQ(0, v2.at(0));
+    ASSERT_EQ(1, v2.at(1));
+    ASSERT_EQ(2, v2.at(2));
+    ASSERT_EQ(3, v2.at(3));
 }
 
 TEST_F(Ops, IntoIter) {
@@ -324,49 +327,49 @@ TEST_F(Ops, IntoIter) {
         unique_ptr<int>>::value,
         "Ops::IntoIter failed Option type checking!");
 
-    EXPECT_TRUE(opt0.is_some());
+    ASSERT_TRUE(opt0.is_some());
     auto val0(move(opt0).unwrap_unchecked());
-    EXPECT_EQ(0, *val0);
+    ASSERT_EQ(0, *val0);
 
     auto opt1 = it.next();
-    EXPECT_TRUE(opt1.is_some());
+    ASSERT_TRUE(opt1.is_some());
     auto val1(move(opt1).unwrap_unchecked());
-    EXPECT_EQ(1, *val1);
+    ASSERT_EQ(1, *val1);
 
     auto opt2 = it.next();
-    EXPECT_TRUE(opt2.is_some());
+    ASSERT_TRUE(opt2.is_some());
     auto val2(move(opt2).unwrap_unchecked());
-    EXPECT_EQ(2, *val2);
+    ASSERT_EQ(2, *val2);
 
-    EXPECT_TRUE(it.next().is_none());
+    ASSERT_TRUE(it.next().is_none());
 }
 
 TEST_F(Ops, AllTrue) {
     const auto result = iter(int_vec)
         | all([](const auto value) { return value < 6; });
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
 }
 
 TEST_F(Ops, AllFalse) {
     const auto result = iter(int_vec)
         | all([](const auto value) { return value > 0; });
 
-    EXPECT_FALSE(result);
+    ASSERT_FALSE(result);
 }
 
 TEST_F(Ops, AnyTrue) {
     const auto result = iter(int_vec)
         | any([](const auto value) { return value == 5; });
 
-    EXPECT_TRUE(result);
+    ASSERT_TRUE(result);
 }
 
 TEST_F(Ops, AnyFalse) {
     const auto result = iter(int_vec)
         | any([](const auto value) { return value == 7; });
 
-    EXPECT_FALSE(result);
+    ASSERT_FALSE(result);
 }
 
 TEST_F(Ops, ClonedRef) {
@@ -374,7 +377,7 @@ TEST_F(Ops, ClonedRef) {
         | cloned()
         | collect<vector<string>>();
 
-    EXPECT_TRUE(details::no_mismatch_values(str_vec, str_dup_vec,
+    ASSERT_TRUE(details::no_mismatch_values(str_vec, str_dup_vec,
         [](const auto &lhs, const auto &rhs) {
             // same value but different addresses
             return (lhs == rhs) && (&lhs != &rhs);
@@ -387,7 +390,7 @@ TEST_F(Ops, ClonedValue) {
         | cloned() | cloned() | cloned()
         | collect<vector<string>>();
 
-    EXPECT_TRUE(details::no_mismatch_values(int_vec, int_str_vec,
+    ASSERT_TRUE(details::no_mismatch_values(int_vec, int_str_vec,
         [](const auto &lhs, const auto &rhs) {
             return to_string(lhs) == rhs;
         }));
@@ -397,21 +400,21 @@ TEST_F(Ops, CollectVec) {
     const auto dup_vec = range(0, int_vec.size())
         | collect<vector<int>>();
 
-    EXPECT_TRUE(details::no_mismatch_values(int_vec, dup_vec));
+    ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_vec));
 }
 
 TEST_F(Ops, CollectList) {
     const auto dup_cont = iter(int_vec)
         | collect<list<reference_wrapper<const int>>>();
 
-    EXPECT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
+    ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
 }
 
 TEST_F(Ops, CollectSet) {
     const auto dup_cont = iter(int_vec)
         | collect<set<reference_wrapper<const int>>>();
 
-    EXPECT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
+    ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
 }
 
 TEST_F(Ops, CollectUnorderedSet) {
@@ -419,7 +422,7 @@ TEST_F(Ops, CollectUnorderedSet) {
     const auto dup_cont = iter(int_vec)
         | collect<unordered_set<int>>();
 
-    EXPECT_TRUE(details::similar_values(int_vec, dup_cont));
+    ASSERT_TRUE(details::similar_values(int_vec, dup_cont));
 }
 
 TEST_F(Ops, CollectMap) {
@@ -428,7 +431,7 @@ TEST_F(Ops, CollectMap) {
         | collect<std::map<reference_wrapper<const int>, reference_wrapper<const string>>>();
 
     // check the keys
-    EXPECT_TRUE(details::no_mismatch_values(int_vec, dup_cont,
+    ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_cont,
         [](const auto &lhs, const auto &rhs) {
             return lhs == rhs.first.get();
         }));
@@ -438,7 +441,7 @@ TEST_F(Ops, CollectMap) {
         | map([](const auto &p) { return cref(p.second); })
         | collect<vector<reference_wrapper<const string>>>();
 
-    EXPECT_TRUE(details::no_mismatch_values(str_vec, dup_vals,
+    ASSERT_TRUE(details::no_mismatch_values(str_vec, dup_vals,
         [](const auto &lhs, const auto &rhs) {
             return lhs == rhs.get();
         }));
@@ -454,14 +457,14 @@ TEST_F(Ops, CollectUnorderedMap) {
         | map([](const auto &p) { return cref(p.first); })
         | collect<vector<reference_wrapper<const int>>>();
 
-    EXPECT_TRUE(details::similar_values(int_vec, dup_keys));
+    ASSERT_TRUE(details::similar_values(int_vec, dup_keys));
  
     // check the values
     const auto dup_vals = iter(dup_cont)
         | map([](const auto &p) { return cref(p.second); })
         | collect<vector<reference_wrapper<const string>>>();
 
-    EXPECT_TRUE(details::similar_values(str_vec, dup_vals,
+    ASSERT_TRUE(details::similar_values(str_vec, dup_vals,
         [](const auto &lhs, const auto &rhs) { return lhs == rhs.get(); }));
 }
 
@@ -471,7 +474,7 @@ TEST_F(Ops, CollectStack) {
 
     while (!dup_cont.empty()) {
         const auto top = dup_cont.top();
-        EXPECT_EQ(int_vec[dup_cont.size() - 1], top);
+        ASSERT_EQ(int_vec[dup_cont.size() - 1], top);
         dup_cont.pop();
     }
 }
@@ -482,7 +485,7 @@ TEST_F(Ops, CollectQueue) {
 
     for (size_t i = 0; i < int_vec.size(); ++i) {
         const auto front = dup_cont.front();
-        EXPECT_EQ(int_vec[i], front);
+        ASSERT_EQ(int_vec[i], front);
         dup_cont.pop();
     }
 }
@@ -495,13 +498,13 @@ TEST_F(Ops, CollectResultOk) {
     auto collected_res = into_iter(move(res_vec))
         | collect<Result<vector<int>, string>>();
 
-    EXPECT_TRUE(collected_res.is_ok());
+    ASSERT_TRUE(collected_res.is_ok());
 
     const auto collected = move(collected_res).unwrap_unchecked();
-    EXPECT_EQ(3, collected.size());
-    EXPECT_EQ(0, collected.at(0));
-    EXPECT_EQ(1, collected.at(1));
-    EXPECT_EQ(2, collected.at(2));
+    ASSERT_EQ(3, collected.size());
+    ASSERT_EQ(0, collected.at(0));
+    ASSERT_EQ(1, collected.at(1));
+    ASSERT_EQ(2, collected.at(2));
 }
 
 TEST_F(Ops, CollectResultErr) {
@@ -516,17 +519,17 @@ TEST_F(Ops, CollectResultErr) {
     auto collected_res = into_iter(move(res_vec))
         | collect<Result<vector<reference_wrapper<const int>>, const string &>>();
 
-    EXPECT_TRUE(collected_res.is_err());
+    ASSERT_TRUE(collected_res.is_err());
 
     const auto collected = move(collected_res).unwrap_err_unchecked();
-    EXPECT_EQ("ERROR!", collected);
+    ASSERT_EQ("ERROR!", collected);
 }
 
 TEST_F(Ops, CollectVecRef) {
     const auto str_ref_vec = iter(str_vec)
         | collect<vector<reference_wrapper<const string>>>();
 
-    EXPECT_TRUE(details::no_mismatch_values(str_vec, str_ref_vec,
+    ASSERT_TRUE(details::no_mismatch_values(str_vec, str_ref_vec,
         [](const auto &lhs, const auto &rhs) {
             return &lhs == &rhs.get();
         }));
@@ -546,7 +549,7 @@ TEST_F(Ops, CollectMapVecSum) {
         cbegin(int_vec), cend(int_vec),
         0.0, [](const double acc, const int value) { return acc + value + COLLECT_MAP_VEC_SUM_ADD; });
 
-    EXPECT_EQ(expected_sum, fold_sum);
+    ASSERT_EQ(expected_sum, fold_sum);
 }
 
 TEST_F(Ops, Cycle) {
@@ -558,7 +561,7 @@ TEST_F(Ops, Cycle) {
             return acc + value;
         });
 
-    EXPECT_EQ(7000, sum);
+    ASSERT_EQ(7000, sum);
 }
 
 TEST_F(Ops, Once) {
@@ -568,8 +571,8 @@ TEST_F(Ops, Once) {
         | take(5)
         | collect<vector<unique_ptr<string>>>();
 
-    EXPECT_EQ(1, vec.size());
-    EXPECT_EQ("Hello", *vec[0]);
+    ASSERT_EQ(1, vec.size());
+    ASSERT_EQ("Hello", *vec[0]);
 }
 
 TEST_F(Ops, Enumerate) {
@@ -584,7 +587,7 @@ TEST_F(Ops, Enumerate) {
 
     // * 2 because the index and values are the same values
     // thus adding both together create a * 2 effect
-    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 2, sum);
+    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 2, sum);
 }
 
 TEST_F(Ops, Filter) {
@@ -598,7 +601,7 @@ TEST_F(Ops, Filter) {
             sum += value;
         });
 
-    EXPECT_EQ(9, sum);
+    ASSERT_EQ(9, sum);
 }
 
 TEST_F(Ops, FilterMap) {
@@ -614,7 +617,7 @@ TEST_F(Ops, FilterMap) {
             sum += value;
         });
 
-    EXPECT_EQ(10.5, sum);
+    ASSERT_EQ(10.5, sum);
 }
 
 TEST_F(Ops, FindSome) {
@@ -623,15 +626,15 @@ TEST_F(Ops, FindSome) {
     const auto find_some_opt = iter(int_vec)
         | find([](const auto value) { return value == FIND_SOME_ACC; });
 
-    EXPECT_TRUE(find_some_opt.is_some());
-    EXPECT_EQ(FIND_SOME_ACC, find_some_opt.get_unchecked());
+    ASSERT_TRUE(find_some_opt.is_some());
+    ASSERT_EQ(FIND_SOME_ACC, find_some_opt.get_unchecked());
 }
 
 TEST_F(Ops, FindNone) {
     const auto find_none_opt = iter(int_vec)
         | find([](const auto value) { return value == 6; });
 
-    EXPECT_TRUE(find_none_opt.is_none());
+    ASSERT_TRUE(find_none_opt.is_none());
 }
 
 TEST_F(Ops, FindMapSome) {
@@ -642,8 +645,8 @@ TEST_F(Ops, FindMapSome) {
                 : None;
         });
     
-    EXPECT_TRUE(find_some_opt.is_some());
-    EXPECT_EQ(4.5, find_some_opt.get_unchecked());
+    ASSERT_TRUE(find_some_opt.is_some());
+    ASSERT_EQ(4.5, find_some_opt.get_unchecked());
 }
 
 TEST_F(Ops, FindMapNone) {
@@ -656,7 +659,7 @@ TEST_F(Ops, FindMapNone) {
                 : None;
         });
 
-    EXPECT_TRUE(find_none_opt.is_none());
+    ASSERT_TRUE(find_none_opt.is_none());
 }
 
 TEST_F(Ops, Fold) {
@@ -665,7 +668,7 @@ TEST_F(Ops, Fold) {
     const auto fold_sum = iter(int_vec)
         | fold(FOLD_ACC, plus<int>());
 
-    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), fold_sum);
+    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), fold_sum);
 }
 
 TEST_F(Ops, ForEach) {
@@ -676,7 +679,7 @@ TEST_F(Ops, ForEach) {
             sum += value;
         });
 
-    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
+    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
 }
 
 TEST_F(Ops, Map) {
@@ -690,7 +693,95 @@ TEST_F(Ops, Map) {
             sum += value;
         });
 
-    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 0.5, sum);
+    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 0.5, sum);
+}
+
+TEST_F(Ops, MinNone) {
+    static const vector<int> VALS;
+    const auto min_opt = iter(VALS) | min();
+
+    ASSERT_TRUE(min_opt.is_none());
+}
+
+TEST_F(Ops, MinSomeEasy) {
+    static const vector<string> VALS{"hello", "world", "zzz"};
+    const auto min_opt = iter(VALS) | min();
+
+    ASSERT_TRUE(min_opt.is_some());
+    ASSERT_EQ("hello", min_opt.get_unchecked());
+}
+
+TEST_F(Ops, MinSomeHard) {
+    static const vector<int> VALS{-5, 1, -777, 123, 25, 0, -777, -777};
+
+    // hand coded min to get the address eventually
+    ASSERT_TRUE(!VALS.empty());
+
+    size_t min_index = 0;
+
+    for (size_t i = 1; i < VALS.size(); ++i) {
+        if (VALS[i] < VALS[min_index]) {
+            min_index = i;
+        }
+    }
+
+    // found the value and referencing it
+    const auto &min_val = VALS[min_index];
+    const auto min_opt = iter(VALS) | min();
+
+    ASSERT_TRUE(min_opt.is_some());
+    ASSERT_EQ(-777, min_opt.get_unchecked());
+    ASSERT_EQ(&min_val, &min_opt.get_unchecked());
+}
+
+TEST_F(Ops, MinByNone) {
+    static const vector<int> VALS;
+
+    const auto min_opt = iter(VALS)
+        | min_by([](const auto lhs, const auto rhs) {
+            return lhs <= rhs;
+        });
+
+    ASSERT_TRUE(min_opt.is_none());
+}
+
+TEST_F(Ops, MinBySomeEasy) {
+    static const vector<int> VALS{1, 3, 2};
+
+    const auto min_opt = iter(VALS)
+        | min_by([](const auto lhs, const auto rhs) {
+            return lhs <= rhs;
+        });
+
+    ASSERT_TRUE(min_opt.is_some());
+    ASSERT_EQ(1, min_opt.get_unchecked());
+}
+
+TEST_F(Ops, MinBySomeHard) {
+    static const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
+
+    // hand coded min to get the address eventually
+    ASSERT_TRUE(!VALS.empty());
+
+    size_t min_index = 0;
+
+    for (size_t i = 1; i < VALS.size(); ++i) {
+        if (VALS[i] < VALS[min_index]) {
+            min_index = i;
+        }
+    }
+
+    // found the value and referencing it
+    const auto &min_val = VALS[min_index];
+
+    const auto min_opt = iter(VALS)
+        | min_by([](const auto lhs, const auto rhs) {
+            return lhs <= rhs;
+        });
+
+    ASSERT_TRUE(min_opt.is_some());
+    ASSERT_EQ(2, min_opt.get_unchecked());
+    ASSERT_EQ(&min_val, &min_opt.get_unchecked());
 }
 
 TEST_F(Ops, Range) {
@@ -699,7 +790,7 @@ TEST_F(Ops, Range) {
     const auto sum = range(0, 6)
         | fold(RANGE_ACC, plus<int>());
 
-    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), RANGE_ACC), sum);
+    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), RANGE_ACC), sum);
 }
 
 TEST_F(Ops, SkipWithin) {
@@ -707,7 +798,7 @@ TEST_F(Ops, SkipWithin) {
         | skip(3)
         | fold(0, plus<int>());
 
-    EXPECT_EQ(12, sum);
+    ASSERT_EQ(12, sum);
 }
 
 TEST_F(Ops, SkipPass) {
@@ -715,7 +806,7 @@ TEST_F(Ops, SkipPass) {
         | skip(100)
         | fold(0, plus<int>());
 
-    EXPECT_EQ(0, sum);
+    ASSERT_EQ(0, sum);
 }
 
 TEST_F(Ops, TakeWithin) {
@@ -723,7 +814,7 @@ TEST_F(Ops, TakeWithin) {
         | take(3)
         | fold(0, plus<int>());
 
-    EXPECT_EQ(3, sum);
+    ASSERT_EQ(3, sum);
 }
 
 TEST_F(Ops, TakeExceed) {
@@ -731,7 +822,7 @@ TEST_F(Ops, TakeExceed) {
         | take(100)
         | fold(0, plus<int>());
 
-    EXPECT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
+    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
 }
 
 // complex tests
@@ -765,9 +856,9 @@ TEST_F(ComplexOps, ManyIterCollect) {
 
     // no copy of any value was ever done from the original v
 
-    EXPECT_EQ(2, v4.size());
-    EXPECT_EQ(1, v4.at(0));
-    EXPECT_EQ(3, v4.at(1));
+    ASSERT_EQ(2, v4.size());
+    ASSERT_EQ(1, v4.at(0));
+    ASSERT_EQ(3, v4.at(1));
 }
 
 TEST_F(ComplexOps, FilterMapFold) {
@@ -778,7 +869,7 @@ TEST_F(ComplexOps, FilterMapFold) {
             return acc + rhs + " ";
         });
 
-    EXPECT_EQ("11 22 33 44 55 66 77 88 99 ", eleven_div_str);
+    ASSERT_EQ("11 22 33 44 55 66 77 88 99 ", eleven_div_str);
 }
 
 TEST_F(ComplexOps, FilterMapFind) {
@@ -793,8 +884,8 @@ TEST_F(ComplexOps, FilterMapFind) {
             return value == FILTER_MAP_FIND_VAL;
         });
 
-    EXPECT_TRUE(find_opt.is_some());
-    EXPECT_EQ(FILTER_MAP_FIND_VAL, find_opt.get_unchecked());
+    ASSERT_TRUE(find_opt.is_some());
+    ASSERT_EQ(FILTER_MAP_FIND_VAL, find_opt.get_unchecked());
 }
 
 TEST_F(ComplexOps, ZipRefMapFold) {
@@ -814,67 +905,67 @@ TEST_F(ComplexOps, ZipRefMapFold) {
             return ss.str();
         });
 
-    EXPECT_EQ("(0,1) (1,2) (2,3) (3,4) (4,5) ", folded_str);
+    ASSERT_EQ("(0,1) (1,2) (2,3) (3,4) (4,5) ", folded_str);
 }
 
 // option
 
 TEST(Option, Assignment) {
     auto opt = Some(1);
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ(1, opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(1, opt.get_unchecked());
 
     opt = None;
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(opt.is_none());
 
     opt = Some(7);
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ(7, opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, opt.get_unchecked());
 }
 
 TEST(Option, CtorNone) {
     Option<int> opt(None);
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, CtorLRef) {
     auto opt_rhs = Some(7);
     const auto opt(opt_rhs);
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_TRUE(opt_rhs.is_some());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_TRUE(opt_rhs.is_some());
 
-    EXPECT_EQ(7, opt.get_unchecked());
-    EXPECT_EQ(7, opt_rhs.get_unchecked());
+    ASSERT_EQ(7, opt.get_unchecked());
+    ASSERT_EQ(7, opt_rhs.get_unchecked());
 }
 
 TEST(Option, CtorConstLRef) {
     const auto opt_rhs = Some(7);
     const auto opt(opt_rhs);
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_TRUE(opt_rhs.is_some());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_TRUE(opt_rhs.is_some());
 
-    EXPECT_EQ(7, opt.get_unchecked());
-    EXPECT_EQ(7, opt_rhs.get_unchecked());
+    ASSERT_EQ(7, opt.get_unchecked());
+    ASSERT_EQ(7, opt_rhs.get_unchecked());
 }
 
 TEST(Option, CtorMoveSimple) {
     Option<int> opt_rhs(Some(7));
     const Option<int> opt(move(opt_rhs));
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_TRUE(opt_rhs.is_none());
-    EXPECT_EQ(7, opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_TRUE(opt_rhs.is_none());
+    ASSERT_EQ(7, opt.get_unchecked());
 }
 
 TEST(Option, CtorMoveComplex) {
     auto opt_rhs = Some(make_unique<int>(7));
     const Option<unique_ptr<int>> opt(move(opt_rhs));
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_TRUE(opt_rhs.is_none());
-    EXPECT_EQ(7, *opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_TRUE(opt_rhs.is_none());
+    ASSERT_EQ(7, *opt.get_unchecked());
 }
 
 TEST(Option, MapSome) {
@@ -886,8 +977,8 @@ TEST(Option, MapSome) {
             return "*" + *value + "*";
         });
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ("*777*", opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("*777*", opt.get_unchecked());
 }
 
 TEST(Option, MapNone) {
@@ -897,7 +988,7 @@ TEST(Option, MapNone) {
         return "Hello";
     });
 
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, AndThenSomeToSome) {
@@ -906,8 +997,8 @@ TEST(Option, AndThenSomeToSome) {
             return Some(make_unique<string>(to_string(*value)));
         });
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ("777", *opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("777", *opt.get_unchecked());
 }
 
 TEST(Option, AndThenSomeToNone) {
@@ -916,7 +1007,7 @@ TEST(Option, AndThenSomeToNone) {
             return None;
         });
 
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, AndThenNone) {
@@ -925,46 +1016,46 @@ TEST(Option, AndThenNone) {
             return Some(make_unique<string>(to_string(*value)));
         });
 
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, OrElseNoneToNone) {
     const auto opt = Option<unique_ptr<int>>(None)
         .or_else([] { return None; });
 
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, OrElseNoneToSome) {
     const auto opt = Option<unique_ptr<int>>(None)
         .or_else([] { return Some(make_unique<int>(7)); });
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ(7, *opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, *opt.get_unchecked());
 }
 
 TEST(Option, OkOrElseSome) {
     const auto res = Some(7)
         .ok_or_else([] { return string("Hello"); });
 
-    EXPECT_TRUE(res.is_ok());
-    EXPECT_EQ(7, res.get_unchecked());
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(7, res.get_unchecked());
 }
 
 TEST(Option, OkOrElseNone) {
     const auto res = Option<int>(None)
         .ok_or_else([] { return string("Hello"); });
 
-    EXPECT_TRUE(res.is_err());
-    EXPECT_EQ("Hello", res.get_err_unchecked());
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Hello", res.get_err_unchecked());
 }
 
 TEST(Option, OrElseSome) {
     const auto opt = Some(7)
         .or_else([] { return None; });
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ(7, opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, opt.get_unchecked());
 }
 
 TEST(Option, MatchXValueSome) {
@@ -972,7 +1063,7 @@ TEST(Option, MatchXValueSome) {
         [](const auto value) { return to_string(value); },
         [] { return "NONE"; });
 
-    EXPECT_EQ("7", value);
+    ASSERT_EQ("7", value);
 }
 
 TEST(Option, MatchMoveSome) {
@@ -982,8 +1073,8 @@ TEST(Option, MatchMoveSome) {
         [](const auto &value) { return to_string(*value); },
         [] { return "NONE"; });
 
-    EXPECT_TRUE(opt.is_none());
-    EXPECT_EQ("8", value);
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_EQ("8", value);
 }
 
 TEST(Option, MatchXValueNone) {
@@ -991,7 +1082,7 @@ TEST(Option, MatchXValueNone) {
         [](const auto value) { return to_string(value); },
         [] { return "NONE"; });
 
-    EXPECT_EQ("NONE", value);
+    ASSERT_EQ("NONE", value);
 }
 
 TEST(Option, MatchRefSome) {
@@ -1001,8 +1092,8 @@ TEST(Option, MatchRefSome) {
         [](const auto value) { return to_string(value); },
         [] { return "NONE"; });
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ("7", value);
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("7", value);
 }
 
 TEST(Option, MatchRefNone) {
@@ -1012,8 +1103,8 @@ TEST(Option, MatchRefNone) {
         [](const auto value) { return to_string(value); },
         [] { return "NONE"; });
 
-    EXPECT_TRUE(opt.is_none());
-    EXPECT_EQ("NONE", value);
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_EQ("NONE", value);
 }
 
 TEST(Option, MatchSomeXValueSomeAssignBack) {
@@ -1024,8 +1115,8 @@ TEST(Option, MatchSomeXValueSomeAssignBack) {
         ptr = move(value);
     });
 
-    EXPECT_TRUE(static_cast<bool>(ptr));
-    EXPECT_EQ(7, *ptr);
+    ASSERT_TRUE(static_cast<bool>(ptr));
+    ASSERT_EQ(7, *ptr);
 }
 
 TEST(Option, MatchSomeXValueSomeNoEffect) {
@@ -1035,7 +1126,7 @@ TEST(Option, MatchSomeXValueSomeNoEffect) {
         // do nothing
     });
 
-    EXPECT_FALSE(static_cast<bool>(ptr));
+    ASSERT_FALSE(static_cast<bool>(ptr));
 }
 
 TEST(Option, MatchSomeXValueNone) {
@@ -1046,8 +1137,8 @@ TEST(Option, MatchSomeXValueNone) {
         ptr = nullptr;
     });
 
-    EXPECT_TRUE(static_cast<bool>(ptr));
-    EXPECT_EQ(7, *ptr);
+    ASSERT_TRUE(static_cast<bool>(ptr));
+    ASSERT_EQ(7, *ptr);
 }
 
 TEST(Option, MatchSomeRefDoSomething) {
@@ -1058,9 +1149,9 @@ TEST(Option, MatchSomeRefDoSomething) {
         flag = true;
     });
 
-    EXPECT_TRUE(flag);
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ(7, *opt.get_unchecked());
+    ASSERT_TRUE(flag);
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, *opt.get_unchecked());
 }
 
 TEST(Option, MatchSomeRefNoEffect) {
@@ -1071,8 +1162,8 @@ TEST(Option, MatchSomeRefNoEffect) {
         flag = true;
     });
 
-    EXPECT_FALSE(flag);
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_FALSE(flag);
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, MatchNoneXValueNoneDoSomething) {
@@ -1083,8 +1174,8 @@ TEST(Option, MatchNoneXValueNoneDoSomething) {
         ptr = make_unique<int>(8);
     });
 
-    EXPECT_TRUE(static_cast<bool>(ptr));
-    EXPECT_EQ(8, *ptr);
+    ASSERT_TRUE(static_cast<bool>(ptr));
+    ASSERT_EQ(8, *ptr);
 }
 
 TEST(Option, MatchNoneXValueSomeNoEffect) {
@@ -1095,7 +1186,7 @@ TEST(Option, MatchNoneXValueSomeNoEffect) {
         ptr = make_unique<int>(777);
     });
 
-    EXPECT_FALSE(static_cast<bool>(ptr));
+    ASSERT_FALSE(static_cast<bool>(ptr));
 }
 
 TEST(Option, MatchNoneRefDoSomething) {
@@ -1106,8 +1197,8 @@ TEST(Option, MatchNoneRefDoSomething) {
         flag = true;
     });
 
-    EXPECT_TRUE(flag);
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(flag);
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, MatchNoneRefNoEffect) {
@@ -1118,32 +1209,32 @@ TEST(Option, MatchNoneRefNoEffect) {
         flag = true;
     });
 
-    EXPECT_FALSE(flag);
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ(7, opt.get_unchecked());
+    ASSERT_FALSE(flag);
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, opt.get_unchecked());
 }
 
 TEST(Option, GetUnchecked) {
     const auto opt = Some(make_unique<string>("Hello"));
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ("Hello", *opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("Hello", *opt.get_unchecked());
 }
 
 TEST(Option, UnwrapUnchecked) {
     string x = "Hello";
     auto opt = Some(ref(x));
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ("Hello", move(opt).unwrap_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("Hello", move(opt).unwrap_unchecked());
 }
 
 TEST(Option, OptIfTrue) {
     const auto opt = opt_if(true,
         [] { return 7; });
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ(7, opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, opt.get_unchecked());
 }
 
 // result
@@ -1153,7 +1244,7 @@ TEST(Result, ResIfElseTrue) {
         [] { return 1; },
         [] { return 3.14; });
 
-    EXPECT_TRUE(res.is_ok());
+    ASSERT_TRUE(res.is_ok());
 }
 
 TEST(Result, ResIfElseFalse) {
@@ -1161,69 +1252,69 @@ TEST(Result, ResIfElseFalse) {
         [] { return 1; },
         [] { return 3.14; });
 
-    EXPECT_TRUE(res.is_err());
+    ASSERT_TRUE(res.is_err());
 }
 
 TEST(Result, OkSome) {
     Result<int, string> res = Ok(8);
     const auto opt = move(res).ok();
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ(8, opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(8, opt.get_unchecked());
 }
 
 TEST(Result, OkNone) {
     Result<int, string> res = Err(string{"World"});
     const auto opt = move(res).ok();
 
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Result, ErrSome) {
     Result<int, string> res = Err(string{"World"});
     const auto opt = move(res).err();
 
-    EXPECT_TRUE(opt.is_some());
-    EXPECT_EQ("World", opt.get_unchecked());
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("World", opt.get_unchecked());
 }
 
 TEST(Result, ErrNone) {
     Result<int, string> res = Ok(9);
     const auto opt = move(res).err();
 
-    EXPECT_TRUE(opt.is_none());
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Result, MapOk) {
     Result<int, string> res = Ok(1);
     const auto mapped_res = move(res).map([](const auto value) { return value + 0.5; });
 
-    EXPECT_TRUE(mapped_res.is_ok());
-    EXPECT_EQ(1.5, mapped_res.get_unchecked());
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ(1.5, mapped_res.get_unchecked());
 }
 
 TEST(Result, MapErr) {
     Result<int, string> res = Err(string{"Error"});
     const auto mapped_res = move(res).map([](const auto value) { return to_string(value); });
 
-    EXPECT_TRUE(mapped_res.is_err());
-    EXPECT_EQ("Error", mapped_res.get_err_unchecked());
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("Error", mapped_res.get_err_unchecked());
 }
 
 TEST(Result, MapErrErr) {
     Result<int, string> res = Err(string{"Error"});
     const auto mapped_res = move(res).map_err([](const auto value) { return value + " value"; });
 
-    EXPECT_TRUE(mapped_res.is_err());
-    EXPECT_EQ("Error value", mapped_res.get_err_unchecked());
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("Error value", mapped_res.get_err_unchecked());
 }
 
 TEST(Result, MapErrOk) {
     Result<int, int> res = Ok(-1);
     const auto mapped_res = move(res).map_err([](const auto value) { return to_string(value); });
 
-    EXPECT_TRUE(mapped_res.is_ok());
-    EXPECT_EQ(-1, mapped_res.get_unchecked());
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ(-1, mapped_res.get_unchecked());
 }
 
 TEST(Result, AndThenOkToOk) {
@@ -1232,8 +1323,8 @@ TEST(Result, AndThenOkToOk) {
     const auto mapped_res = move(res)
         .and_then([](const auto value) -> Result<string, string> { return Ok(to_string(value)); });
 
-    EXPECT_TRUE(mapped_res.is_ok());
-    EXPECT_EQ("1", mapped_res.get_unchecked());
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ("1", mapped_res.get_unchecked());
 }
 
 TEST(Result, AndThenOkToErr) {
@@ -1242,8 +1333,8 @@ TEST(Result, AndThenOkToErr) {
     const auto mapped_res = move(res)
         .and_then([](const auto value) -> Result<int, string> { return Err(to_string(value)); });
 
-    EXPECT_TRUE(mapped_res.is_err());
-    EXPECT_EQ("2", mapped_res.get_err_unchecked());
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("2", mapped_res.get_err_unchecked());
 }
 
 TEST(Result, AndThenErr) {
@@ -1252,8 +1343,8 @@ TEST(Result, AndThenErr) {
     const auto mapped_res = move(res)
         .and_then([](const auto value) -> Result<int, string> { return Ok(value); });
 
-    EXPECT_TRUE(mapped_res.is_err());
-    EXPECT_EQ("Error", mapped_res.get_err_unchecked());
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("Error", mapped_res.get_err_unchecked());
 }
 
 TEST(Result, OrElseErrToOk) {
@@ -1262,8 +1353,8 @@ TEST(Result, OrElseErrToOk) {
     const auto mapped_res = move(res)
         .or_else([](const auto value) -> Result<int, int> { return Ok(7); });
 
-    EXPECT_TRUE(mapped_res.is_ok());
-    EXPECT_EQ(7, mapped_res.get_unchecked());
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ(7, mapped_res.get_unchecked());
 }
 
 TEST(Result, OrElseErrToErr) {
@@ -1272,8 +1363,8 @@ TEST(Result, OrElseErrToErr) {
     const auto mapped_res = move(res)
         .or_else([](const auto value) -> Result<int, string> { return Err(string{"Still error"}); });
 
-    EXPECT_TRUE(mapped_res.is_err());
-    EXPECT_EQ("Still error", mapped_res.get_err_unchecked());
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("Still error", mapped_res.get_err_unchecked());
 }
 
 TEST(Result, OrElseOk) {
@@ -1282,8 +1373,8 @@ TEST(Result, OrElseOk) {
     const auto mapped_res = move(res)
         .or_else([](const auto value) -> Result<int, double> { return Ok(6); });
 
-    EXPECT_TRUE(mapped_res.is_ok());
-    EXPECT_EQ(5, mapped_res.get_unchecked());
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ(5, mapped_res.get_unchecked());
 }
 
 TEST(Result, MatchOk) {
@@ -1293,7 +1384,7 @@ TEST(Result, MatchOk) {
         [](unique_ptr<int> value) { return true; },
         [](unique_ptr<string> value) { return false; });
 
-    EXPECT_TRUE(match_res);
+    ASSERT_TRUE(match_res);
 }
 
 TEST(Result, MatchErr) {
@@ -1303,7 +1394,7 @@ TEST(Result, MatchErr) {
         [](const auto value) { return 0.5; },
         [](const auto value) { return 0.25; });
 
-    EXPECT_EQ(0.25, match_res);
+    ASSERT_EQ(0.25, match_res);
 }
 
 TEST(Result, MatchOkRef) {
@@ -1313,7 +1404,7 @@ TEST(Result, MatchOkRef) {
         [](const auto &value) { return to_string(*value); },
         [](const auto &value) { return *value; });
 
-    EXPECT_EQ("777", match_res);
+    ASSERT_EQ("777", match_res);
 }
 
 TEST(Result, MatchErrRef) {
@@ -1323,9 +1414,9 @@ TEST(Result, MatchErrRef) {
         [](const auto &value) { return cref(value); },
         [](const auto &value) { return cref(value); });
 
-    EXPECT_TRUE(res.is_err());
-    EXPECT_EQ(&res.get_err_unchecked(), &match_res.get());
-    EXPECT_EQ("World", match_res.get());
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ(&res.get_err_unchecked(), &match_res.get());
+    ASSERT_EQ("World", match_res.get());
 }
 
 TEST(Result, MatchOkOk) {
@@ -1336,8 +1427,8 @@ TEST(Result, MatchOkOk) {
         ptr = move(value);
     });
 
-    EXPECT_TRUE(static_cast<bool>(ptr));
-    EXPECT_EQ(2, *ptr);
+    ASSERT_TRUE(static_cast<bool>(ptr));
+    ASSERT_EQ(2, *ptr);
 }
 
 TEST(Result, MatchOkErr) {
@@ -1348,7 +1439,7 @@ TEST(Result, MatchOkErr) {
         ptr = move(value);
     });
 
-    EXPECT_FALSE(static_cast<bool>(ptr));
+    ASSERT_FALSE(static_cast<bool>(ptr));
 }
 
 TEST(Result, MatchOkRefOk) {
@@ -1359,9 +1450,9 @@ TEST(Result, MatchOkRefOk) {
         value = *res_value;
     });
 
-    EXPECT_EQ(2, value);
-    EXPECT_TRUE(res.is_ok());
-    EXPECT_EQ(2, *res.get_unchecked());
+    ASSERT_EQ(2, value);
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(2, *res.get_unchecked());
 }
 
 TEST(Result, MatchOkRefErr) {
@@ -1372,9 +1463,9 @@ TEST(Result, MatchOkRefErr) {
         value = *res_value;
     });
 
-    EXPECT_EQ(7, value);
-    EXPECT_TRUE(res.is_err());
-    EXPECT_EQ("Hello", *res.get_err_unchecked());
+    ASSERT_EQ(7, value);
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Hello", *res.get_err_unchecked());
 }
 
 TEST(Result, MatchErrOk) {
@@ -1385,7 +1476,7 @@ TEST(Result, MatchErrOk) {
         ptr = move(value);
     });
 
-    EXPECT_FALSE(static_cast<bool>(ptr));
+    ASSERT_FALSE(static_cast<bool>(ptr));
 }
 
 TEST(Result, MatchErrErr) {
@@ -1396,8 +1487,8 @@ TEST(Result, MatchErrErr) {
         ptr = move(value);
     });
 
-    EXPECT_TRUE(static_cast<bool>(ptr));
-    EXPECT_EQ("Hello", *ptr);
+    ASSERT_TRUE(static_cast<bool>(ptr));
+    ASSERT_EQ("Hello", *ptr);
 }
 
 TEST(Result, MatchErrRefOk) {
@@ -1408,9 +1499,9 @@ TEST(Result, MatchErrRefOk) {
         value = *res_value;
     });
 
-    EXPECT_EQ("World", value);
-    EXPECT_TRUE(res.is_ok());
-    EXPECT_EQ(2, *res.get_unchecked());
+    ASSERT_EQ("World", value);
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(2, *res.get_unchecked());
 }
 
 TEST(Result, MatchErrRefErr) {
@@ -1421,30 +1512,30 @@ TEST(Result, MatchErrRefErr) {
         value = *res_value;
     });
 
-    EXPECT_EQ("Hello", value);
-    EXPECT_TRUE(res.is_err());
-    EXPECT_EQ("Hello", *res.get_err_unchecked());
+    ASSERT_EQ("Hello", value);
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Hello", *res.get_err_unchecked());
 }
 
 TEST(Result, GetUnchecked) {
     const Result<int, string> res = Ok(7);
 
-    EXPECT_TRUE(res.is_ok());
-    EXPECT_EQ(7, res.get_unchecked());
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(7, res.get_unchecked());
 }
 
 TEST(Result, GetErrUnchecked) {
     const Result<int, string> res = Err(string{"Hello"});
 
-    EXPECT_TRUE(res.is_err());
-    EXPECT_EQ("Hello", res.get_err_unchecked());
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Hello", res.get_err_unchecked());
 }
 
 TEST(Result, UnwrapUnchecked) {
     int x = 7;
     Result<int &, int> res = Ok(ref(x));
 
-    EXPECT_TRUE(res.is_ok());
+    ASSERT_TRUE(res.is_ok());
 
     // to show that it returns reference
     static_assert(is_same<
@@ -1452,16 +1543,16 @@ TEST(Result, UnwrapUnchecked) {
         int &>::value,
         "Result::UnwrapUnchecked does not return reference directly!");
 
-    EXPECT_EQ(7, move(res).unwrap_unchecked());
+    ASSERT_EQ(7, move(res).unwrap_unchecked());
 }
 
 TEST(Result, UnwrapErrUnchecked) {
     Result<string, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
-    EXPECT_TRUE(res.is_err());
+    ASSERT_TRUE(res.is_err());
 
     // to prove that the pointer can move
     auto err_ptr = move(res).unwrap_err_unchecked();
-    EXPECT_EQ("Hello", *err_ptr);
+    ASSERT_EQ("Hello", *err_ptr);
 }
 
 TEST(Macro, Let) {
@@ -1476,14 +1567,14 @@ TEST(Macro, Let) {
 
     {
         const auto res = fn(true);
-        EXPECT_TRUE(res.is_ok());
-        EXPECT_EQ(3, res.get_unchecked());
+        ASSERT_TRUE(res.is_ok());
+        ASSERT_EQ(3, res.get_unchecked());
     }
 
     {
         const auto res = fn(false);
-        EXPECT_TRUE(res.is_err());
-        EXPECT_EQ("Hello", res.get_err_unchecked());
+        ASSERT_TRUE(res.is_err());
+        ASSERT_EQ("Hello", res.get_err_unchecked());
     }
 }
 
@@ -1500,14 +1591,14 @@ TEST(Macro, LetMut) {
 
     {
         const auto res = fn(true);
-        EXPECT_TRUE(res.is_ok());
-        EXPECT_EQ(13, res.get_unchecked());
+        ASSERT_TRUE(res.is_ok());
+        ASSERT_EQ(13, res.get_unchecked());
     }
 
     {
         const auto res = fn(false);
-        EXPECT_TRUE(res.is_err());
-        EXPECT_EQ("Hello", res.get_err_unchecked());
+        ASSERT_TRUE(res.is_err());
+        ASSERT_EQ("Hello", res.get_err_unchecked());
     }
 }
 
@@ -1525,15 +1616,15 @@ TEST(Macro, LetRef) {
 
     {
         const auto res = fn(true);
-        EXPECT_TRUE(res.is_ok());
-        EXPECT_EQ(VAL, res.get_unchecked());
-        EXPECT_EQ(&VAL, &res.get_unchecked());
+        ASSERT_TRUE(res.is_ok());
+        ASSERT_EQ(VAL, res.get_unchecked());
+        ASSERT_EQ(&VAL, &res.get_unchecked());
     }
 
     {
         const auto res = fn(false);
-        EXPECT_TRUE(res.is_err());
-        EXPECT_EQ("Hello", res.get_err_unchecked());
+        ASSERT_TRUE(res.is_err());
+        ASSERT_EQ("Hello", res.get_err_unchecked());
     }
 }
 
@@ -1552,15 +1643,15 @@ TEST(Macro, LetMutRef) {
 
     {
         const auto res = fn(true);
-        EXPECT_TRUE(res.is_ok());
-        EXPECT_EQ(17, res.get_unchecked());
-        EXPECT_EQ(&VAL, &res.get_unchecked());
+        ASSERT_TRUE(res.is_ok());
+        ASSERT_EQ(17, res.get_unchecked());
+        ASSERT_EQ(&VAL, &res.get_unchecked());
     }
 
     {
         const auto res = fn(false);
-        EXPECT_TRUE(res.is_err());
-        EXPECT_EQ("Hello", res.get_err_unchecked());
+        ASSERT_TRUE(res.is_err());
+        ASSERT_EQ("Hello", res.get_err_unchecked());
     }
 }
 

@@ -400,8 +400,8 @@ namespace rustfp {
     Option<T>::Option(details::SomeImpl<Tx> &&value) :
         opt(std::move(value).move()) {
 
-        static_assert(std::is_convertible<Tx, T>::value,
-            "Tx is not convertible to T in value constructor of Option<T>");
+        static_assert(std::is_constructible<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
+            "T cannot be constructed from Tx");
     }
 
     template <class T>
@@ -417,11 +417,8 @@ namespace rustfp {
     Option<T>::Option(const Option<Tx> &rhs) :
         opt(rhs.opt) {
 
-        static_assert(std::is_copy_constructible<Tx>::value,
-            "Tx is not copy constructible");
-
-        static_assert(std::is_convertible<Tx, T>::value,
-            "Tx is not convertible to T in copy constructor of Option<T>");
+        static_assert(std::is_constructible<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
+            "T cannot be constructed from Tx");
     }
 
     template <class T>
@@ -437,11 +434,8 @@ namespace rustfp {
     Option<T>::Option(Option<Tx> &&rhs) :
         opt(std::move(rhs.opt)) {
 
-        static_assert(std::is_move_constructible<Tx>::value,
-            "Tx is not move constructible");
-
-        static_assert(std::is_convertible<Tx, T>::value,
-            "Tx is not convertible to T in move constructor of Option<T>");
+        static_assert(std::is_constructible<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
+            "T cannot be constructed from Tx");
 
         rhs.opt.reset();
     }
@@ -455,8 +449,8 @@ namespace rustfp {
     template <class T>
     template <class Tx>
     auto Option<T>::operator=(details::SomeImpl<Tx> &&value) -> Option<T> & {
-        static_assert(std::is_convertible<Tx, T>::value,
-            "Tx is not convertible to T in value assignment of Option<T>");
+        static_assert(std::is_assignable<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
+            "T is not assignable from Tx");
 
         opt = std::move(value).move();
         return *this;
@@ -473,11 +467,8 @@ namespace rustfp {
     template <class T>
     template <class Tx>
     auto Option<T>::operator=(const Option<Tx> &rhs) -> Option<T> & {
-        static_assert(std::is_copy_assignable<Tx>::value,
-            "Tx is not copy assignable");
-
-        static_assert(std::is_convertible<Tx, T>::value,
-            "Tx is not convertible to T in copy assignment of Option<T>");
+        static_assert(std::is_assignable<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
+            "T is not assignable from Tx");
 
         opt = rhs.opt;
         return *this;
@@ -485,7 +476,8 @@ namespace rustfp {
 
     template <class T>
     auto Option<T>::operator=(Option<T> &&rhs) -> Option<T> & {
-        static_assert(std::is_move_assignable<T>::value, "T is not move assignable");
+        static_assert(std::is_move_assignable<reverse_decay_t<T>>::value,
+            "T is not move assignable");
 
         opt = std::move(rhs.opt);
         return *this;
@@ -494,11 +486,8 @@ namespace rustfp {
     template <class T>
     template <class Tx>
     auto Option<T>::operator=(Option<Tx> &&rhs) -> Option<T> & {
-        static_assert(std::is_move_constructible<Tx>::value,
-            "Tx is not move constructible");
-
-        static_assert(std::is_convertible<Tx, T>::value,
-            "Tx is not convertible to T in move assignment of Option<T>");
+        static_assert(std::is_assignable<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
+            "T is not assignable from Tx");
 
         opt = std::move(rhs.opt);
         return *this;
