@@ -1,5 +1,6 @@
 #pragma once
 
+#include "option.h"
 #include "traits.h"
 #include "util.h"
 
