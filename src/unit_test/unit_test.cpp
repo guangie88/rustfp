@@ -15,6 +15,7 @@
 #include "rustfp/iter.h"
 #include "rustfp/let.h"
 #include "rustfp/map.h"
+#include "rustfp/max.h"
 #include "rustfp/min.h"
 #include "rustfp/once.h"
 #include "rustfp/option.h"
@@ -63,6 +64,8 @@ using rustfp::into_iter;
 using rustfp::iter;
 using rustfp::iter_mut;
 using rustfp::map;
+using rustfp::max;
+using rustfp::max_by;
 using rustfp::min;
 using rustfp::min_by;
 using rustfp::once;
@@ -694,6 +697,94 @@ TEST_F(Ops, Map) {
         });
 
     ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 0.5, sum);
+}
+
+TEST_F(Ops, MaxNone) {
+    static const vector<int> VALS;
+    const auto max_opt = iter(VALS) | max();
+
+    ASSERT_TRUE(max_opt.is_none());
+}
+
+TEST_F(Ops, MaxSomeEasy) {
+    static const vector<string> VALS{"zzz", "hello", "world"};
+    const auto max_opt = iter(VALS) | max();
+
+    ASSERT_TRUE(max_opt.is_some());
+    ASSERT_EQ("zzz", max_opt.get_unchecked());
+}
+
+TEST_F(Ops, MaxSomeHard) {
+    static const vector<int> VALS{-5, 1, 777, 123, 25, 0, 777, 777};
+
+    // hand coded max to get the address eventually
+    ASSERT_TRUE(!VALS.empty());
+
+    size_t max_index = 0;
+
+    for (size_t i = 1; i < VALS.size(); ++i) {
+        if (VALS[i] > VALS[max_index]) {
+            max_index = i;
+        }
+    }
+
+    // found the value and referencing it
+    const auto &max_val = VALS[max_index];
+    const auto max_opt = iter(VALS) | max();
+
+    ASSERT_TRUE(max_opt.is_some());
+    ASSERT_EQ(777, max_opt.get_unchecked());
+    ASSERT_EQ(&max_val, &max_opt.get_unchecked());
+}
+
+TEST_F(Ops, MaxByNone) {
+    static const vector<int> VALS;
+
+    const auto max_opt = iter(VALS)
+        | max_by([](const auto lhs, const auto rhs) {
+            return lhs >= rhs;
+        });
+
+    ASSERT_TRUE(max_opt.is_none());
+}
+
+TEST_F(Ops, MaxBySomeEasy) {
+    static const vector<int> VALS{3, 1, 2};
+
+    const auto max_opt = iter(VALS)
+        | max_by([](const auto lhs, const auto rhs) {
+            return lhs >= rhs;
+        });
+
+    ASSERT_TRUE(max_opt.is_some());
+    ASSERT_EQ(3, max_opt.get_unchecked());
+}
+
+TEST_F(Ops, MaxBySomeHard) {
+    static const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
+
+    // hand coded max to get the address eventually
+    ASSERT_TRUE(!VALS.empty());
+
+    size_t max_index = 0;
+
+    for (size_t i = 1; i < VALS.size(); ++i) {
+        if (VALS[i] > VALS[max_index]) {
+            max_index = i;
+        }
+    }
+
+    // found the value and referencing it
+    const auto &max_val = VALS[max_index];
+
+    const auto max_opt = iter(VALS)
+        | max_by([](const auto lhs, const auto rhs) {
+            return lhs >= rhs;
+        });
+
+    ASSERT_TRUE(max_opt.is_some());
+    ASSERT_EQ(9, max_opt.get_unchecked());
+    ASSERT_EQ(&max_val, &max_opt.get_unchecked());
 }
 
 TEST_F(Ops, MinNone) {
