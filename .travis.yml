@@ -20,10 +20,17 @@ before_install:
 - cd "${TRAVIS_BUILD_DIR}"
 
 script:
-- python waf configure
-- python waf debug
-- python waf
+- mkdir build-debug
+- cd build-debug
+- cmake .. -DCMAKE_BUILD_TYPE=Debug
+- make
+- cd ..
+- mkdir build-release
+- cd build-release
+- cmake .. -DCMAKE_BUILD_TYPE=Release
+- make
+- cd ..
 
 after_success:
 - doxygen Doxyfile
-- ./build/debug/bin/unit_test-debug
+- ./build-debug/bin/unit_test
