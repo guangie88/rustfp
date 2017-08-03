@@ -43,4 +43,9 @@ script:
 
 after_success:
 - doxygen Doxyfile
+
+# run unit test and code coverage
 - ./build-debug/bin/unit_test
+- gcov ./build-debug/CMakeFiles/unit_test.dir/src/unit_test/unit_test.cpp.gcno
+- bash <(curl -s https://codecov.io/bash)
+
