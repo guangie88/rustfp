@@ -1141,6 +1141,29 @@ TEST(Option, OkOrElseNone) {
     ASSERT_EQ("Hello", res.get_err_unchecked());
 }
 
+TEST(Option, OkOrElseRefOk) {
+    const string ok_value = "Okay";
+    const string err_value = "Error";
+
+    const auto res = Some(cref(ok_value))
+        .ok_or_else([&err_value] { return cref(err_value); });
+
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ("Okay", res.get_unchecked());
+    ASSERT_EQ(&ok_value, &res.get_unchecked());
+}
+
+TEST(Option, OkOrElseRefErr) {
+    const string err_value = "Error";
+
+    const auto res = Option<string>(None)
+        .ok_or_else([&err_value] { return cref(err_value); });
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Error", res.get_err_unchecked());
+    ASSERT_EQ(&err_value, &res.get_err_unchecked());
+}
+
 TEST(Option, OrElseSome) {
     const auto opt = Some(7)
         .or_else([] { return None; });
@@ -1326,6 +1349,13 @@ TEST(Option, OptIfTrue) {
 
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, OptIfFalse) {
+    const auto opt = opt_if(false,
+        [] { return 0; });
+
+    ASSERT_TRUE(opt.is_none());
 }
 
 // result

@@ -195,7 +195,7 @@ namespace rustfp {
          */
         template <class FnToEx>
         auto ok_or_else(FnToEx &&fn) &&
-            -> Result<T, typename std::result_of_t<FnToEx()>>;
+            -> Result<T, special_decay_t<std::result_of_t<FnToEx()>>>;
 
         /**
          * Returns true if the Option instance contains an item.
@@ -534,9 +534,11 @@ namespace rustfp {
 
     template <class T>
     template <class FnToEx>
-    auto Option<T>::ok_or_else(FnToEx &&fn) && -> Result<T, typename std::result_of_t<FnToEx()>> {
+    auto Option<T>::ok_or_else(FnToEx &&fn) &&
+        -> Result<T, special_decay_t<std::result_of_t<FnToEx()>>> {
+
         if (is_some()) {
-            return Ok(std::move(*this).unwrap_unchecked());
+            return Ok(reverse_decay(std::move(*this).unwrap_unchecked()));
         }
         else {
             return Err(fn());
