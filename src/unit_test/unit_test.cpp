@@ -62,6 +62,7 @@ using rustfp::fold;
 using rustfp::for_each;
 using rustfp::into_iter;
 using rustfp::iter;
+using rustfp::iter_begin_end;
 using rustfp::iter_mut;
 using rustfp::map;
 using rustfp::max;
@@ -91,6 +92,7 @@ using std::cend;
 using std::cout;
 using std::cref;
 using std::deque;
+using std::extent;
 using std::forward;
 using std::is_same;
 using std::list;
@@ -343,6 +345,82 @@ TEST_F(Ops, IntoIter) {
     ASSERT_TRUE(opt2.is_some());
     auto val2(move(opt2).unwrap_unchecked());
     ASSERT_EQ(2, *val2);
+
+    ASSERT_TRUE(it.next().is_none());
+}
+
+TEST_F(Ops, IterBeginEndVec) {
+    vector<unique_ptr<int>> v;
+    v.push_back(make_unique<int>(0));
+    v.push_back(make_unique<int>(1));
+    v.push_back(make_unique<int>(2));
+
+    auto it = iter_begin_end(v.begin(), v.cend());
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(it)>::Item,
+        const unique_ptr<int> &>::value,
+        "Ops::IterBeginEndVec failed IterBeginEnd type checking!");
+
+    auto opt0 = it.next();
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(opt0)>::some_t,
+        const unique_ptr<int> &>::value,
+        "Ops::IterBeginEndVec failed Option type checking!");
+
+    ASSERT_TRUE(opt0.is_some());
+    const auto &val0 = opt0.get_unchecked();
+    ASSERT_EQ(0, *val0);
+
+    auto opt1 = it.next();
+    ASSERT_TRUE(opt1.is_some());
+    const auto &val1 = opt1.get_unchecked();
+    ASSERT_EQ(1, *val1);
+
+    auto opt2 = it.next();
+    ASSERT_TRUE(opt2.is_some());
+    const auto &val2 = opt2.get_unchecked();
+    ASSERT_EQ(2, *val2);
+
+    ASSERT_TRUE(it.next().is_none());
+}
+
+TEST_F(Ops, IterBeginEndPtrs) {
+    // note the length is 4 since there is null character
+    static constexpr char VALUES[] = {"bad"};
+    auto it = iter_begin_end(VALUES + 0, VALUES + extent<decltype(VALUES)>::value);
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(it)>::Item,
+        const char &>::value,
+        "Ops::IterBeginEndPtrs failed IterBeginEnd type checking!");
+
+    auto opt0 = it.next();
+
+    static_assert(is_same<
+        typename remove_reference_t<decltype(opt0)>::some_t,
+        const char &>::value,
+        "Ops::IterBeginEndPtrs failed Option type checking!");
+
+    ASSERT_TRUE(opt0.is_some());
+    const auto &val0 = opt0.get_unchecked();
+    ASSERT_EQ('b', val0);
+
+    auto opt1 = it.next();
+    ASSERT_TRUE(opt1.is_some());
+    const auto &val1 = opt1.get_unchecked();
+    ASSERT_EQ('a', val1);
+
+    auto opt2 = it.next();
+    ASSERT_TRUE(opt2.is_some());
+    const auto &val2 = opt2.get_unchecked();
+    ASSERT_EQ('d', val2);
+
+    auto opt3 = it.next();
+    ASSERT_TRUE(opt3.is_some());
+    const auto &val3 = opt3.get_unchecked();
+    ASSERT_EQ('\0', val3);
 
     ASSERT_TRUE(it.next().is_none());
 }
