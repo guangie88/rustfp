@@ -43,7 +43,7 @@ namespace rustfp {
                         auto rhs = reverse_decay(std::move(next_opt).unwrap_unchecked());
 
                         // Some will automatically perform special decay
-                        if (cmp(lhs, rhs)) {
+                        if (cmp(special_decay(lhs), special_decay(rhs))) {
                             max_opt = Some(lhs);
                         } else {
                             max_opt = Some(rhs);
