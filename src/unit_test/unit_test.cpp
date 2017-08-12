@@ -398,7 +398,7 @@ TEST_F(Ops, IterBeginEndVec) {
 
 TEST_F(Ops, IterBeginEndPtrs) {
     // note the length is 4 since there is null character
-    static constexpr char VALUES[] = {"bad"};
+    const char VALUES[] = {"bad"};
     auto it = iter_begin_end(VALUES + 0, VALUES + extent<decltype(VALUES)>::value);
 
     static_assert(is_same<
@@ -713,14 +713,12 @@ TEST_F(Ops, CollectVecRef) {
 }
 
 TEST_F(Ops, CollectMapVecSum) {
-    static constexpr auto COLLECT_MAP_VEC_SUM_ADD = 0.5;
-
     const auto dup_vec = range(0, int_vec.size())
         | map([](const auto value) {
             static_assert(is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return value + COLLECT_MAP_VEC_SUM_ADD;
+            return value + 0.5;
         })
         | collect<vector<double>>();
 
@@ -737,7 +735,7 @@ TEST_F(Ops, CollectMapVecSum) {
             static_assert(is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return acc + value + COLLECT_MAP_VEC_SUM_ADD;
+            return acc + value + 0.5;
         });
 
     ASSERT_EQ(expected_sum, fold_sum);
@@ -833,18 +831,16 @@ TEST_F(Ops, FilterMap) {
 }
 
 TEST_F(Ops, FindSome) {
-    static constexpr auto FIND_SOME_ACC = 5;
-
     const auto find_some_opt = iter(int_vec)
         | find([](const auto value) {
             static_assert(is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return value == FIND_SOME_ACC;
+            return value == 5;
         });
 
     ASSERT_TRUE(find_some_opt.is_some());
-    ASSERT_EQ(FIND_SOME_ACC, find_some_opt.get_unchecked());
+    ASSERT_EQ(5, find_some_opt.get_unchecked());
 }
 
 TEST_F(Ops, FindNone) {
@@ -875,14 +871,12 @@ TEST_F(Ops, FindMapSome) {
 }
 
 TEST_F(Ops, FindMapNone) {
-    static constexpr auto FIND_MAP_NONE_VAL = -1;
-
     const auto find_none_opt = iter(int_vec)
         | find_map([](const auto value) {
             static_assert(is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return value == FIND_MAP_NONE_VAL
+            return value == -1 
                 ? Some(value)
                 : None;
         });
@@ -891,12 +885,10 @@ TEST_F(Ops, FindMapNone) {
 }
 
 TEST_F(Ops, Fold) {
-    static constexpr int FOLD_ACC = 10;
-
     const auto fold_sum = iter(int_vec)
-        | fold(FOLD_ACC, plus<int>());
+        | fold(10, plus<int>());
 
-    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), FOLD_ACC), fold_sum);
+    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 10), fold_sum);
 }
 
 TEST_F(Ops, ForEach) {
@@ -1146,12 +1138,10 @@ TEST_F(Ops, MinBySomeHard) {
 }
 
 TEST_F(Ops, Range) {
-    static constexpr int RANGE_ACC = 5;
-
     const auto sum = range(0, 6)
-        | fold(RANGE_ACC, plus<int>());
+        | fold(5, plus<int>());
 
-    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), RANGE_ACC), sum);
+    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 5), sum);
 }
 
 TEST_F(Ops, SkipWithin) {
@@ -1260,10 +1250,6 @@ TEST_F(ComplexOps, FilterMapFold) {
 }
 
 TEST_F(ComplexOps, FilterMapFind) {
-    // .5 is a easily representable value in mantissa
-    // so that the floating float comparison can directly compare the values
-    static constexpr auto FILTER_MAP_FIND_VAL = 34.5;
-
     const auto find_opt = range(1, 100)
         | filter([](const auto value) {
             static_assert(is_same<decltype(value), const int>::value,
@@ -1275,17 +1261,19 @@ TEST_F(ComplexOps, FilterMapFind) {
             static_assert(is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
+            // .5 is a easily representable value in mantissa
+            // so that the floating float comparison can directly compare the values
             return value + 0.5;
         })
         | find([](const auto value) {
             static_assert(is_same<decltype(value), const double>::value,
                 "value is expected to be of const double type");
 
-            return value == FILTER_MAP_FIND_VAL;
+            return value == 34.5;
         });
 
     ASSERT_TRUE(find_opt.is_some());
-    ASSERT_EQ(FILTER_MAP_FIND_VAL, find_opt.get_unchecked());
+    ASSERT_EQ(34.5, find_opt.get_unchecked());
 }
 
 TEST_F(ComplexOps, ZipRefMapFold) {
