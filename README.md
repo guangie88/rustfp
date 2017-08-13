@@ -29,7 +29,7 @@ int main() {
             // v is of const int & type
             return std::to_string(v);
         })
-        | collect<std::vector<std::string>>();
+        | rustfp::collect<std::vector<std::string>>();
 
     assert(v_str[0] == "0");
     assert(v_str[1] == "1");
