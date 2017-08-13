@@ -1,5 +1,5 @@
 coverage:
   ignore:
-   - "src/akrzemi1/*"
+   - "src/optional.hpp"
    - "src/mapbox/*"
    - "src/unit_test/*"

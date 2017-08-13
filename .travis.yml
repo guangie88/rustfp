@@ -30,6 +30,7 @@ before_install:
 - cd "${TRAVIS_BUILD_DIR}"
 
 script:
+- git submodule update --init --recursive
 - mkdir build-debug
 - cd build-debug
 - cmake .. -DCMAKE_BUILD_TYPE=Debug
