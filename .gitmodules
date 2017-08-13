@@ -1,3 +1,6 @@
 [submodule "deps/Optional"]
 	path = deps/Optional
 	url = https://github.com/akrzemi1/Optional.git
+[submodule "deps/variant"]
+	path = deps/variant
+	url = https://github.com/mapbox/variant.git
