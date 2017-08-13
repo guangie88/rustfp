@@ -11,7 +11,7 @@
 #include "traits.h"
 #include "unit.h"
 
-#include "akrzemi1/optional.hpp"
+#include "optional.hpp"
 
 #include <type_traits>
 #include <utility>
