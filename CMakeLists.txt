@@ -15,6 +15,12 @@ set(BIN_DIRS unit_test)
 set(USE_STATIC OFF CACHE BOOL "Uses only external static libraries for linking")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Builds all non-executable source directories as shared libraries")
 
+# deps paths
+# overrides external dependencies
+include_directories(deps/googletest/googletest/include)
+add_subdirectory(deps/googletest/googletest)
+set(GTEST_LIB debug gtest optimized gtest)
+
 # libraries finding
 if(${USE_STATIC})
   if(MSVC)
@@ -27,10 +33,9 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-find_library(GTEST_LIB_DEBUG NAMES gtest REQUIRED)
-find_library(GTEST_LIB_RELEASE NAMES gtest REQUIRED)
-
-set(GTEST_LIB debug ${GTEST_LIB_DEBUG} optimized ${GTEST_LIB_RELEASE})
+# find_library(GTEST_LIB_DEBUG NAMES gtest REQUIRED)
+# find_library(GTEST_LIB_RELEASE NAMES gtest REQUIRED)
+# set(GTEST_LIB debug ${GTEST_LIB_DEBUG} optimized ${GTEST_LIB_RELEASE})
 
 # project to libraries mapping
 set(PROJ_LIBS_unit_test GTEST_LIB)
@@ -93,6 +98,6 @@ foreach(SRC_DIR ${SRC_DIRS})
     endif()
 
     target_include_directories(${PROJ_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/${SRC_ROOT_DIR})
-    target_link_libraries(${PROJ_NAME} ${LOCAL_PROJ_LIBS_${PROJ_NAME}} ${SUBST_PROJ_LIBS} Threads::Threads)
+    target_link_libraries(${PROJ_NAME} ${LOCAL_PROJ_LIBS_${PROJ_NAME}} ${SUBST_PROJ_LIBS} ${GTEST_LIB} Threads::Threads)
   endif()
 endforeach()

@@ -10,7 +10,7 @@ before_install:
 - sudo apt-get install software-properties-common python-software-properties -y
 - sudo add-apt-repository ppa:ubuntu-toolchain-r/test -y
 - sudo apt-get update -qq
-- sudo apt-get install gcc g++ gcc-5 g++-5 python libgtest-dev doxygen curl lcov wget -y
+- sudo apt-get install gcc g++ gcc-5 g++-5 python doxygen curl wget -y
 - sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 100
 - sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-5 100
 
@@ -21,12 +21,6 @@ before_install:
 - ./configure
 - make
 - sudo make install
-
-- cd /usr/src/gtest
-- sudo cmake . -DBUILD_SHARED_LIBS=ON
-- sudo make
-- sudo mv libgtest*.so /usr/local/lib/
-- sudo ldconfig
 - cd "${TRAVIS_BUILD_DIR}"
 
 script:
