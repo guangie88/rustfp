@@ -2256,6 +2256,29 @@ TEST(Macro, LetMutRef) {
     }
 }
 
+TEST(Macro, RetIfErr) {
+    const auto fn = [](const bool flag) -> Result<int, string> {
+        auto res = flag
+            ? Result<double, string>(Ok(3.14))
+            : Err(string("Hello"));
+
+        ret_if_err(res);
+        return Ok(0);
+    };
+
+    {
+        const auto res = fn(true);
+        ASSERT_TRUE(res.is_ok());
+        ASSERT_EQ(0, res.get_unchecked());
+    }
+
+    {
+        const auto res = fn(false);
+        ASSERT_TRUE(res.is_err());
+        ASSERT_EQ("Hello", res.get_err_unchecked());
+    }
+}
+
 int main(int argc, char * argv[]) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
