@@ -1,5 +1,6 @@
 # `rustfp`
 [![Build Status](https://travis-ci.org/guangie88/rustfp.svg?branch=master)](https://travis-ci.org/guangie88/rustfp)
+[![Build status](https://ci.appveyor.com/api/projects/status/gx7vmcs5vlar60m6/branch/master?svg=true)](https://ci.appveyor.com/project/guangie88/rustfp/branch/master)
 [![codecov](https://codecov.io/gh/guangie88/rustfp/branch/master/graph/badge.svg)](https://codecov.io/gh/guangie88/rustfp)
 
 ## Overview
