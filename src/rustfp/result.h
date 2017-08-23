@@ -45,10 +45,12 @@ namespace rustfp {
         Result(details::ErrImpl<Ex> &&err);
 
         template <class FnTToTx>
-        auto map(FnTToTx &&fn) && -> Result<std::result_of_t<FnTToTx(T &&)>, E>;
+        auto map(FnTToTx &&fn) && ->
+            Result<special_decay_t<std::result_of_t<FnTToTx(T &&)>>, E>;
 
         template <class FnEToEx>
-        auto map_err(FnEToEx &&fn) && -> Result<T, std::result_of_t<FnEToEx(E &&)>>;
+        auto map_err(FnEToEx &&fn) && ->
+            Result<T, special_decay_t<std::result_of_t<FnEToEx(E &&)>>>;
 
         template <class FnTToResTx>
         auto and_then(FnTToResTx &&fn) &&
@@ -212,7 +214,9 @@ namespace rustfp {
 
     template <class T, class E>
     template <class FnTToTx>
-    auto Result<T, E>::map(FnTToTx &&fn) && -> Result<std::result_of_t<FnTToTx(T &&)>, E> {
+    auto Result<T, E>::map(FnTToTx &&fn) && ->
+        Result<special_decay_t<std::result_of_t<FnTToTx(T &&)>>, E> {
+
         if (is_ok()) {
             return Ok(fn(details::move_unchecked(std::move(value_err))));
         }
@@ -223,7 +227,9 @@ namespace rustfp {
 
     template <class T, class E>
     template <class FnEToEx>
-    auto Result<T, E>::map_err(FnEToEx &&fn) && -> Result<T, std::result_of_t<FnEToEx(E &&)>> {
+    auto Result<T, E>::map_err(FnEToEx &&fn) && ->
+        Result<T, special_decay_t<std::result_of_t<FnEToEx(E &&)>>> {
+
         if (is_err()) {
             return Err(fn(details::move_err_unchecked(std::move(value_err))));
         }

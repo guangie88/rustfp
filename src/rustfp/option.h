@@ -154,7 +154,8 @@ namespace rustfp {
          * @see is_some
          */
         template <class FnTToTx>
-        auto map(FnTToTx &&fn) && -> Option<std::result_of_t<FnTToTx(T &&)>>;
+        auto map(FnTToTx &&fn) && ->
+            Option<special_decay_t<std::result_of_t<FnTToTx(T &&)>>>;
 
         /**
          * Performs a map of current item type to a new Option with
@@ -501,7 +502,9 @@ namespace rustfp {
 
     template <class T>
     template <class FnTToTx>
-    auto Option<T>::map(FnTToTx &&fn) && -> Option<std::result_of_t<FnTToTx(T &&)>> {
+    auto Option<T>::map(FnTToTx &&fn) && ->
+        Option<special_decay_t<std::result_of_t<FnTToTx(T &&)>>> {
+
         if (is_some()) {
             // move is required because *this is lvalue reference
             return Some(fn(std::move(*this).unwrap_unchecked()));
