@@ -1,3 +1,10 @@
+/**
+ * Contains the | operation which is the driving operation
+ * to apply all the Iterator operations on the Iterator.
+ * @author Chen Weiguang
+ * @version 0.1.0
+ */
+
 #pragma once
 
 #include <type_traits>

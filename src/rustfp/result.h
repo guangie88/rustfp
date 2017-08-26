@@ -1,5 +1,6 @@
 /**
- * Contains Rust Result enum implementation.
+ * Contains most of the Rust Result enum implementation.
+ * Rust Result: https://doc.rust-lang.org/std/result/enum.Result.html
  * @author Chen Weiguang
  * @version 0.1.0
  */

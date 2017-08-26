@@ -1,3 +1,11 @@
+/**
+ * Contains forwarding declaration for Option.
+ * Only for use by Result.
+ * Rust Option: https://doc.rust-lang.org/std/option/enum.Option.html
+ * @author Chen Weiguang
+ * @version 0.1.0
+ */
+
 #pragma once
 
 #include "traits.h"

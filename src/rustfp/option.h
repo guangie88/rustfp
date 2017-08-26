@@ -1,5 +1,6 @@
 /**
- * Contains Rust Option enum implementation
+ * Contains most of the Rust Option enum implementation.
+ * Rust Option: https://doc.rust-lang.org/std/option/enum.Option.html
  * @author Chen Weiguang
  * @version 0.1.0
  */

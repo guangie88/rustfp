@@ -1,3 +1,9 @@
+/**
+ * Contains type transformations used within the namespace.
+ * @author Chen Weiguang
+ * @version 0.1.0
+ */
+
 #pragma once
 
 #include <functional>

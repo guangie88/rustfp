@@ -1,3 +1,11 @@
+/**
+ * Contains forwarding declaration for Result.
+ * Only for use by Result.
+ * Rust Result: https://doc.rust-lang.org/std/result/enum.Result.html
+ * @author Chen Weiguang
+ * @version 0.1.0
+ */
+
 #pragma once
 
 #include "traits.h"

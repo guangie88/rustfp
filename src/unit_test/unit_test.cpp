@@ -10,6 +10,7 @@
 #include "rustfp/filter_map.h"
 #include "rustfp/find.h"
 #include "rustfp/find_map.h"
+#include "rustfp/flat_map.h"
 #include "rustfp/fold.h"
 #include "rustfp/for_each.h"
 #include "rustfp/iter.h"
@@ -28,6 +29,7 @@
 #include "gtest/gtest.h"
 
 #include <algorithm>
+#include <array>
 #include <functional>
 #include <iostream>
 #include <iterator>
@@ -58,6 +60,7 @@ using rustfp::filter;
 using rustfp::filter_map;
 using rustfp::find;
 using rustfp::find_map;
+using rustfp::flat_map;
 using rustfp::fold;
 using rustfp::for_each;
 using rustfp::into_iter;
@@ -87,6 +90,7 @@ using rustfp::Err;
 
 // std
 using std::accumulate;
+using std::array;
 using std::cbegin;
 using std::cend;
 using std::cout;
@@ -882,6 +886,37 @@ TEST_F(Ops, FindMapNone) {
         });
 
     ASSERT_TRUE(find_none_opt.is_none());
+}
+
+TEST_F(Ops, FlatMapEmpty) {
+    auto vv = vector<vector<int>>{};
+
+    const auto v_out = into_iter(move(vv))
+        | flat_map([](auto &&v) {
+            static_assert(is_same<decltype(v), vector<int> &&>::value,
+                "v is expected to be of vector<int> && type");
+                
+            return move(v);
+        })
+        | collect<vector<int>>();
+
+    ASSERT_TRUE(v_out.empty());
+}
+
+TEST_F(Ops, FlatMapSimple) {
+    auto vv = vector<vector<int>>{
+        {}, {0, 1, 2}, {3}, {}, {4, 5}};
+
+    const auto v_out = into_iter(move(vv))
+        | flat_map([](auto &&v) {
+            static_assert(is_same<decltype(v), vector<int> &&>::value,
+                "v is expected to be of vector<int> && type");
+
+            return move(v);
+        })
+        | collect<vector<int>>();
+
+    ASSERT_TRUE(details::no_mismatch_values(array<int, 6>{0, 1, 2, 3, 4, 5}, v_out));
 }
 
 TEST_F(Ops, Fold) {

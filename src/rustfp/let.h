@@ -1,3 +1,11 @@
+/**
+ * Contains C-style macros to perform fast failing with syntactical convenience.
+ * Similar to the try-catch / ? operator in Rust.
+ * Rust try-catch: https://doc.rust-lang.org/std/macro.try.html
+ * @author Chen Weiguang
+ * @version 0.1.0
+ */
+
 #pragma once
 
 #include <utility>

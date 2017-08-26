@@ -1,5 +1,6 @@
 /**
- * Contains functional Unit implementation
+ * Contains functional Unit implementation.
+ * Equivalent to Rust () type.
  * @author Chen Weiguang
  * @version 0.1.0
  */
