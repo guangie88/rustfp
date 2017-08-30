@@ -746,21 +746,29 @@ TEST_F(Ops, CollectMapVecSum) {
 }
 
 TEST_F(Ops, Cycle) {
-    const int copyable_value = 7;
+    const vector<string> vs{"Hello", "World"};
 
-    const auto sum = cycle(cref(copyable_value))
-        | take(1000)
-        | fold(0, [](const auto acc, const auto value) {
-            static_assert(is_same<decltype(acc), const int>::value,
-                "acc is expected to be of const int type");
+    const auto output_vs = iter(vs)
+        | cycle()
+        | take(5)
+        | collect<vector<string>>();
 
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    ASSERT_EQ(5, output_vs.size());
+    ASSERT_EQ("Hello", output_vs[0]);
+    ASSERT_EQ("World", output_vs[1]);
+    ASSERT_EQ("Hello", output_vs[2]);
+    ASSERT_EQ("World", output_vs[3]);
+    ASSERT_EQ("Hello", output_vs[4]);
+}
 
-            return acc + value;
-        });
+TEST_F(Ops, CycleNone) {
+    const vector<string> vs{};
 
-    ASSERT_EQ(7000, sum);
+    const auto output_vs = iter(vs)
+        | cycle()
+        | collect<vector<string>>();
+
+    ASSERT_TRUE(output_vs.empty());
 }
 
 TEST_F(Ops, Once) {
