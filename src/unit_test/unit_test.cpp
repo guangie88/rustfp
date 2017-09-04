@@ -24,6 +24,7 @@
 #include "rustfp/result.h"
 #include "rustfp/skip.h"
 #include "rustfp/take.h"
+#include "rustfp/unit.h"
 #include "rustfp/zip.h"
 
 #include "gtest/gtest.h"
@@ -77,6 +78,9 @@ using rustfp::range;
 using rustfp::skip;
 using rustfp::take;
 using rustfp::zip;
+
+using rustfp::Unit;
+using rustfp::unit_t;
 
 using rustfp::opt_if;
 using rustfp::Option;
@@ -1220,6 +1224,19 @@ TEST_F(Ops, TakeExceed) {
 }
 
 // complex tests
+
+TEST_F(ComplexOps, OnceCycleFindMap) {
+    static constexpr auto MSG = "Hello";
+
+    const auto opt = once(Unit)
+        | cycle()
+        | find_map([](auto) {
+            return Some(MSG);
+        });
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(MSG, opt.get_unchecked());
+}
 
 TEST_F(ComplexOps, ManyIterCollect) {
     vector<unique_ptr<int>> v;

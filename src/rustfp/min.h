@@ -24,7 +24,7 @@ namespace rustfp {
     class MinByOp {
     public:
         template <class Fx>
-        MinByOp(Fx &&f);
+        explicit MinByOp(Fx &&f);
 
         template <class Self>
         auto operator()(Self &&self) && -> Option<typename Self::Item>;

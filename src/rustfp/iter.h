@@ -39,7 +39,7 @@ namespace rustfp {
          * @param input_iterable Immutable reference of container
          * to accept for generate the items.
          */
-        Iter(const StdInputIterable &input_iterable);
+        explicit Iter(const StdInputIterable &input_iterable);
 
         /**
          * Generates the next item from the container.
@@ -75,7 +75,7 @@ namespace rustfp {
          * @param input_iterable Reference of container
          * to accept for generate the items.
          */
-        IterMut(StdInputIterable &input_iterable);
+        explicit IterMut(StdInputIterable &input_iterable);
 
         /**
          * Generates the next item from the container.
@@ -112,7 +112,7 @@ namespace rustfp {
          * @param input_iterable Moved container
          * to accept for generate the moved items.
          */
-        IntoIter(MovedStdInputIterable &&input_iterable);
+        explicit IntoIter(MovedStdInputIterable &&input_iterable);
 
         /**
          * Generates the next item from the container.

@@ -43,7 +43,7 @@ namespace rustfp {
          * @param self rustfp Iter instance
          */
         template <class Selfx>
-        Cloned(Selfx &&self);
+        explicit Cloned(Selfx &&self);
 
         /**
          * Generates the next value of cloned operation.

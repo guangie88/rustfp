@@ -45,7 +45,7 @@ namespace rustfp {
          * @param self rustfp Iter instance
          */
         template <class Selfx>
-        Cycle(Selfx &&self);
+        explicit Cycle(Selfx &&self);
 
         /**
          * Generates the next value of cycle operation.

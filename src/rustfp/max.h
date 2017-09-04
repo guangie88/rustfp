@@ -24,7 +24,7 @@ namespace rustfp {
     class MaxByOp {
     public:
         template <class Fx>
-        MaxByOp(Fx &&f);
+        explicit MaxByOp(Fx &&f);
 
         template <class Self>
         auto operator()(Self &&self) && -> Option<typename Self::Item>;

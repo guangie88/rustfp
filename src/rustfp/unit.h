@@ -12,5 +12,5 @@ namespace rustfp {
     struct unit_t {};
 
     /** Pre-constructed unit value to use for convenience. */
-    const unit_t Unit{};
+    constexpr unit_t Unit{};
 }

@@ -41,7 +41,7 @@ namespace rustfp {
          * @param self rustfp Iter instance
          */
         template <class Selfx>
-        Enumerate(Selfx &&self);
+        explicit Enumerate(Selfx &&self);
 
         /**
          * Generates the next value of enumerate operation.

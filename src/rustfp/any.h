@@ -21,7 +21,7 @@ namespace rustfp {
     class AnyOp {
     public:
         template <class Fx>
-        AnyOp(Fx &&f);
+        explicit AnyOp(Fx &&f);
 
         template <class Iterator>
         auto operator()(Iterator &&it) && -> bool;
