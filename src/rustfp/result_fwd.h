@@ -26,8 +26,18 @@ namespace rustfp {
     class Result;
 
     template <class T>
-    auto Ok(T &&value) -> details::OkImpl<special_decay_t<T>>;
+    constexpr auto Ok(T &&value)
+        noexcept(
+            std::is_nothrow_move_constructible<
+                details::OkImpl<special_decay_t<T>>>::value &&
+            std::is_nothrow_move_assignable<T>::value)
+        -> details::OkImpl<special_decay_t<T>>;
 
     template <class E>
-    auto Err(E &&error) -> details::ErrImpl<special_decay_t<E>>;
+    constexpr auto Err(E &&error)
+        noexcept(
+            std::is_nothrow_move_constructible<
+                details::ErrImpl<special_decay_t<E>>>::value &&
+            std::is_nothrow_move_assignable<E>::value)
+        -> details::ErrImpl<special_decay_t<E>>;
 }

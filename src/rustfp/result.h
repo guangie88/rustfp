@@ -32,6 +32,11 @@ namespace rustfp {
      */
     template <class T, class E>
     class Result {
+    private:
+        using variant_t = mpark::variant<
+            details::OkImpl<T>,
+            details::ErrImpl<E>>;
+
     public:
         /** Alias to the Ok/valid item type to be wrapped. ok_t == T. */
         using ok_t = T;
@@ -40,26 +45,60 @@ namespace rustfp {
         using err_t = E;
 
         template <class Tx>
-        Result(details::OkImpl<Tx> &&value);
+        constexpr Result(details::OkImpl<Tx> &&value)
+            noexcept(
+                std::is_nothrow_move_constructible<variant_t>::value &&
+                std::is_nothrow_move_assignable<details::OkImpl<Tx>>::value);
 
         template <class Ex>
-        Result(details::ErrImpl<Ex> &&err);
+        constexpr Result(details::ErrImpl<Ex> &&err)
+            noexcept(
+                std::is_nothrow_move_constructible<variant_t>::value &&
+                std::is_nothrow_move_assignable<details::ErrImpl<Ex>>::value);
 
-        template <class FnTToTx>
-        auto map(FnTToTx &&fn) && ->
-            Result<special_decay_t<std::result_of_t<FnTToTx(T &&)>>, E>;
+        /**
+         * https://doc.rust-lang.org/std/result/enum.Result.html#method.map
+         *
+         * fn map<U, F>(self, op: F) -> Result<U, E> 
+         * where
+         *     F: FnOnce(T) -> U, 
+         */
+        template <class F>
+        auto map(F &&op) && ->
+            Result<special_decay_t<std::result_of_t<F(T &&)>>, E>;
 
-        template <class FnEToEx>
-        auto map_err(FnEToEx &&fn) && ->
-            Result<T, special_decay_t<std::result_of_t<FnEToEx(E &&)>>>;
+        /**
+         * https://doc.rust-lang.org/std/result/enum.Result.html#method.map_err
+         *
+         * fn map_err<F, O>(self, op: O) -> Result<T, F> 
+         * where
+         *     O: FnOnce(E) -> F, 
+         */
+        template <class O>
+        auto map_err(O &&op) && ->
+            Result<T, special_decay_t<std::result_of_t<O(E &&)>>>;
 
-        template <class FnTToResTx>
-        auto and_then(FnTToResTx &&fn) &&
-            -> Result<typename std::result_of_t<FnTToResTx(T &&)>::ok_t, E>;
+        /**
+         * https://doc.rust-lang.org/std/result/enum.Result.html#method.and_then
+         *
+         * fn and_then<U, F>(self, op: F) -> Result<U, E> 
+         * where
+         *     F: FnOnce(T) -> Result<U, E>, 
+         */
+        template <class F>
+        auto and_then(F &&op) &&
+            -> Result<typename std::result_of_t<F(T &&)>::ok_t, E>;
 
-        template <class FnEToResEx>
-        auto or_else(FnEToResEx &&fn) &&
-            -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::err_t>;
+        /**
+         * https://doc.rust-lang.org/std/result/enum.Result.html#method.or_else
+         *
+         * fn or_else<F, O>(self, op: O) -> Result<T, F> 
+         * where
+         *     O: FnOnce(E) -> Result<T, F>, 
+         */
+        template <class O>
+        auto or_else(O &&op) &&
+            -> Result<T, typename std::result_of_t<O(E &&)>::err_t>;
 
         auto ok() && -> Option<T>;
 
@@ -102,14 +141,24 @@ namespace rustfp {
         auto match_err(ErrFn &&err_fn) const & -> unit_t;
 
     private:
-        mpark::variant<details::OkImpl<T>, details::ErrImpl<E>> value_err;
+        variant_t value_err;
     };
 
     template <class T>
-    auto Ok(T &&value) -> details::OkImpl<special_decay_t<T>>;
+    constexpr auto Ok(T &&value)
+        noexcept(
+            std::is_nothrow_move_constructible<
+                details::OkImpl<special_decay_t<T>>>::value &&
+            std::is_nothrow_move_assignable<T>::value)
+        -> details::OkImpl<special_decay_t<T>>;
 
     template <class E>
-    auto Err(E &&error) -> details::ErrImpl<special_decay_t<E>>;
+    constexpr auto Err(E &&error)
+        noexcept(
+            std::is_nothrow_move_constructible<
+                details::ErrImpl<special_decay_t<E>>>::value &&
+            std::is_nothrow_move_assignable<E>::value)
+        -> details::ErrImpl<special_decay_t<E>>;
 
     template <class OkFn, class ErrFn>
     auto res_if_else(const bool cond, OkFn &&ok_fn, ErrFn &&err_fn)
@@ -125,16 +174,22 @@ namespace rustfp {
 
         public:
             template <class Tx>
-            explicit OkImpl(Tx &&value) :
+            constexpr explicit OkImpl(Tx &&value)
+                noexcept(
+                    std::is_nothrow_move_constructible<T>::value &&
+                    std::is_nothrow_move_assignable<Tx>::value) :
                 value(std::forward<Tx>(value)) {
 
             }
 
-            inline auto get() const -> const T & {
+            inline constexpr auto get() const noexcept -> const T & {
                 return value;
             }
 
-            inline auto move() && -> reverse_decay_t<T> {
+            inline constexpr auto move() &&
+                noexcept(std::is_nothrow_move_assignable<T>::value)
+                -> reverse_decay_t<T> {
+
                 return std::move(value);
             }
 
@@ -149,16 +204,22 @@ namespace rustfp {
 
         public:
             template <class Ex>
-            explicit ErrImpl(Ex &&err) :
+            constexpr explicit ErrImpl(Ex &&err)
+                noexcept(
+                    std::is_nothrow_move_constructible<E>::value &&
+                    std::is_nothrow_move_assignable<Ex>::value) :
                 err(std::forward<Ex>(err)) {
 
             }
 
-            inline auto get() const -> const E & {
+            inline constexpr auto get() const noexcept -> const E & {
                 return err;
             }
 
-            inline auto move() && -> reverse_decay_t<E> {
+            inline constexpr auto move() &&
+                noexcept(std::is_nothrow_move_assignable<E>::value)
+                -> reverse_decay_t<E> {
+
                 return std::move(err);
             }
             
@@ -207,66 +268,70 @@ namespace rustfp {
 
     template <class T, class E>
     template <class Tx>
-    Result<T, E>::Result(details::OkImpl<Tx> &&value) :
+    constexpr Result<T, E>::Result(details::OkImpl<Tx> &&value)
+        noexcept(
+            std::is_nothrow_move_constructible<variant_t>::value &&
+            std::is_nothrow_move_assignable<details::OkImpl<Tx>>::value) :
+
         value_err(std::move(value)) {
 
     }
 
     template <class T, class E>
     template <class Ex>
-    Result<T, E>::Result(details::ErrImpl<Ex> &&err) :
+    constexpr Result<T, E>::Result(details::ErrImpl<Ex> &&err)
+        noexcept(
+            std::is_nothrow_move_constructible<variant_t>::value &&
+            std::is_nothrow_move_assignable<details::ErrImpl<Ex>>::value) :
+
         value_err(std::move(err)) {
 
     }
 
     template <class T, class E>
-    template <class FnTToTx>
-    auto Result<T, E>::map(FnTToTx &&fn) && ->
-        Result<special_decay_t<std::result_of_t<FnTToTx(T &&)>>, E> {
+    template <class F>
+    auto Result<T, E>::map(F &&op) && ->
+        Result<special_decay_t<std::result_of_t<F(T &&)>>, E> {
 
         if (is_ok()) {
-            return Ok(fn(details::move_unchecked(std::move(value_err))));
-        }
-        else {
+            return Ok(op(details::move_unchecked(std::move(value_err))));
+        } else {
             return Err(details::move_err_unchecked(std::move(value_err)));
         }
     }
 
     template <class T, class E>
-    template <class FnEToEx>
-    auto Result<T, E>::map_err(FnEToEx &&fn) && ->
-        Result<T, special_decay_t<std::result_of_t<FnEToEx(E &&)>>> {
+    template <class O>
+    auto Result<T, E>::map_err(O &&op) && ->
+        Result<T, special_decay_t<std::result_of_t<O(E &&)>>> {
 
         if (is_err()) {
-            return Err(fn(details::move_err_unchecked(std::move(value_err))));
-        }
-        else {
+            return Err(op(details::move_err_unchecked(std::move(value_err))));
+        } else {
             return Ok(details::move_unchecked(std::move(value_err)));
         }
     }
 
     template <class T, class E>
-    template <class FnTToResTx>
-    auto Result<T, E>::and_then(FnTToResTx &&fn) &&
-        -> Result<typename std::result_of_t<FnTToResTx(T &&)>::ok_t, E> {
+    template <class F>
+    auto Result<T, E>::and_then(F &&op) &&
+        -> Result<typename std::result_of_t<F(T &&)>::ok_t, E> {
 
         if (is_ok()) {
-            return fn(details::move_unchecked(std::move(value_err)));
-        }
-        else {
+            return op(details::move_unchecked(std::move(value_err)));
+        } else {
             return Err(details::move_err_unchecked(std::move(value_err)));
         }
     }
 
     template <class T, class E>
-    template <class FnEToResEx>
-    auto Result<T, E>::or_else(FnEToResEx &&fn) &&
-        -> Result<T, typename std::result_of_t<FnEToResEx(E &&)>::err_t> {
+    template <class O>
+    auto Result<T, E>::or_else(O &&op) &&
+        -> Result<T, typename std::result_of_t<O(E &&)>::err_t> {
 
         if (is_err()) {
-            return fn(details::move_err_unchecked(std::move(value_err)));
-        }
-        else {
+            return op(details::move_err_unchecked(std::move(value_err)));
+        } else {
             return Ok(details::move_unchecked(std::move(value_err)));
         }
     }
@@ -390,12 +455,24 @@ namespace rustfp {
     }
 
     template <class T>
-    auto Ok(T &&value) -> details::OkImpl<special_decay_t<T>> {
+    constexpr auto Ok(T &&value)
+        noexcept(
+            std::is_nothrow_move_constructible<
+                details::OkImpl<special_decay_t<T>>>::value &&
+            std::is_nothrow_move_assignable<T>::value)
+        -> details::OkImpl<special_decay_t<T>> {
+
         return details::OkImpl<special_decay_t<T>>(std::forward<T>(value));
     }
 
     template <class E>
-    auto Err(E &&error) -> details::ErrImpl<special_decay_t<E>> {
+    constexpr auto Err(E &&error)
+        noexcept(
+            std::is_nothrow_move_constructible<
+                details::ErrImpl<special_decay_t<E>>>::value &&
+            std::is_nothrow_move_assignable<E>::value)
+        -> details::ErrImpl<special_decay_t<E>> {
+
         return details::ErrImpl<special_decay_t<E>>(std::forward<E>(error));
     }
 
@@ -405,8 +482,7 @@ namespace rustfp {
 
         if (cond) {
             return Ok(ok_fn());
-        }
-        else {
+        } else {
             return Err(err_fn());
         }
     }
