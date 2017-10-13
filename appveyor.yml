@@ -3,7 +3,7 @@ image:
   - Visual Studio 2017
 
 platform:
-  - x86
+  - Win32 
   - x64
 
 configuration:
@@ -23,7 +23,7 @@ build_script:
   - cd build
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2015" set CMAKE_GENERATOR_VS=Visual Studio 14 2015
   - if "%APPVEYOR_BUILD_WORKER_IMAGE%"=="Visual Studio 2017" set CMAKE_GENERATOR_VS=Visual Studio 15 2017
-  - if "%PLATFORM%"=="x86" set CMAKE_GENERATOR_NAME=%CMAKE_GENERATOR_VS%
+  - if "%PLATFORM%"=="Win32" set CMAKE_GENERATOR_NAME=%CMAKE_GENERATOR_VS%
   - if "%PLATFORM%"=="x64" set CMAKE_GENERATOR_NAME=%CMAKE_GENERATOR_VS% Win64
   - cmake .. -G "%CMAKE_GENERATOR_NAME%"
-  - msbuild /m:4 /p:Configuration=%CONFIGURATION% rustfp.sln
+  - msbuild /m:4 /p:Configuration=%CONFIGURATION% /p:Platform=%PLATFORM% rustfp.sln
