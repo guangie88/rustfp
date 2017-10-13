@@ -21,5 +21,7 @@ clone_script:
 build_script:
   - mkdir build
   - cd build
-  - cmake .. -G "%PLATFORM%-%CONFIGURATION% Win64"
+  - if "%PLATFORM%"=="x86" set CMAKE_GENERATOR_NAME=%APPVEYOR_BUILD_WORKER_IMAGE%
+  - if "%PLATFORM%"=="x64" set CMAKE_GENERATOR_NAME=%APPVEYOR_BUILD_WORKER_IMAGE% Win64
+  - cmake .. -G "%CMAKE_GENERATOR_NAME%"
   - msbuild /m:4 /p:Configuration=%CONFIGURATION% rustfp.sln
