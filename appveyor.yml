@@ -1,12 +1,18 @@
+image:
+  - Visual Studio 2015
+  - Visual Studio 2017
+
+platform:
+  - x86
+  - x64
+
+configuration:
+  - Debug
+  - Release
+
 environment:
   global:
     PROJECT_NAME: rustfp
-
-  matrix:
-     - GENERATOR: "Visual Studio 14"
-       CONFIG: Debug
-     - GENERATOR: "Visual Studio 14"
-       CONFIG: Release
 
 clone_script:
   - git clone -q --recursive --branch=%APPVEYOR_REPO_BRANCH% https://github.com/%APPVEYOR_REPO_NAME%.git %APPVEYOR_BUILD_FOLDER%
@@ -15,5 +21,5 @@ clone_script:
 build_script:
   - mkdir build
   - cd build
-  - cmake .. -G "%GENERATOR% Win64"
-  - msbuild /m:4 /p:Configuration=%CONFIG% rustfp.sln
+  - cmake .. -G "%PLATFORM%-%CONFIGURATION% Win64"
+  - msbuild /m:4 /p:Configuration=%CONFIGURATION% rustfp.sln

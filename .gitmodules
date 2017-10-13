@@ -1,9 +1,9 @@
 [submodule "deps/Optional"]
 	path = deps/Optional
 	url = https://github.com/akrzemi1/Optional.git
-[submodule "deps/variant"]
-	path = deps/variant
-	url = https://github.com/mapbox/variant.git
 [submodule "deps/googletest"]
 	path = deps/googletest
 	url = https://github.com/google/googletest.git
+[submodule "deps/variant"]
+	path = deps/variant
+	url = https://github.com/mpark/variant.git

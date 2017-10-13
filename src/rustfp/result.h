@@ -7,7 +7,7 @@
 
 #pragma once
 
-#include "mapbox/variant.hpp"
+#include "mpark/variant.hpp"
 
 #include "option_fwd.h"
 #include "result_fwd.h"
@@ -65,17 +65,17 @@ namespace rustfp {
 
         auto err() && -> Option<E>;
 
-        auto is_ok() const -> bool;
+        constexpr auto is_ok() const noexcept -> bool;
 
-        auto is_err() const -> bool;
+        constexpr auto is_err() const noexcept -> bool;
 
         auto unwrap_unchecked() && -> T;
 
         auto unwrap_err_unchecked() && -> E;
 
-        auto get_unchecked() const -> const T &;
+        constexpr auto get_unchecked() const noexcept -> const T &;
 
-        auto get_err_unchecked() const -> const E &;
+        constexpr auto get_err_unchecked() const noexcept -> const E &;
 
         template <class OkFn, class ErrFn> 
         auto match(OkFn &&ok_fn, ErrFn &&err_fn) &&
@@ -102,7 +102,7 @@ namespace rustfp {
         auto match_err(ErrFn &&err_fn) const & -> unit_t;
 
     private:
-        mapbox::util::variant<details::OkImpl<T>, details::ErrImpl<E>> value_err;
+        mpark::variant<details::OkImpl<T>, details::ErrImpl<E>> value_err;
     };
 
     template <class T>
@@ -167,35 +167,41 @@ namespace rustfp {
         };
 
         template <class T, class E>
-        inline auto get_unchecked(
-            const mapbox::util::variant<details::OkImpl<T>,
-            details::ErrImpl<E>> &value_err) -> const T & {
+        constexpr auto get_unchecked(
+            const mpark::variant<
+                details::OkImpl<T>,
+                details::ErrImpl<E>> &value_err) noexcept -> const T & {
 
-            return value_err.template get_unchecked<details::OkImpl<T>>().get();
+            return mpark::get_if<details::OkImpl<T>>(&value_err)->get();
         }
 
         template <class T, class E>
-        inline auto get_err_unchecked(
-            const mapbox::util::variant<details::OkImpl<T>,
-            details::ErrImpl<E>> &value_err) -> const E & {
+        constexpr auto get_err_unchecked(
+            const mpark::variant<
+                details::OkImpl<T>,
+                details::ErrImpl<E>> &value_err) noexcept -> const E & {
 
-            return value_err.template get_unchecked<details::ErrImpl<E>>().get();
+            return mpark::get_if<details::ErrImpl<E>>(&value_err)->get();
         }
 
         template <class T, class E>
-        inline auto move_unchecked(
-            mapbox::util::variant<details::OkImpl<T>,
-            details::ErrImpl<E>> &&value_err) -> reverse_decay_t<T> {
+        auto move_unchecked(
+            mpark::variant<
+                details::OkImpl<T>,
+                details::ErrImpl<E>> &&value_err) -> reverse_decay_t<T> {
 
-            return std::move(value_err.template get_unchecked<details::OkImpl<T>>()).move();
+            return std::move(
+                *mpark::get_if<details::OkImpl<T>>(&value_err)).move();
         }
 
         template <class T, class E>
-        inline auto move_err_unchecked(
-            mapbox::util::variant<details::OkImpl<T>,
-            details::ErrImpl<E>> &&value_err) -> reverse_decay_t<E> {
+        auto move_err_unchecked(
+            mpark::variant<
+                details::OkImpl<T>,
+                details::ErrImpl<E>> &&value_err) -> reverse_decay_t<E> {
 
-            return std::move(value_err.template get_unchecked<details::ErrImpl<E>>()).move();
+            return std::move(
+                *mpark::get_if<details::ErrImpl<E>>(&value_err)).move();
         }
     }
 
@@ -280,23 +286,23 @@ namespace rustfp {
     }
 
     template <class T, class E>
-    auto Result<T, E>::is_ok() const -> bool {
-        return value_err.which() == 0;
+    constexpr auto Result<T, E>::is_ok() const noexcept -> bool {
+        return value_err.index() == 0;
     }
 
     template <class T, class E>
-    auto Result<T, E>::is_err() const -> bool {
-        return value_err.which() == 1;
+    constexpr auto Result<T, E>::is_err() const noexcept -> bool {
+        return value_err.index() == 1;
     }
 
     template <class T, class E>
-    auto Result<T, E>::get_unchecked() const -> const T & {
+    constexpr auto Result<T, E>::get_unchecked() const noexcept -> const T & {
         assert(is_ok());
         return details::get_unchecked(value_err);
     }
 
     template <class T, class E>
-    auto Result<T, E>::get_err_unchecked() const -> const E & {
+    constexpr auto Result<T, E>::get_err_unchecked() const noexcept -> const E & {
         assert(is_err());
         return details::get_err_unchecked(value_err);
     }

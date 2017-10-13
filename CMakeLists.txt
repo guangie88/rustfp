@@ -11,7 +11,11 @@ set(BUILD_SHARED_LIBS OFF CACHE BOOL "Builds all non-executable source directori
 
 # deps paths
 # overrides external dependencies
-include_directories(deps/Optional deps/variant/include deps/googletest/googletest/include)
+include_directories(
+    deps/Optional
+    deps/variant/include
+    deps/googletest/googletest/include)
+
 option(gtest_force_shared_crt "" ON)
 add_subdirectory(deps/googletest/googletest)
 set(GTEST_LIB debug gtest optimized gtest)
