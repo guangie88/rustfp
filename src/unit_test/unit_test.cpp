@@ -1380,6 +1380,13 @@ TEST(Option, Assignment) {
     opt = Some(7);
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ(7, opt.get_unchecked());
+
+    opt = Option<int>(None);
+    ASSERT_TRUE(opt.is_none());
+
+    opt = Option<int>(Some(8));
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(8, opt.get_unchecked());
 }
 
 TEST(Option, CtorNone) {
@@ -1785,6 +1792,22 @@ TEST(Option, OptIfFalse) {
 }
 
 // result
+
+TEST(Result, ResOkAssignment) {
+    Result<unique_ptr<string>, string> res = Err(string("Hello"));
+    res = Ok(make_unique<string>("World"));
+
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ("World", *res.get_unchecked());
+}
+
+TEST(Result, ResErrAssignment) {
+    Result<unique_ptr<string>, string> res = Ok(make_unique<string>("Hello"));
+    res = Err(string("World"));
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("World", res.get_err_unchecked());
+}
 
 TEST(Result, ResIfElseTrue) {
     const auto res = res_if_else(true,

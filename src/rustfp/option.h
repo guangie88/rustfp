@@ -42,6 +42,9 @@ namespace rustfp {
         template <class Tx>
         friend class Option;
 
+    private:
+        using optional_t = std::experimental::optional<reverse_decay_t<T>>;
+
     public:
         /** Alias to the item type to be wrapped. some_t == T. */
         using some_t = T;
@@ -56,8 +59,7 @@ namespace rustfp {
         template <class Tx>
         RUSTFP_CONSTEXPR Option(details::SomeImpl<Tx> &&value)
             RUSTFP_NOEXCEPT_EXPR(
-                std::is_nothrow_move_constructible<
-                    std::experimental::optional<reverse_decay_t<T>>>::value);
+                std::is_nothrow_move_constructible<optional_t>::value);
 
         /**
          * Copy constructor to target RHS Option.
@@ -65,8 +67,7 @@ namespace rustfp {
          */
         RUSTFP_CONSTEXPR Option(const Option<T> &rhs)
             RUSTFP_NOEXCEPT_EXPR(
-                std::is_nothrow_copy_constructible<
-                    std::experimental::optional<reverse_decay_t<T>>>::value);
+                std::is_nothrow_copy_constructible<optional_t>::value);
 
         /**
          * Copy constructor template to target RHS Option.
@@ -76,8 +77,7 @@ namespace rustfp {
         template <class Tx>
         RUSTFP_CONSTEXPR Option(const Option<Tx> &rhs)
             RUSTFP_NOEXCEPT_EXPR(
-                std::is_nothrow_copy_constructible<
-                    std::experimental::optional<reverse_decay_t<T>>>::value);
+                std::is_nothrow_copy_constructible<optional_t>::value);
 
         /**
          * Move constructor to target RHS moving Option.
@@ -85,8 +85,7 @@ namespace rustfp {
          */
         RUSTFP_CONSTEXPR Option(Option<T> &&rhs)
             RUSTFP_NOEXCEPT_EXPR(
-                std::is_nothrow_move_constructible<
-                    std::experimental::optional<reverse_decay_t<T>>>::value);
+                std::is_nothrow_move_constructible<optional_t>::value);
 
         /**
          * Move constructor template to target RHS moving Option.
@@ -96,8 +95,7 @@ namespace rustfp {
         template <class Tx>
         RUSTFP_CONSTEXPR Option(Option<Tx> &&rhs)
             RUSTFP_NOEXCEPT_EXPR(
-                std::is_nothrow_move_constructible<
-                    std::experimental::optional<reverse_decay_t<T>>>::value);
+                std::is_nothrow_move_constructible<optional_t>::value);
 
         /**
          * Constructor to take in None value and the constructed instance
@@ -110,8 +108,7 @@ namespace rustfp {
          */
         RUSTFP_CONSTEXPR Option(const none_t &)
             RUSTFP_NOEXCEPT_EXPR(
-                std::is_nothrow_default_constructible<
-                    std::experimental::optional<reverse_decay_t<T>>>::value);
+                std::is_nothrow_default_constructible<optional_t>::value);
 
         /**
          * Assignment to take in the Some wrapped item and the assigned instance
@@ -224,19 +221,19 @@ namespace rustfp {
          * Returns true if the Option instance contains an item.
          * Otherwise returns false.
          *
-         * is_some() == ! is_none().
+         * is_some() == !is_none().
          * @see is_none
          */
-        auto is_some() const -> bool;
+        RUSTFP_CONSTEXPR auto is_some() const RUSTFP_NOEXCEPT -> bool;
 
         /**
          * Returns true if the Option instance does not contain an item.
          * Otherwise returns false.
          *
-         * is_none() == ! is_some().
+         * is_none() == !is_some().
          * @see is_some
          */
-        auto is_none() const -> bool;
+        RUSTFP_CONSTEXPR auto is_none() const RUSTFP_NOEXCEPT -> bool;
 
         /**
          * Returns a lvalue const reference to the contained item.
@@ -247,7 +244,8 @@ namespace rustfp {
          * @see is_some
          * @see is_none
          */
-        auto get_unchecked() const -> const T &;
+        RUSTFP_CONSTEXPR auto get_unchecked() const RUSTFP_NOEXCEPT
+            -> const T &;
 
         /**
          * Returns the moved contained item of type T which may possibly be a
@@ -364,7 +362,7 @@ namespace rustfp {
         auto match_none(NoneFn &&none_fn) const & -> unit_t;
 
     private:
-        std::experimental::optional<reverse_decay_t<T>> opt;
+        optional_t opt;
     };
 
     /**
@@ -432,8 +430,7 @@ namespace rustfp {
     template <class Tx>
     RUSTFP_CONSTEXPR Option<T>::Option(details::SomeImpl<Tx> &&value)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                std::experimental::optional<reverse_decay_t<T>>>::value) :
+            std::is_nothrow_move_constructible<optional_t>::value) :
         opt(std::move(value).move()) {
 
         static_assert(
@@ -446,8 +443,7 @@ namespace rustfp {
     template <class T>
     RUSTFP_CONSTEXPR Option<T>::Option(const Option<T> &rhs)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_copy_constructible<
-                std::experimental::optional<reverse_decay_t<T>>>::value) :
+            std::is_nothrow_copy_constructible<optional_t>::value) :
         opt(rhs.opt) {
 
         static_assert(std::is_copy_constructible<T>::value,
@@ -458,8 +454,7 @@ namespace rustfp {
     template <class Tx>
     RUSTFP_CONSTEXPR Option<T>::Option(const Option<Tx> &rhs)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_copy_constructible<
-                std::experimental::optional<reverse_decay_t<T>>>::value) :
+            std::is_nothrow_copy_constructible<optional_t>::value) :
         opt(rhs.opt) {
 
         static_assert(
@@ -472,8 +467,7 @@ namespace rustfp {
     template <class T>
     RUSTFP_CONSTEXPR Option<T>::Option(Option<T> &&rhs)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                std::experimental::optional<reverse_decay_t<T>>>::value) :
+            std::is_nothrow_move_constructible<optional_t>::value) :
         opt(std::move(rhs.opt)) {
 
         static_assert(
@@ -487,8 +481,7 @@ namespace rustfp {
     template <class Tx>
     RUSTFP_CONSTEXPR Option<T>::Option(Option<Tx> &&rhs)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                std::experimental::optional<reverse_decay_t<T>>>::value) :
+            std::is_nothrow_move_constructible<optional_t>::value) :
         opt(std::move(rhs.opt)) {
 
         static_assert(
@@ -503,8 +496,7 @@ namespace rustfp {
     template <class T>
     RUSTFP_CONSTEXPR Option<T>::Option(const none_t &)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_default_constructible<
-                std::experimental::optional<reverse_decay_t<T>>>::value) :
+            std::is_nothrow_default_constructible<optional_t>::value) :
         opt() {
 
     }
@@ -536,14 +528,14 @@ namespace rustfp {
     auto Option<T>::operator=(const Option<Tx> &rhs) -> Option<T> & {
         static_assert(
             std::is_assignable<
-                reverse_decay_t<T>,
-                reverse_decay_t<Tx>>::value,
+                optional_t,
+                std::experimental::optional<reverse_decay_t<Tx>>>::value,
             "T is not assignable from Tx");
 
         opt = rhs.opt;
         return *this;
     }
-
+    
     template <class T>
     auto Option<T>::operator=(Option<T> &&rhs) -> Option<T> & {
         static_assert(std::is_move_assignable<reverse_decay_t<T>>::value,
@@ -558,8 +550,8 @@ namespace rustfp {
     auto Option<T>::operator=(Option<Tx> &&rhs) -> Option<T> & {
         static_assert(
             std::is_assignable<
-                reverse_decay_t<T>,
-                reverse_decay_t<Tx>>::value,
+                optional_t,
+                std::experimental::optional<reverse_decay_t<Tx>>>::value,
             "T is not assignable from Tx");
 
         opt = std::move(rhs.opt);
@@ -618,17 +610,19 @@ namespace rustfp {
     }
 
     template <class T>
-    auto Option<T>::is_some() const -> bool {
+    RUSTFP_CONSTEXPR auto Option<T>::is_some() const RUSTFP_NOEXCEPT -> bool {
         return opt.has_value();
     }
 
     template <class T>
-    auto Option<T>::is_none() const -> bool {
+    RUSTFP_CONSTEXPR auto Option<T>::is_none() const RUSTFP_NOEXCEPT -> bool {
         return !opt.has_value();
     }
 
     template <class T>
-    auto Option<T>::get_unchecked() const -> const T & {
+    RUSTFP_CONSTEXPR auto Option<T>::get_unchecked() const RUSTFP_NOEXCEPT
+        -> const T & {
+
         // reference_wrapper can implicitly convert into reference
         return *opt;
     }

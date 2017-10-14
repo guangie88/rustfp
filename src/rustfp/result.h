@@ -55,6 +55,18 @@ namespace rustfp {
             RUSTFP_NOEXCEPT_EXPR(
                 std::is_nothrow_move_constructible<variant_t>::value);
 
+        template <class Tx>
+        RUSTFP_CONSTEXPR auto operator=(details::OkImpl<Tx> &&value)
+            RUSTFP_NOEXCEPT_EXPR(
+                std::is_nothrow_move_assignable<variant_t>::value)
+            -> Result<T, E> &;
+
+        template <class Ex>
+        RUSTFP_CONSTEXPR auto operator=(details::ErrImpl<Ex> &&err)
+            RUSTFP_NOEXCEPT_EXPR(
+                std::is_nothrow_move_assignable<variant_t>::value)
+            -> Result<T, E> &;
+
         /**
          * https://doc.rust-lang.org/std/result/enum.Result.html#method.map
          *
@@ -287,6 +299,28 @@ namespace rustfp {
 
         value_err(std::move(err)) {
 
+    }
+
+    template <class T, class E>
+    template <class Tx>
+    RUSTFP_CONSTEXPR auto Result<T, E>::operator=(details::OkImpl<Tx> &&value)
+        RUSTFP_NOEXCEPT_EXPR(
+            std::is_nothrow_move_assignable<variant_t>::value)
+        -> Result<T, E> & {
+
+        value_err = std::move(value);
+        return *this;
+    }
+
+    template <class T, class E>
+    template <class Ex>
+    RUSTFP_CONSTEXPR auto Result<T, E>::operator=(details::ErrImpl<Ex> &&err)
+        RUSTFP_NOEXCEPT_EXPR(
+            std::is_nothrow_move_assignable<variant_t>::value)
+        -> Result<T, E> & {
+
+        value_err = std::move(err);
+        return *this;
     }
 
     template <class T, class E>

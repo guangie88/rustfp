@@ -29,8 +29,9 @@ namespace rustfp {
     public:
         // to ensure that the given Self iterator is clonable
         // which means generally means copy assignable in c++
-        static_assert(std::is_copy_assignable<Self>::value, "Cycle can only take in copy assignable types. "
-            "Operations like map tend to generate rvalues and makes the iterator not copy assignable.");
+        /*static_assert(std::is_copy_assignable<reverse_decay_t<Self>>::value,
+            "Cycle can only take in copy assignable types. "
+            "Operations like map tend to generate rvalues and makes the iterator not copy assignable.");*/
 
         /** Type alias to rustfp Iter type */
         using I = Self;
