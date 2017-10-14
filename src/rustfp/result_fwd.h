@@ -29,16 +29,14 @@ namespace rustfp {
     template <class T>
     RUSTFP_CONSTEXPR auto Ok(T &&value)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                details::OkImpl<special_decay_t<T>>>::value &&
-            std::is_nothrow_move_assignable<T>::value)
+            std::is_nothrow_constructible<
+                details::OkImpl<special_decay_t<T>>>::value)
         -> details::OkImpl<special_decay_t<T>>;
 
     template <class E>
     RUSTFP_CONSTEXPR auto Err(E &&error)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                details::ErrImpl<special_decay_t<E>>>::value &&
-            std::is_nothrow_move_assignable<E>::value)
+            std::is_nothrow_constructible<
+                details::ErrImpl<special_decay_t<E>>>::value)
         -> details::ErrImpl<special_decay_t<E>>;
 }

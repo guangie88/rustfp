@@ -48,14 +48,12 @@ namespace rustfp {
         template <class Tx>
         RUSTFP_CONSTEXPR Result(details::OkImpl<Tx> &&value)
             RUSTFP_NOEXCEPT_EXPR(
-                std::is_nothrow_move_constructible<variant_t>::value &&
-                std::is_nothrow_move_assignable<details::OkImpl<Tx>>::value);
+                std::is_nothrow_move_constructible<variant_t>::value);
 
         template <class Ex>
         RUSTFP_CONSTEXPR Result(details::ErrImpl<Ex> &&err)
             RUSTFP_NOEXCEPT_EXPR(
-                std::is_nothrow_move_constructible<variant_t>::value &&
-                std::is_nothrow_move_assignable<details::ErrImpl<Ex>>::value);
+                std::is_nothrow_move_constructible<variant_t>::value);
 
         /**
          * https://doc.rust-lang.org/std/result/enum.Result.html#method.map
@@ -150,17 +148,15 @@ namespace rustfp {
     template <class T>
     RUSTFP_CONSTEXPR auto Ok(T &&value)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                details::OkImpl<special_decay_t<T>>>::value &&
-            std::is_nothrow_move_assignable<T>::value)
+            std::is_nothrow_constructible<
+                details::OkImpl<special_decay_t<T>>>::value)
         -> details::OkImpl<special_decay_t<T>>;
 
     template <class E>
     RUSTFP_CONSTEXPR auto Err(E &&error)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                details::ErrImpl<special_decay_t<E>>>::value &&
-            std::is_nothrow_move_assignable<E>::value)
+            std::is_nothrow_constructible<
+                details::ErrImpl<special_decay_t<E>>>::value)
         -> details::ErrImpl<special_decay_t<E>>;
 
     template <class OkFn, class ErrFn>
@@ -179,8 +175,7 @@ namespace rustfp {
             template <class Tx>
             RUSTFP_CONSTEXPR explicit OkImpl(Tx &&value)
                 RUSTFP_NOEXCEPT_EXPR(
-                    std::is_nothrow_move_constructible<T>::value &&
-                    std::is_nothrow_move_assignable<Tx>::value) :
+                    std::is_nothrow_constructible<reverse_decay_t<T>>::value) :
                 value(std::forward<Tx>(value)) {
 
             }
@@ -192,7 +187,8 @@ namespace rustfp {
             }
 
             inline RUSTFP_CONSTEXPR auto move() &&
-                RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<T>::value)
+                RUSTFP_NOEXCEPT_EXPR(
+                    std::is_nothrow_constructible<reverse_decay_t<T>>::value)
                 -> reverse_decay_t<T> {
 
                 return std::move(value);
@@ -211,8 +207,7 @@ namespace rustfp {
             template <class Ex>
             RUSTFP_CONSTEXPR explicit ErrImpl(Ex &&err)
                 RUSTFP_NOEXCEPT_EXPR(
-                    std::is_nothrow_move_constructible<E>::value &&
-                    std::is_nothrow_move_assignable<Ex>::value) :
+                    std::is_nothrow_constructible<reverse_decay_t<E>>::value) :
                 err(std::forward<Ex>(err)) {
 
             }
@@ -224,7 +219,8 @@ namespace rustfp {
             }
 
             inline RUSTFP_CONSTEXPR auto move() &&
-                RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<E>::value)
+                RUSTFP_NOEXCEPT_EXPR(
+                    std::is_nothrow_constructible<reverse_decay_t<E>>::value)
                 -> reverse_decay_t<E> {
 
                 return std::move(err);
@@ -277,8 +273,7 @@ namespace rustfp {
     template <class Tx>
     RUSTFP_CONSTEXPR Result<T, E>::Result(details::OkImpl<Tx> &&value)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<variant_t>::value &&
-            std::is_nothrow_move_assignable<details::OkImpl<Tx>>::value) :
+            std::is_nothrow_move_constructible<variant_t>::value) :
 
         value_err(std::move(value)) {
 
@@ -288,8 +283,7 @@ namespace rustfp {
     template <class Ex>
     RUSTFP_CONSTEXPR Result<T, E>::Result(details::ErrImpl<Ex> &&err)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<variant_t>::value &&
-            std::is_nothrow_move_assignable<details::ErrImpl<Ex>>::value) :
+            std::is_nothrow_move_constructible<variant_t>::value) :
 
         value_err(std::move(err)) {
 
@@ -469,9 +463,8 @@ namespace rustfp {
     template <class T>
     RUSTFP_CONSTEXPR auto Ok(T &&value)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                details::OkImpl<special_decay_t<T>>>::value &&
-            std::is_nothrow_move_assignable<T>::value)
+            std::is_nothrow_constructible<
+                details::OkImpl<special_decay_t<T>>>::value)
         -> details::OkImpl<special_decay_t<T>> {
 
         return details::OkImpl<special_decay_t<T>>(std::forward<T>(value));
@@ -480,9 +473,8 @@ namespace rustfp {
     template <class E>
     RUSTFP_CONSTEXPR auto Err(E &&error)
         RUSTFP_NOEXCEPT_EXPR(
-            std::is_nothrow_move_constructible<
-                details::ErrImpl<special_decay_t<E>>>::value &&
-            std::is_nothrow_move_assignable<E>::value)
+            std::is_nothrow_constructible<
+                details::ErrImpl<special_decay_t<E>>>::value)
         -> details::ErrImpl<special_decay_t<E>> {
 
         return details::ErrImpl<special_decay_t<E>>(std::forward<E>(error));

@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "specs.h"
 #include "traits.h"
 
 namespace rustfp {
@@ -21,5 +22,9 @@ namespace rustfp {
     const none_t None{};
 
     template <class T>
-    auto Some(T &&value) -> Option<special_decay_t<T>>;
+    RUSTFP_CONSTEXPR auto Some(T &&value)
+        RUSTFP_NOEXCEPT_EXPR(
+            std::is_nothrow_constructible<
+                Option<special_decay_t<T>>>::value)
+        -> Option<special_decay_t<T>>;
 }
