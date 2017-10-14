@@ -11,6 +11,7 @@
 
 #include "option_fwd.h"
 #include "result_fwd.h"
+#include "specs.h"
 #include "traits.h"
 #include "unit.h"
 
@@ -45,14 +46,14 @@ namespace rustfp {
         using err_t = E;
 
         template <class Tx>
-        constexpr Result(details::OkImpl<Tx> &&value)
-            noexcept(
+        RUSTFP_CONSTEXPR Result(details::OkImpl<Tx> &&value)
+            RUSTFP_NOEXCEPT_EXPR(
                 std::is_nothrow_move_constructible<variant_t>::value &&
                 std::is_nothrow_move_assignable<details::OkImpl<Tx>>::value);
 
         template <class Ex>
-        constexpr Result(details::ErrImpl<Ex> &&err)
-            noexcept(
+        RUSTFP_CONSTEXPR Result(details::ErrImpl<Ex> &&err)
+            RUSTFP_NOEXCEPT_EXPR(
                 std::is_nothrow_move_constructible<variant_t>::value &&
                 std::is_nothrow_move_assignable<details::ErrImpl<Ex>>::value);
 
@@ -104,17 +105,19 @@ namespace rustfp {
 
         auto err() && -> Option<E>;
 
-        constexpr auto is_ok() const noexcept -> bool;
+        RUSTFP_CONSTEXPR auto is_ok() const RUSTFP_NOEXCEPT -> bool;
 
-        constexpr auto is_err() const noexcept -> bool;
+        RUSTFP_CONSTEXPR auto is_err() const RUSTFP_NOEXCEPT -> bool;
 
         auto unwrap_unchecked() && -> T;
 
         auto unwrap_err_unchecked() && -> E;
 
-        constexpr auto get_unchecked() const noexcept -> const T &;
+        RUSTFP_CONSTEXPR auto get_unchecked() const RUSTFP_NOEXCEPT
+            -> const T &;
 
-        constexpr auto get_err_unchecked() const noexcept -> const E &;
+        RUSTFP_CONSTEXPR auto get_err_unchecked() const RUSTFP_NOEXCEPT
+            -> const E &;
 
         template <class OkFn, class ErrFn> 
         auto match(OkFn &&ok_fn, ErrFn &&err_fn) &&
@@ -145,16 +148,16 @@ namespace rustfp {
     };
 
     template <class T>
-    constexpr auto Ok(T &&value)
-        noexcept(
+    RUSTFP_CONSTEXPR auto Ok(T &&value)
+        RUSTFP_NOEXCEPT_EXPR(
             std::is_nothrow_move_constructible<
                 details::OkImpl<special_decay_t<T>>>::value &&
             std::is_nothrow_move_assignable<T>::value)
         -> details::OkImpl<special_decay_t<T>>;
 
     template <class E>
-    constexpr auto Err(E &&error)
-        noexcept(
+    RUSTFP_CONSTEXPR auto Err(E &&error)
+        RUSTFP_NOEXCEPT_EXPR(
             std::is_nothrow_move_constructible<
                 details::ErrImpl<special_decay_t<E>>>::value &&
             std::is_nothrow_move_assignable<E>::value)
@@ -174,20 +177,22 @@ namespace rustfp {
 
         public:
             template <class Tx>
-            constexpr explicit OkImpl(Tx &&value)
-                noexcept(
+            RUSTFP_CONSTEXPR explicit OkImpl(Tx &&value)
+                RUSTFP_NOEXCEPT_EXPR(
                     std::is_nothrow_move_constructible<T>::value &&
                     std::is_nothrow_move_assignable<Tx>::value) :
                 value(std::forward<Tx>(value)) {
 
             }
 
-            inline constexpr auto get() const noexcept -> const T & {
+            inline RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT
+                -> const T & {
+                
                 return value;
             }
 
-            inline constexpr auto move() &&
-                noexcept(std::is_nothrow_move_assignable<T>::value)
+            inline RUSTFP_CONSTEXPR auto move() &&
+                RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<T>::value)
                 -> reverse_decay_t<T> {
 
                 return std::move(value);
@@ -204,20 +209,22 @@ namespace rustfp {
 
         public:
             template <class Ex>
-            constexpr explicit ErrImpl(Ex &&err)
-                noexcept(
+            RUSTFP_CONSTEXPR explicit ErrImpl(Ex &&err)
+                RUSTFP_NOEXCEPT_EXPR(
                     std::is_nothrow_move_constructible<E>::value &&
                     std::is_nothrow_move_assignable<Ex>::value) :
                 err(std::forward<Ex>(err)) {
 
             }
 
-            inline constexpr auto get() const noexcept -> const E & {
+            inline RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT
+                -> const E & {
+
                 return err;
             }
 
-            inline constexpr auto move() &&
-                noexcept(std::is_nothrow_move_assignable<E>::value)
+            inline RUSTFP_CONSTEXPR auto move() &&
+                RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<E>::value)
                 -> reverse_decay_t<E> {
 
                 return std::move(err);
@@ -228,19 +235,19 @@ namespace rustfp {
         };
 
         template <class T, class E>
-        constexpr auto get_unchecked(
+        RUSTFP_CONSTEXPR auto get_unchecked(
             const mpark::variant<
                 details::OkImpl<T>,
-                details::ErrImpl<E>> &value_err) noexcept -> const T & {
+                details::ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT -> const T & {
 
             return mpark::get_if<details::OkImpl<T>>(&value_err)->get();
         }
 
         template <class T, class E>
-        constexpr auto get_err_unchecked(
+        RUSTFP_CONSTEXPR auto get_err_unchecked(
             const mpark::variant<
                 details::OkImpl<T>,
-                details::ErrImpl<E>> &value_err) noexcept -> const E & {
+                details::ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT -> const E & {
 
             return mpark::get_if<details::ErrImpl<E>>(&value_err)->get();
         }
@@ -268,8 +275,8 @@ namespace rustfp {
 
     template <class T, class E>
     template <class Tx>
-    constexpr Result<T, E>::Result(details::OkImpl<Tx> &&value)
-        noexcept(
+    RUSTFP_CONSTEXPR Result<T, E>::Result(details::OkImpl<Tx> &&value)
+        RUSTFP_NOEXCEPT_EXPR(
             std::is_nothrow_move_constructible<variant_t>::value &&
             std::is_nothrow_move_assignable<details::OkImpl<Tx>>::value) :
 
@@ -279,8 +286,8 @@ namespace rustfp {
 
     template <class T, class E>
     template <class Ex>
-    constexpr Result<T, E>::Result(details::ErrImpl<Ex> &&err)
-        noexcept(
+    RUSTFP_CONSTEXPR Result<T, E>::Result(details::ErrImpl<Ex> &&err)
+        RUSTFP_NOEXCEPT_EXPR(
             std::is_nothrow_move_constructible<variant_t>::value &&
             std::is_nothrow_move_assignable<details::ErrImpl<Ex>>::value) :
 
@@ -351,23 +358,28 @@ namespace rustfp {
     }
 
     template <class T, class E>
-    constexpr auto Result<T, E>::is_ok() const noexcept -> bool {
+    RUSTFP_CONSTEXPR auto Result<T, E>::is_ok() const RUSTFP_NOEXCEPT -> bool {
         return value_err.index() == 0;
     }
 
     template <class T, class E>
-    constexpr auto Result<T, E>::is_err() const noexcept -> bool {
+    RUSTFP_CONSTEXPR auto Result<T, E>::is_err() const RUSTFP_NOEXCEPT -> bool {
         return value_err.index() == 1;
     }
 
     template <class T, class E>
-    constexpr auto Result<T, E>::get_unchecked() const noexcept -> const T & {
+    RUSTFP_CONSTEXPR auto Result<T, E>::get_unchecked() const RUSTFP_NOEXCEPT
+        -> const T & {
+
         assert(is_ok());
         return details::get_unchecked(value_err);
     }
 
     template <class T, class E>
-    constexpr auto Result<T, E>::get_err_unchecked() const noexcept -> const E & {
+    RUSTFP_CONSTEXPR auto Result<T, E>::get_err_unchecked()
+        const RUSTFP_NOEXCEPT
+        -> const E & {
+
         assert(is_err());
         return details::get_err_unchecked(value_err);
     }
@@ -455,8 +467,8 @@ namespace rustfp {
     }
 
     template <class T>
-    constexpr auto Ok(T &&value)
-        noexcept(
+    RUSTFP_CONSTEXPR auto Ok(T &&value)
+        RUSTFP_NOEXCEPT_EXPR(
             std::is_nothrow_move_constructible<
                 details::OkImpl<special_decay_t<T>>>::value &&
             std::is_nothrow_move_assignable<T>::value)
@@ -466,8 +478,8 @@ namespace rustfp {
     }
 
     template <class E>
-    constexpr auto Err(E &&error)
-        noexcept(
+    RUSTFP_CONSTEXPR auto Err(E &&error)
+        RUSTFP_NOEXCEPT_EXPR(
             std::is_nothrow_move_constructible<
                 details::ErrImpl<special_decay_t<E>>>::value &&
             std::is_nothrow_move_assignable<E>::value)

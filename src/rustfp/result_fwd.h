@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include "specs.h"
 #include "traits.h"
 
 namespace rustfp {
@@ -26,16 +27,16 @@ namespace rustfp {
     class Result;
 
     template <class T>
-    constexpr auto Ok(T &&value)
-        noexcept(
+    RUSTFP_CONSTEXPR auto Ok(T &&value)
+        RUSTFP_NOEXCEPT_EXPR(
             std::is_nothrow_move_constructible<
                 details::OkImpl<special_decay_t<T>>>::value &&
             std::is_nothrow_move_assignable<T>::value)
         -> details::OkImpl<special_decay_t<T>>;
 
     template <class E>
-    constexpr auto Err(E &&error)
-        noexcept(
+    RUSTFP_CONSTEXPR auto Err(E &&error)
+        RUSTFP_NOEXCEPT_EXPR(
             std::is_nothrow_move_constructible<
                 details::ErrImpl<special_decay_t<E>>>::value &&
             std::is_nothrow_move_assignable<E>::value)
