@@ -12,6 +12,8 @@ addons:
       - doxygen
 
 install:
+- DEPS="${TRAVIS_BUILD_DIR}/deps"
+- mkdir -p ${DEPS}
 - |
   if [ "${TRAVIS_OS_NAME}" = "osx" ]; then
     brew update
