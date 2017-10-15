@@ -4,20 +4,37 @@ set(CMAKE_CXX_STANDARD 14 CACHE STRING "C++ standards to use (11|14)")
 include(CMakeToolsHelpers OPTIONAL)
 
 # project variables
+# project(rustfp VERSION 0.1.0 LANGUAGES CXX)
 project(rustfp)
-set(BIN_DIRS unit_test)
+set(BIN_DIRS rustfp_unit_test)
 set(USE_STATIC OFF CACHE BOOL "Uses only external static libraries for linking")
 set(BUILD_SHARED_LIBS OFF CACHE BOOL "Builds all non-executable source directories as shared libraries")
 
-# deps paths
-# overrides external dependencies
-include_directories(
-    deps/Optional
-    deps/variant/include
-    deps/googletest/googletest/include)
+# target
+add_library(rustfp INTERFACE)
+target_include_directories(rustfp INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include>)
+
+# install
+# also install optional-lite since it does not have any install
+install(TARGETS rustfp EXPORT rustfp)
+install(DIRECTORY include/rustfp DESTINATION include)
+install(DIRECTORY deps/optional-lite/include/nonstd DESTINATION include)
 
 option(gtest_force_shared_crt "" ON)
+
+# deps paths
+add_subdirectory(deps/optional-lite)
+add_subdirectory(deps/variant)
 add_subdirectory(deps/googletest/googletest)
+
+include_directories(
+  "include"
+  deps/optional-lite/include
+  deps/variant/include
+  deps/googletest/googletest/include)
+
 set(GTEST_LIB debug gtest optimized gtest)
 
 # libraries finding
@@ -32,15 +49,8 @@ endif()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# find_library(GTEST_LIB_DEBUG NAMES gtest REQUIRED)
-# find_library(GTEST_LIB_RELEASE NAMES gtest REQUIRED)
-# set(GTEST_LIB debug ${GTEST_LIB_DEBUG} optimized ${GTEST_LIB_RELEASE})
-
 # project to libraries mapping
-set(PROJ_LIBS_unit_test GTEST_LIB)
-
-# project to locally built libraries mapping
-# set(LOCAL_PROJ_LIBS_projname local_lib_proj_name)
+set(PROJ_LIBS_rustfp_unit_test GTEST_LIB)
 
 # general fixed project variables
 set(SRC_ROOT_DIR src)
@@ -98,5 +108,9 @@ foreach(SRC_DIR ${SRC_DIRS})
 
     target_include_directories(${PROJ_NAME} PUBLIC ${CMAKE_SOURCE_DIR}/${SRC_ROOT_DIR})
     target_link_libraries(${PROJ_NAME} ${LOCAL_PROJ_LIBS_${PROJ_NAME}} ${SUBST_PROJ_LIBS} ${GTEST_LIB} Threads::Threads)
+
+    install(TARGETS ${PROJ_NAME}
+      RUNTIME DESTINATION bin
+      PUBLIC_HEADER DESTINATION include)
   endif()
 endforeach()

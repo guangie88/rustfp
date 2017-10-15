@@ -22,7 +22,7 @@ script:
 - cd ..
 - mkdir build-release
 - cd build-release
-- cmake .. -DCMAKE_BUILD_TYPE=Release
+- cmake .. -DCMAKE_INSTALL_PREFIX:PATH=install -DCMAKE_BUILD_TYPE=Release
 - cmake --build . -- -j2
 - cd ..
 
@@ -30,7 +30,7 @@ after_success:
 - doxygen Doxyfile
 
 # run unit test and code coverage
-- ./build-debug/bin/unit_test
-- gcov ./build-debug/CMakeFiles/unit_test.dir/src/unit_test/unit_test.cpp.gcno
+- ./build-debug/bin/rustfp_unit_test
+- gcov ./build-debug/CMakeFiles/rustfp_unit_test.dir/src/rustfp_unit_test/unit_test.cpp.gcno
 - bash <(curl -s https://codecov.io/bash)
 

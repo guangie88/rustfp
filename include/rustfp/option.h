@@ -12,7 +12,7 @@
 #include "traits.h"
 #include "unit.h"
 
-#include "optional.hpp"
+#include "nonstd/optional.hpp"
 
 #include <type_traits>
 #include <utility>
@@ -43,7 +43,7 @@ namespace rustfp {
         friend class Option;
 
     private:
-        using optional_t = std::experimental::optional<reverse_decay_t<T>>;
+        using optional_t = nonstd::optional_lite::optional<reverse_decay_t<T>>;
 
     public:
         /** Alias to the item type to be wrapped. some_t == T. */
@@ -529,7 +529,7 @@ namespace rustfp {
         static_assert(
             std::is_assignable<
                 optional_t,
-                std::experimental::optional<reverse_decay_t<Tx>>>::value,
+                nonstd::optional_lite::optional<reverse_decay_t<Tx>>>::value,
             "T is not assignable from Tx");
 
         opt = rhs.opt;
@@ -551,7 +551,7 @@ namespace rustfp {
         static_assert(
             std::is_assignable<
                 optional_t,
-                std::experimental::optional<reverse_decay_t<Tx>>>::value,
+                nonstd::optional_lite::optional<reverse_decay_t<Tx>>>::value,
             "T is not assignable from Tx");
 
         opt = std::move(rhs.opt);

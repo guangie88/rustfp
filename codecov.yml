@@ -1,5 +1,5 @@
 coverage:
   ignore:
-   - "src/optional.hpp"
-   - "src/mapbox/*"
-   - "src/unit_test/*"
+   - "src/optional-lite/*"
+   - "src/variant/*"
+   - "src/rustfp_unit_test/*"
