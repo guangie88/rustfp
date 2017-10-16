@@ -1,0 +1,10 @@
+@PACKAGE_INIT@
+
+include("${CMAKE_CURRENT_LIST_DIR}/rustfp-targets.cmake")
+
+get_target_property(
+  RUSTFP_INCLUDE_DIRS
+  rustfp INTERFACE_INCLUDE_DIRECTORIES)
+
+set_and_check(RUSTFP_INCLUDE_DIRS "${RUSTFP_INCLUDE_DIRS}")
+set(RUSTFP_LIBRARIES rustfp)
