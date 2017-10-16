@@ -5,11 +5,12 @@ project(rustfp VERSION 0.1.0 LANGUAGES CXX)
 
 # general fixed compiler settings
 if(${MSVC})
-  add_compile_options("$<$<CONFIG:DEBUG>:/W4>")
+  set(DEBUG_FLAGS "/W4;")
 else()
-  add_compile_options("$<$<CONFIG:DEBUG>:-Wall -coverage>")
+  set(DEBUG_FLAGS "-Wall;")
 endif()
 
+add_compile_options("$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 include(CMakeToolsHelpers OPTIONAL)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/deps/optional-lite)
