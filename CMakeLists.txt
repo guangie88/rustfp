@@ -13,11 +13,11 @@ endif()
 add_compile_options("$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
 include(CMakeToolsHelpers OPTIONAL)
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/optional-lite)
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/variant)
+add_subdirectory(deps/optional-lite)
+add_subdirectory(deps/variant)
 
 option(gtest_force_shared_crt "" ON)
-add_subdirectory(${CMAKE_SOURCE_DIR}/deps/googletest/googletest)
+add_subdirectory(deps/googletest/googletest)
 
 # rustfp
 add_library(rustfp INTERFACE)
