@@ -46,4 +46,3 @@ after_success:
 - ./build-release/rustfp_unit_test
 #- gcov ./build-debug/CMakeFiles/rustfp_unit_test.dir/src/rustfp_unit_test/unit_test.cpp.gcno
 #- bash <(curl -s https://codecov.io/bash)
-
