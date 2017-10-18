@@ -16,9 +16,6 @@ include(CMakeToolsHelpers OPTIONAL)
 add_subdirectory(deps/optional-lite)
 add_subdirectory(deps/variant)
 
-option(gtest_force_shared_crt "" ON)
-add_subdirectory(deps/googletest/googletest)
-
 # rustfp
 add_library(rustfp INTERFACE)
 
@@ -65,12 +62,17 @@ install(
   DESTINATION lib/cmake/rustfp)
 
 # rustfp_unit_test
-add_executable(rustfp_unit_test
-  src/rustfp_unit_test/unit_test.cpp)
+if(RUSTFP_INCLUDE_UNIT_TESTS)
+  option(gtest_force_shared_crt "" ON)
+  add_subdirectory(deps/googletest/googletest)
 
-set_property(TARGET rustfp_unit_test PROPERTY CXX_STANDARD 14)
+  add_executable(rustfp_unit_test
+    src/rustfp_unit_test/unit_test.cpp)
 
-target_link_libraries(rustfp_unit_test
-  PRIVATE
-    rustfp
-    gtest)
+  set_property(TARGET rustfp_unit_test PROPERTY CXX_STANDARD 14)
+
+  target_link_libraries(rustfp_unit_test
+    PRIVATE
+      rustfp
+      gtest)
+endif()

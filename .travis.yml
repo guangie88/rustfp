@@ -29,13 +29,13 @@ script:
 - git submodule update --init --recursive
 - mkdir build-debug
 - cd build-debug
-- cmake .. -DCMAKE_BUILD_TYPE=Debug
+- cmake .. -DCMAKE_BUILD_TYPE=Debug -DRUSTFP_INCLUDE_UNIT_TESTS=ON
 - cmake --build . -- -j2
 - cd ..
 - mkdir build-release
 - cd build-release
-- cmake .. -DCMAKE_INSTALL_PREFIX:PATH=install -DCMAKE_BUILD_TYPE=Release
-- cmake --build . -- -j2
+- cmake .. -DCMAKE_BUILD_TYPE=Release -DRUSTFP_INCLUDE_UNIT_TESTS=ON -DCMAKE_INSTALL_PREFIX:PATH=install
+- cmake --build . --target install -- -j2
 - cd ..
 
 after_success:

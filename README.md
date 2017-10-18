@@ -25,7 +25,7 @@ git submodule update --init --recursive
 ```
 
 ## Compilation and Installation
-The current `CMakeLists.txt` always compiles the unit test, and also includes the unit test project as part of the installation.
+The solution uses CMake (at least version 3.6) for compilation and installation. To enable unit tests to be compiled for `rustfp`, add `-DRUSTFP_INCLUDE_UNIT_TESTS=ON` during the CMake configuration step.
 
 ### Windows Generator Names
 - MSVC
