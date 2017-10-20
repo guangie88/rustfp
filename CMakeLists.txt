@@ -66,8 +66,12 @@ if(RUSTFP_INCLUDE_UNIT_TESTS)
   option(gtest_force_shared_crt "" ON)
   add_subdirectory(deps/googletest/googletest)
 
+  enable_testing()
+
   add_executable(rustfp_unit_test
     src/rustfp_unit_test/unit_test.cpp)
+
+  add_test(rustfp_unit_test rustfp_unit_test --gtest_color=yes)
 
   set_property(TARGET rustfp_unit_test PROPERTY CXX_STANDARD 14)
 
