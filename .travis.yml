@@ -71,7 +71,7 @@ script:
               -DRUSTFP_INCLUDE_UNIT_TESTS=ON ..
       )
       cmake --build . --target install -- -j 2
-      ctest -V
+      ctest -R rustfp_unit_test -V
     done
   - popd
 
