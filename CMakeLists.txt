@@ -78,4 +78,14 @@ if(RUSTFP_INCLUDE_UNIT_TESTS)
     PRIVATE
       rustfp
       gtest)
+
+  if(RUSTFP_INCLUDE_TEST_COVERAGE)
+    target_compile_options(rustfp_unit_test
+      PRIVATE
+        -coverage)
+
+    target_link_libraries(rustfp_unit_test
+      PRIVATE
+        gcov)
+  endif()
 endif()
