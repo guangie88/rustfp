@@ -1,7 +1,9 @@
 /**
  * Contains C-style macros to perform fast failing with syntactical convenience.
  * Similar to the try-catch / ? operator in Rust.
+ *
  * Rust try-catch: https://doc.rust-lang.org/std/macro.try.html
+ *
  * @author Chen Weiguang
  * @version 0.1.0
  */
@@ -13,13 +15,14 @@
 #include "result.h"
 #include "traits.h"
 
-#define __RUSTFP_RET_IF_ERR(res) \
-    if (res.is_err()) { \
-        return ::rustfp::Err(::rustfp::reverse_decay(::std::move(res).unwrap_err_unchecked())); \
+#define __RUSTFP_RET_IF_ERR(res)                                               \
+    if (res.is_err()) {                                                        \
+        return ::rustfp::Err(                                                  \
+            ::rustfp::reverse_decay(::std::move(res).unwrap_err_unchecked())); \
     }
 
-#define __RUSTFP_LET_IMPL(decl, var, res) \
-    __RUSTFP_RET_IF_ERR(res) \
+#define __RUSTFP_LET_IMPL(decl, var, res)                                      \
+    __RUSTFP_RET_IF_ERR(res)                                                   \
     decl var = ::std::move(res).unwrap_unchecked();
 
 #define RUSTFP_RET_IF_ERR __RUSTFP_RET_IF_ERR

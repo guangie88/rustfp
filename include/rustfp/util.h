@@ -1,6 +1,6 @@
 /**
- * Contains the | operation which is the driving operation
- * to apply all the Iterator operations on the Iterator.
+ * Contains the | operation which is the driving operation to apply all the
+ * Iterator operations on the Iterator.
  * @author Chen Weiguang
  * @version 0.1.0
  */
@@ -24,8 +24,8 @@ auto operator|(Iterator &&it, Op &&op) -> std::result_of_t<Op(Iterator)>;
 template <class Iterator, class Op, class, class>
 auto operator|(Iterator &&it, Op &&op) -> std::result_of_t<Op(Iterator)> {
     static_assert(
-        !std::is_lvalue_reference<Iterator>::value &&
-        !std::is_lvalue_reference<Iterator>::value,
+        !std::is_lvalue_reference<Iterator>::value
+            && !std::is_lvalue_reference<Iterator>::value,
         "rustfp operator| can only be applied on rvalues "
         "for both Iterator trait and Op trait based objects");
 

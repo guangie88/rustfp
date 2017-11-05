@@ -1,6 +1,9 @@
 /**
- * Contains Rust Iterator all equivalent implementation
- * all function: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.all
+ * Contains Rust Iterator all equivalent implementation.
+ *
+ * all function:
+ * https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.all
+ *
  * @author Chen Weiguang
  * @version 0.1.0
  */
@@ -15,61 +18,60 @@
 
 namespace rustfp {
 
-    // declaration section
+// declaration section
 
-    template <class F>
-    class AllOp {
-    public:
-        template <class Fx>
-        explicit AllOp(Fx &&f);
-
-        template <class Iterator>
-        auto operator()(Iterator &&it) && -> bool;
-
-    private:
-        F f;
-    };
-
-    /**
-     * fn all<F>(&mut self, f: F) -> bool 
-     * where
-     *     F: FnMut(Self::Item) -> bool, 
-     */
-    template <class F>
-    auto all(F &&f) -> AllOp<special_decay_t<F>>;
-
-    // implementation section
-
-    template <class F>
+template <class F>
+class AllOp {
+public:
     template <class Fx>
-    AllOp<F>::AllOp(Fx &&f) :
-        f(std::forward<Fx>(f)) {
+    explicit AllOp(Fx &&f);
 
-    }
-
-    template <class F>
     template <class Iterator>
-    auto AllOp<F>::operator()(Iterator &&it) && -> bool {
-        static_assert(!std::is_lvalue_reference<Iterator>::value,
-            "all can only take rvalue ref object with Iterator traits");
+    auto operator()(Iterator &&it) && -> bool;
 
-        while (true) {
-            auto next_opt = it.next();
+private:
+    F f;
+};
 
-            if (next_opt.is_none()) {
-                break;
-            }
+/**
+ * fn all<F>(&mut self, f: F) -> bool
+ * where
+ *     F: FnMut(Self::Item) -> bool,
+ */
+template <class F>
+auto all(F &&f) -> AllOp<special_decay_t<F>>;
 
-            if (!f(std::move(next_opt).unwrap_unchecked())) {
-                return false;
-            }
+// implementation section
+
+template <class F>
+template <class Fx>
+AllOp<F>::AllOp(Fx &&f) : f(std::forward<Fx>(f)) {
+}
+
+template <class F>
+template <class Iterator>
+auto AllOp<F>::operator()(Iterator &&it) && -> bool {
+    static_assert(
+        !std::is_lvalue_reference<Iterator>::value,
+        "all can only take rvalue ref object with Iterator traits");
+
+    while (true) {
+        auto next_opt = it.next();
+
+        if (next_opt.is_none()) {
+            break;
         }
 
-        return true;
+        if (!f(std::move(next_opt).unwrap_unchecked())) {
+            return false;
+        }
     }
 
-    template <class F>
-    auto all(F &&f) -> AllOp<special_decay_t<F>> {
-        return AllOp<special_decay_t<F>>(std::forward<F>(f));
-    }
+    return true;
 }
+
+template <class F>
+auto all(F &&f) -> AllOp<special_decay_t<F>> {
+    return AllOp<special_decay_t<F>>(std::forward<F>(f));
+}
+} // namespace rustfp

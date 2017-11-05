@@ -3,8 +3,8 @@
 #include "rustfp/all.h"
 #include "rustfp/any.h"
 #include "rustfp/cloned.h"
-#include "rustfp/cycle.h"
 #include "rustfp/collect.h"
+#include "rustfp/cycle.h"
 #include "rustfp/enumerate.h"
 #include "rustfp/filter.h"
 #include "rustfp/filter_map.h"
@@ -31,10 +31,10 @@
 
 #include <algorithm>
 #include <array>
+#include <deque>
 #include <functional>
 #include <iostream>
 #include <iterator>
-#include <deque>
 #include <list>
 #include <map>
 #include <memory>
@@ -82,15 +82,15 @@ using rustfp::zip;
 using rustfp::Unit;
 using rustfp::unit_t;
 
+using rustfp::None;
 using rustfp::opt_if;
 using rustfp::Option;
-using rustfp::None;
 using rustfp::Some;
 
+using rustfp::Err;
+using rustfp::Ok;
 using rustfp::res_if_else;
 using rustfp::Result;
-using rustfp::Ok;
-using rustfp::Err;
 
 // std
 using std::accumulate;
@@ -126,60 +126,61 @@ using std::vector;
 // helper functions
 
 namespace details {
-    template <class IterableLhs, class IterableRhs>
-    auto no_mismatch_values(IterableLhs &&lhs, IterableRhs &&rhs) -> bool {
-        const auto input_it_pairs = mismatch(
-            cbegin(lhs), cend(lhs), cbegin(rhs));
+template <class IterableLhs, class IterableRhs>
+auto no_mismatch_values(IterableLhs &&lhs, IterableRhs &&rhs) -> bool {
+    const auto input_it_pairs = mismatch(cbegin(lhs), cend(lhs), cbegin(rhs));
 
-        return input_it_pairs.first == lhs.cend() &&
-            input_it_pairs.second == rhs.cend();
-    }
-
-    template <class IterableLhs, class IterableRhs, class CompFn>
-    auto no_mismatch_values(IterableLhs &&lhs, IterableRhs &&rhs, CompFn &&comp_fn) -> bool {
-        const auto input_it_pairs = mismatch(
-            cbegin(lhs), cend(lhs), cbegin(rhs), forward<CompFn>(comp_fn));
-
-        return input_it_pairs.first == lhs.cend() &&
-            input_it_pairs.second == rhs.cend();
-    }
-
-    // weaker than no_mismatch_values,
-    // does not check for ordering and possibly repeated entries
-    template <class IterableLhs, class IterableRhs>
-    auto similar_values(IterableLhs &&lhs, IterableRhs &&rhs) -> bool {
-        if (lhs.size() != rhs.size()) {
-            return false;
-        }
-
-        for (const auto &l_val : lhs) {
-            if (std::find(cbegin(rhs), cend(rhs), l_val) == rhs.cend()) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    template <class IterableLhs, class IterableRhs, class CompFn>
-    auto similar_values(IterableLhs &&lhs, IterableRhs &&rhs, CompFn &&comp_fn) -> bool {
-        if (lhs.size() != rhs.size()) {
-            return false;
-        }
-
-        for (const auto &l_val : lhs) {
-            const auto unary_pred = [&l_val, &comp_fn](const auto &r_val) {
-                return comp_fn(l_val, r_val);
-            };
-
-            if (std::find_if(cbegin(rhs), cend(rhs), unary_pred) == rhs.cend()) {
-                return false;
-            }
-        }
-
-        return true;
-    }
+    return input_it_pairs.first == lhs.cend()
+           && input_it_pairs.second == rhs.cend();
 }
+
+template <class IterableLhs, class IterableRhs, class CompFn>
+auto no_mismatch_values(IterableLhs &&lhs, IterableRhs &&rhs, CompFn &&comp_fn)
+    -> bool {
+    const auto input_it_pairs =
+        mismatch(cbegin(lhs), cend(lhs), cbegin(rhs), forward<CompFn>(comp_fn));
+
+    return input_it_pairs.first == lhs.cend()
+           && input_it_pairs.second == rhs.cend();
+}
+
+// weaker than no_mismatch_values,
+// does not check for ordering and possibly repeated entries
+template <class IterableLhs, class IterableRhs>
+auto similar_values(IterableLhs &&lhs, IterableRhs &&rhs) -> bool {
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    for (const auto &l_val : lhs) {
+        if (std::find(cbegin(rhs), cend(rhs), l_val) == rhs.cend()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+template <class IterableLhs, class IterableRhs, class CompFn>
+auto similar_values(IterableLhs &&lhs, IterableRhs &&rhs, CompFn &&comp_fn)
+    -> bool {
+    if (lhs.size() != rhs.size()) {
+        return false;
+    }
+
+    for (const auto &l_val : lhs) {
+        const auto unary_pred = [&l_val, &comp_fn](const auto &r_val) {
+            return comp_fn(l_val, r_val);
+        };
+
+        if (std::find_if(cbegin(rhs), cend(rhs), unary_pred) == rhs.cend()) {
+            return false;
+        }
+    }
+
+    return true;
+}
+} // namespace details
 
 // simple tests
 
@@ -206,20 +207,21 @@ protected:
 TEST_F(Ops, Iter) {
     auto it = iter(int_vec);
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(it)>::Item,
-        const int &>::value,
+    static_assert(
+        is_same<typename remove_reference_t<decltype(it)>::Item, const int &>::
+            value,
         "Ops::Iter failed Iter type checking!");
 
     const auto opt0 = it.next();
     ASSERT_TRUE(opt0.is_some());
     ASSERT_EQ(0, opt0.get_unchecked());
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(opt0)>::some_t,
-        const int &>::value,
+    static_assert(
+        is_same<
+            typename remove_reference_t<decltype(opt0)>::some_t,
+            const int &>::value,
         "Ops::Iter failed Option type checking!");
-    
+
     const auto opt1 = it.next();
     ASSERT_TRUE(opt1.is_some());
     ASSERT_EQ(1, opt1.get_unchecked());
@@ -248,37 +250,36 @@ TEST_F(Ops, IterMut) {
     auto v = int_vec;
 
     // modify the values
-    iter_mut(v)
-        | map([](auto &val) {
-            static_assert(is_same<decltype(val), int &>::value,
-                "val is expected to be of int & type");
+    iter_mut(v) | map([](auto &val) {
+        static_assert(
+            is_same<decltype(val), int &>::value,
+            "val is expected to be of int & type");
 
-            val *= val;
-            return ref(val);
-        })
-        | for_each([](auto &val) {
-            static_assert(is_same<decltype(val), int &>::value,
-                "val is expected to be of int & type");
+        val *= val;
+        return ref(val);
+    }) | for_each([](auto &val) {
+        static_assert(
+            is_same<decltype(val), int &>::value,
+            "val is expected to be of int & type");
 
-            val += 1;
-        });
+        val += 1;
+    });
 
     auto it = iter_mut(v);
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(it)>::Item,
-        int &>::value,
+    static_assert(
+        is_same<typename remove_reference_t<decltype(it)>::Item, int &>::value,
         "Ops::IterMut failed Iter type checking!");
 
     const auto opt0 = it.next();
     ASSERT_TRUE(opt0.is_some());
     ASSERT_EQ(1, opt0.get_unchecked());
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(opt0)>::some_t,
-        int &>::value,
+    static_assert(
+        is_same<typename remove_reference_t<decltype(opt0)>::some_t, int &>::
+            value,
         "Ops::IterMut failed Option type checking!");
-    
+
     const auto opt1 = it.next();
     ASSERT_TRUE(opt1.is_some());
     ASSERT_EQ(2, opt1.get_unchecked());
@@ -307,21 +308,22 @@ TEST_F(Ops, IterMutChain) {
     auto v = int_vec;
 
     // modify the values
-    const auto v2 = iter_mut(v)
-        | filter([](const auto val) {
-            static_assert(is_same<decltype(val), const int>::value,
-                "val is expected to be of const int type");
+    const auto v2 = iter_mut(v) | filter([](const auto val) {
+                        static_assert(
+                            is_same<decltype(val), const int>::value,
+                            "val is expected to be of const int type");
 
-            return val >= 2;
-        })
-        | map([](auto &val) {
-            static_assert(is_same<decltype(val), int &>::value,
-                "val is expected to be of int & type");
+                        return val >= 2;
+                    })
+                    | map([](auto &val) {
+                          static_assert(
+                              is_same<decltype(val), int &>::value,
+                              "val is expected to be of int & type");
 
-            val -= 2;
-            return ref(val);
-        })
-        | collect<vector<reference_wrapper<int>>>();
+                          val -= 2;
+                          return ref(val);
+                      })
+                    | collect<vector<reference_wrapper<int>>>();
 
     ASSERT_EQ(4, v2.size());
     ASSERT_EQ(0, v2.at(0));
@@ -338,16 +340,18 @@ TEST_F(Ops, IntoIter) {
 
     auto it = into_iter(move(v));
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(it)>::Item,
-        unique_ptr<int>>::value,
+    static_assert(
+        is_same<
+            typename remove_reference_t<decltype(it)>::Item,
+            unique_ptr<int>>::value,
         "Ops::IntoIter failed IntoIter type checking!");
 
     auto opt0 = it.next();
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(opt0)>::some_t,
-        unique_ptr<int>>::value,
+    static_assert(
+        is_same<
+            typename remove_reference_t<decltype(opt0)>::some_t,
+            unique_ptr<int>>::value,
         "Ops::IntoIter failed Option type checking!");
 
     ASSERT_TRUE(opt0.is_some());
@@ -375,16 +379,18 @@ TEST_F(Ops, IterBeginEndVec) {
 
     auto it = iter_begin_end(v.begin(), v.cend());
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(it)>::Item,
-        const unique_ptr<int> &>::value,
+    static_assert(
+        is_same<
+            typename remove_reference_t<decltype(it)>::Item,
+            const unique_ptr<int> &>::value,
         "Ops::IterBeginEndVec failed IterBeginEnd type checking!");
 
     auto opt0 = it.next();
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(opt0)>::some_t,
-        const unique_ptr<int> &>::value,
+    static_assert(
+        is_same<
+            typename remove_reference_t<decltype(opt0)>::some_t,
+            const unique_ptr<int> &>::value,
         "Ops::IterBeginEndVec failed Option type checking!");
 
     ASSERT_TRUE(opt0.is_some());
@@ -407,18 +413,20 @@ TEST_F(Ops, IterBeginEndVec) {
 TEST_F(Ops, IterBeginEndPtrs) {
     // note the length is 4 since there is null character
     const char VALUES[] = {"bad"};
-    auto it = iter_begin_end(VALUES + 0, VALUES + extent<decltype(VALUES)>::value);
+    auto it =
+        iter_begin_end(VALUES + 0, VALUES + extent<decltype(VALUES)>::value);
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(it)>::Item,
-        const char &>::value,
+    static_assert(
+        is_same<typename remove_reference_t<decltype(it)>::Item, const char &>::
+            value,
         "Ops::IterBeginEndPtrs failed IterBeginEnd type checking!");
 
     auto opt0 = it.next();
 
-    static_assert(is_same<
-        typename remove_reference_t<decltype(opt0)>::some_t,
-        const char &>::value,
+    static_assert(
+        is_same<
+            typename remove_reference_t<decltype(opt0)>::some_t,
+            const char &>::value,
         "Ops::IterBeginEndPtrs failed Option type checking!");
 
     ASSERT_TRUE(opt0.is_some());
@@ -444,64 +452,65 @@ TEST_F(Ops, IterBeginEndPtrs) {
 }
 
 TEST_F(Ops, AllTrue) {
-    const auto result = iter(int_vec)
-        | all([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    const auto result = iter(int_vec) | all([](const auto value) {
+                            static_assert(
+                                is_same<decltype(value), const int>::value,
+                                "value is expected to be of const int type");
 
-            return value < 6;
-        });
+                            return value < 6;
+                        });
 
     ASSERT_TRUE(result);
 }
 
 TEST_F(Ops, AllFalse) {
-    const auto result = iter(int_vec)
-        | all([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    const auto result = iter(int_vec) | all([](const auto value) {
+                            static_assert(
+                                is_same<decltype(value), const int>::value,
+                                "value is expected to be of const int type");
 
-            return value > 0;
-        });
+                            return value > 0;
+                        });
 
     ASSERT_FALSE(result);
 }
 
 TEST_F(Ops, AnyTrue) {
-    const auto result = iter(int_vec)
-        | any([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    const auto result = iter(int_vec) | any([](const auto value) {
+                            static_assert(
+                                is_same<decltype(value), const int>::value,
+                                "value is expected to be of const int type");
 
-            return value == 5;
-        });
+                            return value == 5;
+                        });
 
     ASSERT_TRUE(result);
 }
 
 TEST_F(Ops, AnyFalse) {
-    const auto result = iter(int_vec)
-        | any([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    const auto result = iter(int_vec) | any([](const auto value) {
+                            static_assert(
+                                is_same<decltype(value), const int>::value,
+                                "value is expected to be of const int type");
 
-            return value == 7;
-        });
+                            return value == 7;
+                        });
 
     ASSERT_FALSE(result);
 }
 
 TEST_F(Ops, ClonedRef) {
-    const auto str_dup_vec = iter(str_vec)
-        | cloned()
-        | collect<vector<string>>();
+    const auto str_dup_vec =
+        iter(str_vec) | cloned() | collect<vector<string>>();
 
-    ASSERT_TRUE(details::no_mismatch_values(str_vec, str_dup_vec,
-        [](const auto &lhs, const auto &rhs) {
-            static_assert(is_same<decltype(lhs), const string &>::value,
+    ASSERT_TRUE(details::no_mismatch_values(
+        str_vec, str_dup_vec, [](const auto &lhs, const auto &rhs) {
+            static_assert(
+                is_same<decltype(lhs), const string &>::value,
                 "lhs is expected to be of const string & type");
 
-            static_assert(is_same<decltype(rhs), const string &>::value,
+            static_assert(
+                is_same<decltype(rhs), const string &>::value,
                 "rhs is expected to be of const string & type");
 
             // same value but different addresses
@@ -510,22 +519,24 @@ TEST_F(Ops, ClonedRef) {
 }
 
 TEST_F(Ops, ClonedValue) {
-    const auto int_str_vec = iter(int_vec)
-        | map([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto int_str_vec =
+        iter(int_vec) | map([](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return to_string(value);
         })
-        | cloned() | cloned() | cloned()
-        | collect<vector<string>>();
+        | cloned() | cloned() | cloned() | collect<vector<string>>();
 
-    ASSERT_TRUE(details::no_mismatch_values(int_vec, int_str_vec,
-        [](const auto &lhs, const auto &rhs) {
-            static_assert(is_same<decltype(lhs), const int &>::value,
+    ASSERT_TRUE(details::no_mismatch_values(
+        int_vec, int_str_vec, [](const auto &lhs, const auto &rhs) {
+            static_assert(
+                is_same<decltype(lhs), const int &>::value,
                 "lhs is expected to be of const int & type");
 
-            static_assert(is_same<decltype(rhs), const string &>::value,
+            static_assert(
+                is_same<decltype(rhs), const string &>::value,
                 "rhs is expected to be of const string & type");
 
             return to_string(lhs) == rhs;
@@ -533,71 +544,82 @@ TEST_F(Ops, ClonedValue) {
 }
 
 TEST_F(Ops, CollectVec) {
-    const auto dup_vec = range(0, int_vec.size())
-        | collect<vector<int>>();
+    const auto dup_vec = range(0, int_vec.size()) | collect<vector<int>>();
 
     ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_vec));
 }
 
 TEST_F(Ops, CollectList) {
-    const auto dup_cont = iter(int_vec)
-        | collect<list<reference_wrapper<const int>>>();
+    const auto dup_cont =
+        iter(int_vec) | collect<list<reference_wrapper<const int>>>();
 
     ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
 }
 
 TEST_F(Ops, CollectSet) {
-    const auto dup_cont = iter(int_vec)
-        | collect<set<reference_wrapper<const int>>>();
+    const auto dup_cont =
+        iter(int_vec) | collect<set<reference_wrapper<const int>>>();
 
     ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
 }
 
 TEST_F(Ops, CollectUnorderedSet) {
-    // unordered_set cannot take in reference_wrapper as template type by default
-    const auto dup_cont = iter(int_vec)
-        | collect<unordered_set<int>>();
+    // unordered_set cannot take in reference_wrapper as template type by
+    // default
+    const auto dup_cont = iter(int_vec) | collect<unordered_set<int>>();
 
     ASSERT_TRUE(details::similar_values(int_vec, dup_cont));
 }
 
 TEST_F(Ops, CollectMap) {
-    const auto dup_cont = iter(int_vec)
-        | zip(iter(str_vec))
-        | collect<std::map<reference_wrapper<const int>, reference_wrapper<const string>>>();
+    const auto dup_cont = iter(int_vec) | zip(iter(str_vec))
+                          | collect<std::map<
+                                reference_wrapper<const int>,
+                                reference_wrapper<const string>>>();
 
     // check the keys
-    ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_cont,
-        [](const auto &lhs, const auto &rhs) {
-            static_assert(is_same<decltype(lhs), const int &>::value,
+    ASSERT_TRUE(details::no_mismatch_values(
+        int_vec, dup_cont, [](const auto &lhs, const auto &rhs) {
+            static_assert(
+                is_same<decltype(lhs), const int &>::value,
                 "lhs is expected to be of const int & type");
 
             static_assert(
-                is_same<decltype(rhs),
-                const pair<const reference_wrapper<const int>, reference_wrapper<const string>> &>::value,
+                is_same<
+                    decltype(rhs),
+                    const pair<
+                        const reference_wrapper<const int>,
+                        reference_wrapper<const string>> &>::value,
                 "rhs is expected to be of const pair<...> & type");
 
             return lhs == rhs.first.get();
         }));
 
     // check the values
-    const auto dup_vals = iter(dup_cont)
-        | map([](const auto &p) {
+    const auto dup_vals =
+        iter(dup_cont) | map([](const auto &p) {
             static_assert(
-                is_same<decltype(p),
-                const pair<const reference_wrapper<const int>, reference_wrapper<const string>> &>::value,
+                is_same<
+                    decltype(p),
+                    const pair<
+                        const reference_wrapper<const int>,
+                        reference_wrapper<const string>> &>::value,
                 "lhs is expected to be of const pair<...> & type");
 
             return cref(p.second);
         })
         | collect<vector<reference_wrapper<const string>>>();
 
-    ASSERT_TRUE(details::no_mismatch_values(str_vec, dup_vals,
-        [](const auto &lhs, const auto &rhs) {
-            static_assert(is_same<decltype(lhs), const string &>::value,
+    ASSERT_TRUE(details::no_mismatch_values(
+        str_vec, dup_vals, [](const auto &lhs, const auto &rhs) {
+            static_assert(
+                is_same<decltype(lhs), const string &>::value,
                 "lhs is expected to be of const string & type");
 
-            static_assert(is_same<decltype(rhs), const reference_wrapper<const string> &>::value,
+            static_assert(
+                is_same<
+                    decltype(rhs),
+                    const reference_wrapper<const string> &>::value,
                 "rhs is expected to be of const ref<const string> & type");
 
             return lhs == rhs.get();
@@ -605,16 +627,18 @@ TEST_F(Ops, CollectMap) {
 }
 
 TEST_F(Ops, CollectUnorderedMap) {
-    const auto dup_cont = iter(int_vec)
-        | zip(iter(str_vec))
+    const auto dup_cont =
+        iter(int_vec) | zip(iter(str_vec))
         | collect<unordered_map<int, reference_wrapper<const string>>>();
 
     // check the keys
-    const auto dup_keys = iter(dup_cont)
-        | map([](const auto &p) {
-            static_assert(is_same<
-                decltype(p),
-                const pair<const int, reference_wrapper<const string>> &>::value,
+    const auto dup_keys =
+        iter(dup_cont) | map([](const auto &p) {
+            static_assert(
+                is_same<
+                    decltype(p),
+                    const pair<const int, reference_wrapper<const string>>
+                        &>::value,
                 "p is expected to be of const pair<...> & type");
 
             return cref(p.first);
@@ -622,25 +646,31 @@ TEST_F(Ops, CollectUnorderedMap) {
         | collect<vector<reference_wrapper<const int>>>();
 
     ASSERT_TRUE(details::similar_values(int_vec, dup_keys));
- 
+
     // check the values
-    const auto dup_vals = iter(dup_cont)
-        | map([](const auto &p) {
-            static_assert(is_same<
-                decltype(p),
-                const pair<const int, reference_wrapper<const string>> &>::value,
+    const auto dup_vals =
+        iter(dup_cont) | map([](const auto &p) {
+            static_assert(
+                is_same<
+                    decltype(p),
+                    const pair<const int, reference_wrapper<const string>>
+                        &>::value,
                 "p is expected to be of const pair<...> & type");
 
             return cref(p.second);
         })
         | collect<vector<reference_wrapper<const string>>>();
 
-    ASSERT_TRUE(details::similar_values(str_vec, dup_vals,
-        [](const auto &lhs, const auto &rhs) {
-            static_assert(is_same<decltype(lhs), const string &>::value,
+    ASSERT_TRUE(details::similar_values(
+        str_vec, dup_vals, [](const auto &lhs, const auto &rhs) {
+            static_assert(
+                is_same<decltype(lhs), const string &>::value,
                 "lhs is expected to be of const string & type");
 
-            static_assert(is_same<decltype(rhs), const reference_wrapper<const string> &>::value,
+            static_assert(
+                is_same<
+                    decltype(rhs),
+                    const reference_wrapper<const string> &>::value,
                 "rhs is expected to be of const ref<const string> & type");
 
             return lhs == rhs.get();
@@ -648,8 +678,8 @@ TEST_F(Ops, CollectUnorderedMap) {
 }
 
 TEST_F(Ops, CollectStack) {
-    auto dup_cont = iter(int_vec)
-        | collect<stack<reference_wrapper<const int>>>();
+    auto dup_cont =
+        iter(int_vec) | collect<stack<reference_wrapper<const int>>>();
 
     while (!dup_cont.empty()) {
         const auto top = dup_cont.top();
@@ -659,8 +689,8 @@ TEST_F(Ops, CollectStack) {
 }
 
 TEST_F(Ops, CollectQueue) {
-    auto dup_cont = iter(int_vec)
-        | collect<queue<reference_wrapper<const int>>>();
+    auto dup_cont =
+        iter(int_vec) | collect<queue<reference_wrapper<const int>>>();
 
     for (size_t i = 0; i < int_vec.size(); ++i) {
         const auto front = dup_cont.front();
@@ -670,12 +700,10 @@ TEST_F(Ops, CollectQueue) {
 }
 
 TEST_F(Ops, CollectResultOk) {
-    vector<Result<int, string>> res_vec{
-        Ok(0), Ok(1), Ok(2)
-    };
+    vector<Result<int, string>> res_vec{Ok(0), Ok(1), Ok(2)};
 
-    auto collected_res = into_iter(move(res_vec))
-        | collect<Result<vector<int>, string>>();
+    auto collected_res =
+        into_iter(move(res_vec)) | collect<Result<vector<int>, string>>();
 
     ASSERT_TRUE(collected_res.is_ok());
 
@@ -692,11 +720,12 @@ TEST_F(Ops, CollectResultErr) {
     static const string ERR_MSG("ERROR!");
 
     vector<Result<const int &, const string &>> res_vec{
-        Ok(cref(ZERO)), Err(cref(ERR_MSG)), Ok(cref(TWO))
-    };
+        Ok(cref(ZERO)), Err(cref(ERR_MSG)), Ok(cref(TWO))};
 
-    auto collected_res = into_iter(move(res_vec))
-        | collect<Result<vector<reference_wrapper<const int>>, const string &>>();
+    auto collected_res =
+        into_iter(move(res_vec))
+        | collect<
+              Result<vector<reference_wrapper<const int>>, const string &>>();
 
     ASSERT_TRUE(collected_res.is_err());
 
@@ -705,15 +734,19 @@ TEST_F(Ops, CollectResultErr) {
 }
 
 TEST_F(Ops, CollectVecRef) {
-    const auto str_ref_vec = iter(str_vec)
-        | collect<vector<reference_wrapper<const string>>>();
+    const auto str_ref_vec =
+        iter(str_vec) | collect<vector<reference_wrapper<const string>>>();
 
-    ASSERT_TRUE(details::no_mismatch_values(str_vec, str_ref_vec,
-        [](const auto &lhs, const auto &rhs) {
-            static_assert(is_same<decltype(lhs), const string &>::value,
+    ASSERT_TRUE(details::no_mismatch_values(
+        str_vec, str_ref_vec, [](const auto &lhs, const auto &rhs) {
+            static_assert(
+                is_same<decltype(lhs), const string &>::value,
                 "lhs is expected to be of const string & type");
 
-            static_assert(is_same<decltype(rhs), const reference_wrapper<const string> &>::value,
+            static_assert(
+                is_same<
+                    decltype(rhs),
+                    const reference_wrapper<const string> &>::value,
                 "rhs is expected to be of const ref<const string> & type");
 
             return &lhs == &rhs.get();
@@ -721,26 +754,28 @@ TEST_F(Ops, CollectVecRef) {
 }
 
 TEST_F(Ops, CollectMapVecSum) {
-    const auto dup_vec = range(0, int_vec.size())
-        | map([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    const auto dup_vec = range(0, int_vec.size()) | map([](const auto value) {
+                             static_assert(
+                                 is_same<decltype(value), const int>::value,
+                                 "value is expected to be of const int type");
 
-            return value + 0.5;
-        })
-        | collect<vector<double>>();
+                             return value + 0.5;
+                         })
+                         | collect<vector<double>>();
 
-    const auto fold_sum = iter(dup_vec)
-        | fold(0.0, plus<double>());
+    const auto fold_sum = iter(dup_vec) | fold(0.0, plus<double>());
 
     const auto expected_sum = accumulate(
-        cbegin(int_vec), cend(int_vec),
+        cbegin(int_vec),
+        cend(int_vec),
         0.0,
         [](const auto acc, const auto value) {
-            static_assert(is_same<decltype(acc), const double>::value,
+            static_assert(
+                is_same<decltype(acc), const double>::value,
                 "acc is expected to be of const double type");
 
-            static_assert(is_same<decltype(value), const int>::value,
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return acc + value + 0.5;
@@ -752,10 +787,8 @@ TEST_F(Ops, CollectMapVecSum) {
 TEST_F(Ops, Cycle) {
     const vector<string> vs{"Hello", "World"};
 
-    const auto output_vs = iter(vs)
-        | cycle()
-        | take(5)
-        | collect<vector<string>>();
+    const auto output_vs =
+        iter(vs) | cycle() | take(5) | collect<vector<string>>();
 
     ASSERT_EQ(5, output_vs.size());
     ASSERT_EQ("Hello", output_vs[0]);
@@ -768,9 +801,7 @@ TEST_F(Ops, Cycle) {
 TEST_F(Ops, CycleNone) {
     const vector<string> vs{};
 
-    const auto output_vs = iter(vs)
-        | cycle()
-        | collect<vector<string>>();
+    const auto output_vs = iter(vs) | cycle() | collect<vector<string>>();
 
     ASSERT_TRUE(output_vs.empty());
 }
@@ -778,9 +809,8 @@ TEST_F(Ops, CycleNone) {
 TEST_F(Ops, Once) {
     auto movable_value = make_unique<string>("Hello");
 
-    const auto vec = once(move(movable_value))
-        | take(5)
-        | collect<vector<unique_ptr<string>>>();
+    const auto vec = once(move(movable_value)) | take(5)
+                     | collect<vector<unique_ptr<string>>>();
 
     ASSERT_EQ(1, vec.size());
     ASSERT_EQ("Hello", *vec[0]);
@@ -789,15 +819,14 @@ TEST_F(Ops, Once) {
 TEST_F(Ops, Enumerate) {
     int sum = 0;
 
-    iter(int_vec)
-        | enumerate()
-        | for_each([&sum](const auto &p) {
-            static_assert(is_same<decltype(p), const pair<size_t, const int &> &>::value,
-                "p is expected to be of const pair<...> & type");
+    iter(int_vec) | enumerate() | for_each([&sum](const auto &p) {
+        static_assert(
+            is_same<decltype(p), const pair<size_t, const int &> &>::value,
+            "p is expected to be of const pair<...> & type");
 
-            // first and second are the same values
-            sum += p.first + p.second;
-        });
+        // first and second are the same values
+        sum += p.first + p.second;
+    });
 
     // * 2 because the index and values are the same values
     // thus adding both together create a * 2 effect
@@ -807,19 +836,19 @@ TEST_F(Ops, Enumerate) {
 TEST_F(Ops, Filter) {
     int sum = 0;
 
-    iter(int_vec)
-        | filter([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    iter(int_vec) | filter([](const auto value) {
+        static_assert(
+            is_same<decltype(value), const int>::value,
+            "value is expected to be of const int type");
 
-            return value % 2 == 1;
-        })
-        | for_each([&sum](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+        return value % 2 == 1;
+    }) | for_each([&sum](const auto value) {
+        static_assert(
+            is_same<decltype(value), const int>::value,
+            "value is expected to be of const int type");
 
-            sum += value;
-        });
+        sum += value;
+    });
 
     ASSERT_EQ(9, sum);
 }
@@ -827,29 +856,28 @@ TEST_F(Ops, Filter) {
 TEST_F(Ops, FilterMap) {
     double sum = 0;
 
-    iter(int_vec)
-        | filter_map([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    iter(int_vec) | filter_map([](const auto value) {
+        static_assert(
+            is_same<decltype(value), const int>::value,
+            "value is expected to be of const int type");
 
-            return value % 2 == 1
-                ? Some(value + 0.5)
-                : None;
-        })
-        | for_each([&sum](const auto value) {
-            static_assert(is_same<decltype(value), const double>::value,
-                "value is expected to be of const double type");
+        return value % 2 == 1 ? Some(value + 0.5) : None;
+    }) | for_each([&sum](const auto value) {
+        static_assert(
+            is_same<decltype(value), const double>::value,
+            "value is expected to be of const double type");
 
-            sum += value;
-        });
+        sum += value;
+    });
 
     ASSERT_EQ(10.5, sum);
 }
 
 TEST_F(Ops, FindSome) {
-    const auto find_some_opt = iter(int_vec)
-        | find([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto find_some_opt =
+        iter(int_vec) | find([](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return value == 5;
@@ -860,9 +888,10 @@ TEST_F(Ops, FindSome) {
 }
 
 TEST_F(Ops, FindNone) {
-    const auto find_none_opt = iter(int_vec)
-        | find([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto find_none_opt =
+        iter(int_vec) | find([](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return value == 6;
@@ -872,29 +901,27 @@ TEST_F(Ops, FindNone) {
 }
 
 TEST_F(Ops, FindMapSome) {
-    const auto find_some_opt = iter(int_vec)
-        | find_map([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto find_some_opt =
+        iter(int_vec) | find_map([](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return value == 4
-                ? Some(value + 0.5)
-                : None;
+            return value == 4 ? Some(value + 0.5) : None;
         });
-    
+
     ASSERT_TRUE(find_some_opt.is_some());
     ASSERT_EQ(4.5, find_some_opt.get_unchecked());
 }
 
 TEST_F(Ops, FindMapNone) {
-    const auto find_none_opt = iter(int_vec)
-        | find_map([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto find_none_opt =
+        iter(int_vec) | find_map([](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return value == -1 
-                ? Some(value)
-                : None;
+            return value == -1 ? Some(value) : None;
         });
 
     ASSERT_TRUE(find_none_opt.is_none());
@@ -903,37 +930,36 @@ TEST_F(Ops, FindMapNone) {
 TEST_F(Ops, FlatMapEmpty) {
     auto vv = vector<vector<int>>{};
 
-    const auto v_out = into_iter(move(vv))
-        | flat_map([](auto &&v) {
-            static_assert(is_same<decltype(v), vector<int> &&>::value,
-                "v is expected to be of vector<int> && type");
-                
-            return move(v);
-        })
-        | collect<vector<int>>();
+    const auto v_out = into_iter(move(vv)) | flat_map([](auto &&v) {
+                           static_assert(
+                               is_same<decltype(v), vector<int> &&>::value,
+                               "v is expected to be of vector<int> && type");
+
+                           return move(v);
+                       })
+                       | collect<vector<int>>();
 
     ASSERT_TRUE(v_out.empty());
 }
 
 TEST_F(Ops, FlatMapSimple) {
-    auto vv = vector<vector<int>>{
-        {}, {0, 1, 2}, {3}, {}, {4, 5}};
+    auto vv = vector<vector<int>>{{}, {0, 1, 2}, {3}, {}, {4, 5}};
 
-    const auto v_out = into_iter(move(vv))
-        | flat_map([](auto &&v) {
-            static_assert(is_same<decltype(v), vector<int> &&>::value,
-                "v is expected to be of vector<int> && type");
+    const auto v_out = into_iter(move(vv)) | flat_map([](auto &&v) {
+                           static_assert(
+                               is_same<decltype(v), vector<int> &&>::value,
+                               "v is expected to be of vector<int> && type");
 
-            return move(v);
-        })
-        | collect<vector<int>>();
+                           return move(v);
+                       })
+                       | collect<vector<int>>();
 
-    ASSERT_TRUE(details::no_mismatch_values(array<int, 6>{0, 1, 2, 3, 4, 5}, v_out));
+    ASSERT_TRUE(
+        details::no_mismatch_values(array<int, 6>{0, 1, 2, 3, 4, 5}, v_out));
 }
 
 TEST_F(Ops, Fold) {
-    const auto fold_sum = iter(int_vec)
-        | fold(10, plus<int>());
+    const auto fold_sum = iter(int_vec) | fold(10, plus<int>());
 
     ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 10), fold_sum);
 }
@@ -941,13 +967,13 @@ TEST_F(Ops, Fold) {
 TEST_F(Ops, ForEach) {
     int sum = 0;
 
-    iter(int_vec)
-        | for_each([&sum](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    iter(int_vec) | for_each([&sum](const auto value) {
+        static_assert(
+            is_same<decltype(value), const int>::value,
+            "value is expected to be of const int type");
 
-            sum += value;
-        });
+        sum += value;
+    });
 
     ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
 }
@@ -955,19 +981,19 @@ TEST_F(Ops, ForEach) {
 TEST_F(Ops, Map) {
     double sum = 0.0;
 
-    iter(int_vec)
-        | map([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+    iter(int_vec) | map([](const auto value) {
+        static_assert(
+            is_same<decltype(value), const int>::value,
+            "value is expected to be of const int type");
 
-            return value * 0.5;
-        })
-        | for_each([&sum](const auto value) {
-            static_assert(is_same<decltype(value), const double>::value,
-                "value is expected to be of const double type");
+        return value * 0.5;
+    }) | for_each([&sum](const auto value) {
+        static_assert(
+            is_same<decltype(value), const double>::value,
+            "value is expected to be of const double type");
 
-            sum += value;
-        });
+        sum += value;
+    });
 
     ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 0.5, sum);
 }
@@ -1013,12 +1039,14 @@ TEST_F(Ops, MaxSomeHard) {
 TEST_F(Ops, MaxByNone) {
     static const vector<int> VALS;
 
-    const auto max_opt = iter(VALS)
-        | max_by([](const auto lhs, const auto rhs) {
-            static_assert(is_same<decltype(lhs), const int>::value,
+    const auto max_opt =
+        iter(VALS) | max_by([](const auto lhs, const auto rhs) {
+            static_assert(
+                is_same<decltype(lhs), const int>::value,
                 "lhs is expected to be of const int type");
 
-            static_assert(is_same<decltype(rhs), const int>::value,
+            static_assert(
+                is_same<decltype(rhs), const int>::value,
                 "rhs is expected to be of const int type");
 
             return lhs >= rhs;
@@ -1030,12 +1058,14 @@ TEST_F(Ops, MaxByNone) {
 TEST_F(Ops, MaxBySomeEasy) {
     static const vector<int> VALS{3, 1, 2};
 
-    const auto max_opt = iter(VALS)
-        | max_by([](const auto lhs, const auto rhs) {
-            static_assert(is_same<decltype(lhs), const int>::value,
+    const auto max_opt =
+        iter(VALS) | max_by([](const auto lhs, const auto rhs) {
+            static_assert(
+                is_same<decltype(lhs), const int>::value,
                 "lhs is expected to be of const int type");
 
-            static_assert(is_same<decltype(rhs), const int>::value,
+            static_assert(
+                is_same<decltype(rhs), const int>::value,
                 "rhs is expected to be of const int type");
 
             return lhs >= rhs;
@@ -1062,12 +1092,14 @@ TEST_F(Ops, MaxBySomeHard) {
     // found the value and referencing it
     const auto &max_val = VALS[max_index];
 
-    const auto max_opt = iter(VALS)
-        | max_by([](const auto lhs, const auto rhs) {
-            static_assert(is_same<decltype(lhs), const int>::value,
+    const auto max_opt =
+        iter(VALS) | max_by([](const auto lhs, const auto rhs) {
+            static_assert(
+                is_same<decltype(lhs), const int>::value,
                 "lhs is expected to be of const int type");
 
-            static_assert(is_same<decltype(rhs), const int>::value,
+            static_assert(
+                is_same<decltype(rhs), const int>::value,
                 "rhs is expected to be of const int type");
 
             return lhs >= rhs;
@@ -1119,12 +1151,14 @@ TEST_F(Ops, MinSomeHard) {
 TEST_F(Ops, MinByNone) {
     static const vector<int> VALS;
 
-    const auto min_opt = iter(VALS)
-        | min_by([](const auto lhs, const auto rhs) {
-            static_assert(is_same<decltype(lhs), const int>::value,
+    const auto min_opt =
+        iter(VALS) | min_by([](const auto lhs, const auto rhs) {
+            static_assert(
+                is_same<decltype(lhs), const int>::value,
                 "lhs is expected to be of const int type");
 
-            static_assert(is_same<decltype(rhs), const int>::value,
+            static_assert(
+                is_same<decltype(rhs), const int>::value,
                 "rhs is expected to be of const int type");
 
             return lhs <= rhs;
@@ -1136,12 +1170,14 @@ TEST_F(Ops, MinByNone) {
 TEST_F(Ops, MinBySomeEasy) {
     static const vector<int> VALS{1, 3, 2};
 
-    const auto min_opt = iter(VALS)
-        | min_by([](const auto lhs, const auto rhs) {
-            static_assert(is_same<decltype(lhs), const int>::value,
+    const auto min_opt =
+        iter(VALS) | min_by([](const auto lhs, const auto rhs) {
+            static_assert(
+                is_same<decltype(lhs), const int>::value,
                 "lhs is expected to be of const int type");
 
-            static_assert(is_same<decltype(rhs), const int>::value,
+            static_assert(
+                is_same<decltype(rhs), const int>::value,
                 "rhs is expected to be of const int type");
 
             return lhs <= rhs;
@@ -1168,12 +1204,14 @@ TEST_F(Ops, MinBySomeHard) {
     // found the value and referencing it
     const auto &min_val = VALS[min_index];
 
-    const auto min_opt = iter(VALS)
-        | min_by([](const auto lhs, const auto rhs) {
-            static_assert(is_same<decltype(lhs), const int>::value,
+    const auto min_opt =
+        iter(VALS) | min_by([](const auto lhs, const auto rhs) {
+            static_assert(
+                is_same<decltype(lhs), const int>::value,
                 "lhs is expected to be of const int type");
 
-            static_assert(is_same<decltype(rhs), const int>::value,
+            static_assert(
+                is_same<decltype(rhs), const int>::value,
                 "rhs is expected to be of const int type");
 
             return lhs <= rhs;
@@ -1185,40 +1223,31 @@ TEST_F(Ops, MinBySomeHard) {
 }
 
 TEST_F(Ops, Range) {
-    const auto sum = range(0, 6)
-        | fold(5, plus<int>());
+    const auto sum = range(0, 6) | fold(5, plus<int>());
 
     ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 5), sum);
 }
 
 TEST_F(Ops, SkipWithin) {
-    const auto sum = iter(int_vec)
-        | skip(3)
-        | fold(0, plus<int>());
+    const auto sum = iter(int_vec) | skip(3) | fold(0, plus<int>());
 
     ASSERT_EQ(12, sum);
 }
 
 TEST_F(Ops, SkipPass) {
-    const auto sum = iter(int_vec)
-        | skip(100)
-        | fold(0, plus<int>());
+    const auto sum = iter(int_vec) | skip(100) | fold(0, plus<int>());
 
     ASSERT_EQ(0, sum);
 }
 
 TEST_F(Ops, TakeWithin) {
-    const auto sum = iter(int_vec)
-        | take(3)
-        | fold(0, plus<int>());
+    const auto sum = iter(int_vec) | take(3) | fold(0, plus<int>());
 
     ASSERT_EQ(3, sum);
 }
 
 TEST_F(Ops, TakeExceed) {
-    const auto sum = iter(int_vec)
-        | take(100)
-        | fold(0, plus<int>());
+    const auto sum = iter(int_vec) | take(100) | fold(0, plus<int>());
 
     ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
 }
@@ -1228,11 +1257,8 @@ TEST_F(Ops, TakeExceed) {
 TEST_F(ComplexOps, OnceCycleFindMap) {
     static constexpr auto MSG = "Hello";
 
-    const auto opt = once(Unit)
-        | cycle()
-        | find_map([](auto) {
-            return Some(MSG);
-        });
+    const auto opt =
+        once(Unit) | cycle() | find_map([](auto) { return Some(MSG); });
 
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ(MSG, opt.get_unchecked());
@@ -1247,8 +1273,8 @@ TEST_F(ComplexOps, ManyIterCollect) {
     v.push_back(make_unique<int>(4));
 
     // collect as reference once
-    const auto v2 = iter(v)
-        | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
+    const auto v2 =
+        iter(v) | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
 
     // collect as reference twice
     // note how reference_wrapper<reference_wrapper>
@@ -1257,22 +1283,24 @@ TEST_F(ComplexOps, ManyIterCollect) {
     // so it is a must to collapse anyway
     // which makes a slightly deviation from Rust ref of ref (which is possible)
 
-    const auto v3 = iter(v2)
-        | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
+    const auto v3 =
+        iter(v2) | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
 
-    const auto v4 = iter(v3)
-        | map([](const auto &r_ptr) {
-            static_assert(is_same<decltype(r_ptr), const unique_ptr<int> &>::value,
+    const auto v4 =
+        iter(v3) | map([](const auto &r_ptr) {
+            static_assert(
+                is_same<decltype(r_ptr), const unique_ptr<int> &>::value,
                 "r_ptr is expected to be of const unique_ptr<int> & type");
 
             return cref(*r_ptr);
         })
         | filter([](const auto &r) {
-            static_assert(is_same<decltype(r), const int &>::value,
-                "r is expected to be of const int & type");
+              static_assert(
+                  is_same<decltype(r), const int &>::value,
+                  "r is expected to be of const int & type");
 
-            return r % 2 == 1;
-        })
+              return r % 2 == 1;
+          })
         | collect<vector<reference_wrapper<const int>>>();
 
     // no copy of any value was ever done from the original v
@@ -1283,86 +1311,98 @@ TEST_F(ComplexOps, ManyIterCollect) {
 }
 
 TEST_F(ComplexOps, FilterMapFold) {
-    const auto eleven_div_str = range(1, 100)
-        | filter([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto eleven_div_str =
+        range(1, 100) | filter([](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return value % 11 == 0;
         })
         | map([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+              static_assert(
+                  is_same<decltype(value), const int>::value,
+                  "value is expected to be of const int type");
 
-            return to_string(value);
-        })
+              return to_string(value);
+          })
         | fold(string{}, [](const auto acc, const auto &rhs) {
-            static_assert(is_same<decltype(acc), const string>::value,
-                "acc is expected to be of const string type");
+              static_assert(
+                  is_same<decltype(acc), const string>::value,
+                  "acc is expected to be of const string type");
 
-            static_assert(is_same<decltype(rhs), const string &>::value,
-                "rhs is expected to be of const string & type");
-                
-            return acc + rhs + " ";
-        });
+              static_assert(
+                  is_same<decltype(rhs), const string &>::value,
+                  "rhs is expected to be of const string & type");
+
+              return acc + rhs + " ";
+          });
 
     ASSERT_EQ("11 22 33 44 55 66 77 88 99 ", eleven_div_str);
 }
 
 TEST_F(ComplexOps, FilterMapFind) {
-    const auto find_opt = range(1, 100)
-        | filter([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto find_opt =
+        range(1, 100) | filter([](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return value % 17 == 0;
         })
         | map([](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+              static_assert(
+                  is_same<decltype(value), const int>::value,
+                  "value is expected to be of const int type");
 
-            // .5 is a easily representable value in mantissa
-            // so that the floating float comparison can directly compare the values
-            return value + 0.5;
-        })
+              // .5 is a easily representable value in mantissa
+              // so that the floating float comparison can directly compare the
+              // values
+              return value + 0.5;
+          })
         | find([](const auto value) {
-            static_assert(is_same<decltype(value), const double>::value,
-                "value is expected to be of const double type");
+              static_assert(
+                  is_same<decltype(value), const double>::value,
+                  "value is expected to be of const double type");
 
-            return value == 34.5;
-        });
+              return value == 34.5;
+          });
 
     ASSERT_TRUE(find_opt.is_some());
     ASSERT_EQ(34.5, find_opt.get_unchecked());
 }
 
 TEST_F(ComplexOps, ZipRefMapFold) {
-    const auto zipped_int_vec = iter(int_vec)
-        | zip(iter(int_vec) | skip(1))
+    const auto zipped_int_vec =
+        iter(int_vec) | zip(iter(int_vec) | skip(1))
         | collect<vector<pair<const int &, const int &>>>();
 
-    const auto folded_str = iter(zipped_int_vec)
-        | map([](const auto &index_value_pair) {
-            static_assert(is_same<
-                decltype(index_value_pair),
-                const pair<const int &, const int &> &>::value,
+    const auto folded_str =
+        iter(zipped_int_vec) | map([](const auto &index_value_pair) {
+            static_assert(
+                is_same<
+                    decltype(index_value_pair),
+                    const pair<const int &, const int &> &>::value,
                 "index_value_pair is expected to be of const pair<...> type");
-                
+
             stringstream ss;
-            ss << '(' << index_value_pair.first << ',' << index_value_pair.second << ')';
+            ss << '(' << index_value_pair.first << ','
+               << index_value_pair.second << ')';
             return ss.str();
         })
         | fold(string{}, [](const auto acc, const auto value) {
-            static_assert(is_same<decltype(acc), const string>::value,
-                "acc is expected to be of const string type");
+              static_assert(
+                  is_same<decltype(acc), const string>::value,
+                  "acc is expected to be of const string type");
 
-            static_assert(is_same<decltype(value), const string>::value,
-                "value is expected to be of const string type");
+              static_assert(
+                  is_same<decltype(value), const string>::value,
+                  "value is expected to be of const string type");
 
-            stringstream ss;
-            ss << acc << value << ' ';
-            return ss.str();
-        });
+              stringstream ss;
+              ss << acc << value << ' ';
+              return ss.str();
+          });
 
     ASSERT_EQ("(0,1) (1,2) (2,3) (3,4) (4,5) ", folded_str);
 }
@@ -1435,19 +1475,22 @@ TEST(Option, CtorMoveComplex) {
 }
 
 TEST(Option, MapSome) {
-    const auto opt = Some(make_unique<int>(777))
-        .map([](auto &&value) {
-            static_assert(is_same<decltype(value), unique_ptr<int> &&>::value,
-                "value is expected to be of unique_ptr<int> && type");
+    const auto opt =
+        Some(make_unique<int>(777))
+            .map([](auto &&value) {
+                static_assert(
+                    is_same<decltype(value), unique_ptr<int> &&>::value,
+                    "value is expected to be of unique_ptr<int> && type");
 
-            return make_unique<string>(to_string(*value));
-        })
-        .map([](auto &&value) {
-            static_assert(is_same<decltype(value), unique_ptr<string> &&>::value,
-                "value is expected to be of unique_ptr<string> && type");
+                return make_unique<string>(to_string(*value));
+            })
+            .map([](auto &&value) {
+                static_assert(
+                    is_same<decltype(value), unique_ptr<string> &&>::value,
+                    "value is expected to be of unique_ptr<string> && type");
 
-            return "*" + *value + "*";
-        });
+                return "*" + *value + "*";
+            });
 
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ("*777*", opt.get_unchecked());
@@ -1457,7 +1500,8 @@ TEST(Option, MapNone) {
     auto opt = Option<int>(None);
 
     move(opt).map([](auto &&value) {
-        static_assert(is_same<decltype(value), int &&>::value,
+        static_assert(
+            is_same<decltype(value), int &&>::value,
             "value is expected to be of int && type");
 
         return "Hello";
@@ -1467,68 +1511,68 @@ TEST(Option, MapNone) {
 }
 
 TEST(Option, AndThenSomeToSome) {
-    const auto opt = Some(make_unique<int>(777))
-        .and_then([](auto &&value) {
-            static_assert(is_same<decltype(value), unique_ptr<int> &&>::value,
-                "value is expected to be of unique_ptr<int> && type");
+    const auto opt = Some(make_unique<int>(777)).and_then([](auto &&value) {
+        static_assert(
+            is_same<decltype(value), unique_ptr<int> &&>::value,
+            "value is expected to be of unique_ptr<int> && type");
 
-            return Some(make_unique<string>(to_string(*value)));
-        });
+        return Some(make_unique<string>(to_string(*value)));
+    });
 
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ("777", *opt.get_unchecked());
 }
 
 TEST(Option, AndThenSomeToNone) {
-    const auto opt = Some(make_unique<int>(777))
-        .and_then([](auto &&value) -> Option<string> {
-            static_assert(is_same<decltype(value), unique_ptr<int> &&>::value,
-                "value is expected to be of unique_ptr<int> && type");
+    const auto opt =
+        Some(make_unique<int>(777))
+            .and_then([](auto &&value) -> Option<string> {
+                static_assert(
+                    is_same<decltype(value), unique_ptr<int> &&>::value,
+                    "value is expected to be of unique_ptr<int> && type");
 
-            return None;
-        });
+                return None;
+            });
 
     ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, AndThenNone) {
-    const auto opt = Option<unique_ptr<int>>(None)
-        .and_then([](auto &&value) {
-            static_assert(is_same<decltype(value), unique_ptr<int> &&>::value,
-                "value is expected to be of unique_ptr<int> && type");
-                
-            return Some(make_unique<string>(to_string(*value)));
-        });
+    const auto opt = Option<unique_ptr<int>>(None).and_then([](auto &&value) {
+        static_assert(
+            is_same<decltype(value), unique_ptr<int> &&>::value,
+            "value is expected to be of unique_ptr<int> && type");
+
+        return Some(make_unique<string>(to_string(*value)));
+    });
 
     ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, OrElseNoneToNone) {
-    const auto opt = Option<unique_ptr<int>>(None)
-        .or_else([] { return None; });
+    const auto opt = Option<unique_ptr<int>>(None).or_else([] { return None; });
 
     ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Option, OrElseNoneToSome) {
-    const auto opt = Option<unique_ptr<int>>(None)
-        .or_else([] { return Some(make_unique<int>(7)); });
+    const auto opt = Option<unique_ptr<int>>(None).or_else(
+        [] { return Some(make_unique<int>(7)); });
 
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ(7, *opt.get_unchecked());
 }
 
 TEST(Option, OkOrElseSome) {
-    const auto res = Some(7)
-        .ok_or_else([] { return string("Hello"); });
+    const auto res = Some(7).ok_or_else([] { return string("Hello"); });
 
     ASSERT_TRUE(res.is_ok());
     ASSERT_EQ(7, res.get_unchecked());
 }
 
 TEST(Option, OkOrElseNone) {
-    const auto res = Option<int>(None)
-        .ok_or_else([] { return string("Hello"); });
+    const auto res =
+        Option<int>(None).ok_or_else([] { return string("Hello"); });
 
     ASSERT_TRUE(res.is_err());
     ASSERT_EQ("Hello", res.get_err_unchecked());
@@ -1538,8 +1582,9 @@ TEST(Option, OkOrElseRefOk) {
     const string ok_value = "Okay";
     const string err_value = "Error";
 
-    const auto res = Some(cref(ok_value))
-        .ok_or_else([&err_value] { return cref(err_value); });
+    const auto res = Some(cref(ok_value)).ok_or_else([&err_value] {
+        return cref(err_value);
+    });
 
     ASSERT_TRUE(res.is_ok());
     ASSERT_EQ("Okay", res.get_unchecked());
@@ -1549,8 +1594,8 @@ TEST(Option, OkOrElseRefOk) {
 TEST(Option, OkOrElseRefErr) {
     const string err_value = "Error";
 
-    const auto res = Option<string>(None)
-        .ok_or_else([&err_value] { return cref(err_value); });
+    const auto res = Option<string>(None).ok_or_else(
+        [&err_value] { return cref(err_value); });
 
     ASSERT_TRUE(res.is_err());
     ASSERT_EQ("Error", res.get_err_unchecked());
@@ -1558,8 +1603,7 @@ TEST(Option, OkOrElseRefErr) {
 }
 
 TEST(Option, OrElseSome) {
-    const auto opt = Some(7)
-        .or_else([] { return None; });
+    const auto opt = Some(7).or_else([] { return None; });
 
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ(7, opt.get_unchecked());
@@ -1568,9 +1612,10 @@ TEST(Option, OrElseSome) {
 TEST(Option, MatchXValueSome) {
     const auto value = Some(7).match(
         [](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
-                
+
             return to_string(value);
         },
         [] { return "NONE"; });
@@ -1583,7 +1628,8 @@ TEST(Option, MatchMoveSome) {
 
     const auto value = move(opt).match(
         [](const auto &value) {
-            static_assert(is_same<decltype(value), const unique_ptr<int> &>::value,
+            static_assert(
+                is_same<decltype(value), const unique_ptr<int> &>::value,
                 "value is expected to be of const unique_ptr<int> & type");
 
             return to_string(*value);
@@ -1597,7 +1643,8 @@ TEST(Option, MatchMoveSome) {
 TEST(Option, MatchXValueNone) {
     const auto value = Option<int>(None).match(
         [](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return to_string(value);
@@ -1612,7 +1659,8 @@ TEST(Option, MatchRefSome) {
 
     const auto value = opt.match(
         [](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return to_string(value);
@@ -1625,10 +1673,11 @@ TEST(Option, MatchRefSome) {
 
 TEST(Option, MatchRefNone) {
     const auto opt = Option<int>(None);
-    
+
     const auto value = opt.match(
         [](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return to_string(value);
@@ -1643,7 +1692,8 @@ TEST(Option, MatchSomeXValueSomeAssignBack) {
     auto ptr = make_unique<int>(7);
 
     Some(move(ptr)).match_some([&ptr](auto &&value) {
-        static_assert(is_same<decltype(value), unique_ptr<int> &&>::value,
+        static_assert(
+            is_same<decltype(value), unique_ptr<int> &&>::value,
             "value is expected to be of unique_ptr<int> && type");
 
         // assign back so that there is something to test
@@ -1658,7 +1708,8 @@ TEST(Option, MatchSomeXValueSomeNoEffect) {
     auto ptr = make_unique<int>(7);
 
     Some(move(ptr)).match_some([&ptr](auto &&value) {
-        static_assert(is_same<decltype(value), unique_ptr<int> &&>::value,
+        static_assert(
+            is_same<decltype(value), unique_ptr<int> &&>::value,
             "value is expected to be of unique_ptr<int> && type");
 
         // do nothing
@@ -1671,7 +1722,8 @@ TEST(Option, MatchSomeXValueNone) {
     auto ptr = make_unique<int>(7);
 
     Option<int>(None).match_some([&ptr](auto &&value) {
-        static_assert(is_same<decltype(value), int &&>::value,
+        static_assert(
+            is_same<decltype(value), int &&>::value,
             "value is expected to be of int && type");
 
         // not happening
@@ -1687,7 +1739,8 @@ TEST(Option, MatchSomeRefDoSomething) {
     bool flag = false;
 
     opt.match_some([&flag](const auto &value) {
-        static_assert(is_same<decltype(value), const unique_ptr<int> &>::value,
+        static_assert(
+            is_same<decltype(value), const unique_ptr<int> &>::value,
             "value is expected to be of const unique_ptr<int> & type");
 
         flag = true;
@@ -1703,7 +1756,8 @@ TEST(Option, MatchSomeRefNoEffect) {
     bool flag = false;
 
     opt.match_some([&flag](const auto &value) {
-        static_assert(is_same<decltype(value), const int &>::value,
+        static_assert(
+            is_same<decltype(value), const int &>::value,
             "value is expected to be of const int & type");
 
         flag = true;
@@ -1740,9 +1794,7 @@ TEST(Option, MatchNoneRefDoSomething) {
     const auto opt = Option<int>(None);
     bool flag = false;
 
-    opt.match_none([&flag] {
-        flag = true;
-    });
+    opt.match_none([&flag] { flag = true; });
 
     ASSERT_TRUE(flag);
     ASSERT_TRUE(opt.is_none());
@@ -1752,9 +1804,7 @@ TEST(Option, MatchNoneRefNoEffect) {
     const auto opt = Some(7);
     bool flag = false;
 
-    opt.match_none([&flag] {
-        flag = true;
-    });
+    opt.match_none([&flag] { flag = true; });
 
     ASSERT_FALSE(flag);
     ASSERT_TRUE(opt.is_some());
@@ -1777,16 +1827,14 @@ TEST(Option, UnwrapUnchecked) {
 }
 
 TEST(Option, OptIfTrue) {
-    const auto opt = opt_if(true,
-        [] { return 7; });
+    const auto opt = opt_if(true, [] { return 7; });
 
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ(7, opt.get_unchecked());
 }
 
 TEST(Option, OptIfFalse) {
-    const auto opt = opt_if(false,
-        [] { return 0; });
+    const auto opt = opt_if(false, [] { return 0; });
 
     ASSERT_TRUE(opt.is_none());
 }
@@ -1810,17 +1858,13 @@ TEST(Result, ResErrAssignment) {
 }
 
 TEST(Result, ResIfElseTrue) {
-    const auto res = res_if_else(true,
-        [] { return 1; },
-        [] { return 3.14; });
+    const auto res = res_if_else(true, [] { return 1; }, [] { return 3.14; });
 
     ASSERT_TRUE(res.is_ok());
 }
 
 TEST(Result, ResIfElseFalse) {
-    const auto res = res_if_else(false,
-        [] { return 1; },
-        [] { return 3.14; });
+    const auto res = res_if_else(false, [] { return 1; }, [] { return 3.14; });
 
     ASSERT_TRUE(res.is_err());
 }
@@ -1858,7 +1902,8 @@ TEST(Result, ErrNone) {
 TEST(Result, MapOk) {
     Result<int, string> res = Ok(1);
     const auto mapped_res = move(res).map([](const auto value) {
-        static_assert(is_same<decltype(value), const int>::value,
+        static_assert(
+            is_same<decltype(value), const int>::value,
             "value is expected to be of const int type");
 
         return value + 0.5;
@@ -1871,7 +1916,8 @@ TEST(Result, MapOk) {
 TEST(Result, MapErr) {
     Result<int, string> res = Err(string{"Error"});
     const auto mapped_res = move(res).map([](const auto value) {
-        static_assert(is_same<decltype(value), const int>::value,
+        static_assert(
+            is_same<decltype(value), const int>::value,
             "value is expected to be of const int type");
 
         return to_string(value);
@@ -1884,7 +1930,8 @@ TEST(Result, MapErr) {
 TEST(Result, MapErrErr) {
     Result<int, string> res = Err(string{"Error"});
     const auto mapped_res = move(res).map_err([](const auto &value) {
-        static_assert(is_same<decltype(value), const string &>::value,
+        static_assert(
+            is_same<decltype(value), const string &>::value,
             "value is expected to be of const string & type");
 
         return value + " value";
@@ -1897,7 +1944,8 @@ TEST(Result, MapErrErr) {
 TEST(Result, MapErrOk) {
     Result<int, int> res = Ok(-1);
     const auto mapped_res = move(res).map_err([](const auto value) {
-        static_assert(is_same<decltype(value), const int>::value,
+        static_assert(
+            is_same<decltype(value), const int>::value,
             "value is expected to be of const int type");
 
         return to_string(value);
@@ -1910,9 +1958,10 @@ TEST(Result, MapErrOk) {
 TEST(Result, AndThenOkToOk) {
     Result<int, string> res = Ok(1);
 
-    const auto mapped_res = move(res)
-        .and_then([](const auto value) -> Result<string, string> {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto mapped_res =
+        move(res).and_then([](const auto value) -> Result<string, string> {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return Ok(to_string(value));
@@ -1925,9 +1974,10 @@ TEST(Result, AndThenOkToOk) {
 TEST(Result, AndThenOkToErr) {
     Result<int, string> res = Ok(2);
 
-    const auto mapped_res = move(res)
-        .and_then([](const auto value) -> Result<int, string> {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto mapped_res =
+        move(res).and_then([](const auto value) -> Result<int, string> {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return Err(to_string(value));
@@ -1940,9 +1990,10 @@ TEST(Result, AndThenOkToErr) {
 TEST(Result, AndThenErr) {
     Result<int, string> res = Err(string{"Error"});
 
-    const auto mapped_res = move(res)
-        .and_then([](const auto value) -> Result<int, string> {
-            static_assert(is_same<decltype(value), const int>::value,
+    const auto mapped_res =
+        move(res).and_then([](const auto value) -> Result<int, string> {
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return Ok(value);
@@ -1955,9 +2006,10 @@ TEST(Result, AndThenErr) {
 TEST(Result, OrElseErrToOk) {
     Result<int, string> res = Err(string{"Error"});
 
-    const auto mapped_res = move(res)
-        .or_else([](const auto &value) -> Result<int, int> {
-            static_assert(is_same<decltype(value), const string &>::value,
+    const auto mapped_res =
+        move(res).or_else([](const auto &value) -> Result<int, int> {
+            static_assert(
+                is_same<decltype(value), const string &>::value,
                 "value is expected to be of const string & type");
 
             return Ok(7);
@@ -1970,9 +2022,10 @@ TEST(Result, OrElseErrToOk) {
 TEST(Result, OrElseErrToErr) {
     Result<int, string> res = Err(string{"Error"});
 
-    const auto mapped_res = move(res)
-        .or_else([](const auto &value) -> Result<int, string> {
-            static_assert(is_same<decltype(value), const string &>::value,
+    const auto mapped_res =
+        move(res).or_else([](const auto &value) -> Result<int, string> {
+            static_assert(
+                is_same<decltype(value), const string &>::value,
                 "value is expected to be of const string & type");
 
             return Err(string{"Still error"});
@@ -1985,9 +2038,10 @@ TEST(Result, OrElseErrToErr) {
 TEST(Result, OrElseOk) {
     Result<int, string> res = Ok(5);
 
-    const auto mapped_res = move(res)
-        .or_else([](const auto &value) -> Result<int, double> {
-            static_assert(is_same<decltype(value), const string &>::value,
+    const auto mapped_res =
+        move(res).or_else([](const auto &value) -> Result<int, double> {
+            static_assert(
+                is_same<decltype(value), const string &>::value,
                 "value is expected to be of const string & type");
 
             return Ok(6);
@@ -2008,7 +2062,8 @@ TEST(Result, MatchOk) {
             return true;
         },
         [](auto &&value) {
-            // static_assert(is_same<decltype(value), unique_ptr<string> &&>::value,
+            // static_assert(is_same<decltype(value), unique_ptr<string>
+            // &&>::value,
             //     "value is expected to be of unique_ptr<string> && type");
 
             return false;
@@ -2022,13 +2077,15 @@ TEST(Result, MatchErr) {
 
     const auto match_res = move(res).match(
         [](const auto value) {
-            static_assert(is_same<decltype(value), const int>::value,
+            static_assert(
+                is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
             return 0.5;
         },
         [](const auto &value) {
-            static_assert(is_same<decltype(value), const string &>::value,
+            static_assert(
+                is_same<decltype(value), const string &>::value,
                 "value is expected to be of const string & type");
 
             return 0.25;
@@ -2042,13 +2099,15 @@ TEST(Result, MatchOkRef) {
 
     const auto match_res = res.match(
         [](const auto &value) {
-            static_assert(is_same<decltype(value), const unique_ptr<int> &>::value,
+            static_assert(
+                is_same<decltype(value), const unique_ptr<int> &>::value,
                 "value is expected to be of const unique_ptr<int> & type");
 
             return to_string(*value);
         },
         [](const auto &value) {
-            static_assert(is_same<decltype(value), const unique_ptr<string> &>::value,
+            static_assert(
+                is_same<decltype(value), const unique_ptr<string> &>::value,
                 "value is expected to be of const unique_ptr<string> & type");
 
             return *value;
@@ -2062,13 +2121,15 @@ TEST(Result, MatchErrRef) {
 
     const auto match_res = res.match(
         [](const auto &value) {
-            static_assert(is_same<decltype(value), const string &>::value,
+            static_assert(
+                is_same<decltype(value), const string &>::value,
                 "value is expected to be of const string & type");
 
             return cref(value);
         },
         [](const auto &value) {
-            static_assert(is_same<decltype(value), const string &>::value,
+            static_assert(
+                is_same<decltype(value), const string &>::value,
                 "value is expected to be of const string & type");
 
             return cref(value);
@@ -2084,7 +2145,8 @@ TEST(Result, MatchOkOk) {
     unique_ptr<int> ptr;
 
     move(res).match_ok([&ptr](auto &&value) {
-        static_assert(is_same<decltype(value), unique_ptr<int> &&>::value,
+        static_assert(
+            is_same<decltype(value), unique_ptr<int> &&>::value,
             "value is expected to be of unique_ptr<int> && type");
 
         ptr = move(value);
@@ -2095,11 +2157,13 @@ TEST(Result, MatchOkOk) {
 }
 
 TEST(Result, MatchOkErr) {
-    Result<unique_ptr<int>, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    Result<unique_ptr<int>, unique_ptr<string>> res =
+        Err(make_unique<string>("Hello"));
     unique_ptr<int> ptr;
 
     move(res).match_ok([&ptr](auto &&value) {
-        static_assert(is_same<decltype(value), unique_ptr<int> &&>::value,
+        static_assert(
+            is_same<decltype(value), unique_ptr<int> &&>::value,
             "value is expected to be of unique_ptr<int> && type");
 
         ptr = move(value);
@@ -2109,11 +2173,13 @@ TEST(Result, MatchOkErr) {
 }
 
 TEST(Result, MatchOkRefOk) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
+    const Result<unique_ptr<int>, unique_ptr<string>> res =
+        Ok(make_unique<int>(2));
     int value = 0;
 
     res.match_ok([&value](const auto &res_value) {
-        static_assert(is_same<decltype(res_value), const unique_ptr<int> &>::value,
+        static_assert(
+            is_same<decltype(res_value), const unique_ptr<int> &>::value,
             "res_value is expected to be of const unique_ptr<int> & type");
 
         value = *res_value;
@@ -2125,11 +2191,13 @@ TEST(Result, MatchOkRefOk) {
 }
 
 TEST(Result, MatchOkRefErr) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    const Result<unique_ptr<int>, unique_ptr<string>> res =
+        Err(make_unique<string>("Hello"));
     int value = 7;
 
     res.match_ok([&value](const auto &res_value) {
-        static_assert(is_same<decltype(res_value), const unique_ptr<int> &>::value,
+        static_assert(
+            is_same<decltype(res_value), const unique_ptr<int> &>::value,
             "res_value is expected to be of const unique_ptr<int> & type");
 
         value = *res_value;
@@ -2145,7 +2213,8 @@ TEST(Result, MatchErrOk) {
     unique_ptr<string> ptr;
 
     move(res).match_err([&ptr](auto &&value) {
-        static_assert(is_same<decltype(value), unique_ptr<string> &&>::value,
+        static_assert(
+            is_same<decltype(value), unique_ptr<string> &&>::value,
             "value is expected to be of unique_ptr<string> && type");
 
         ptr = move(value);
@@ -2155,11 +2224,13 @@ TEST(Result, MatchErrOk) {
 }
 
 TEST(Result, MatchErrErr) {
-    Result<unique_ptr<int>, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    Result<unique_ptr<int>, unique_ptr<string>> res =
+        Err(make_unique<string>("Hello"));
     unique_ptr<string> ptr;
 
     move(res).match_err([&ptr](auto &&value) {
-        static_assert(is_same<decltype(value), unique_ptr<string> &&>::value,
+        static_assert(
+            is_same<decltype(value), unique_ptr<string> &&>::value,
             "value is expected to be of unique_ptr<string> && type");
 
         ptr = move(value);
@@ -2170,13 +2241,15 @@ TEST(Result, MatchErrErr) {
 }
 
 TEST(Result, MatchErrRefOk) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
+    const Result<unique_ptr<int>, unique_ptr<string>> res =
+        Ok(make_unique<int>(2));
     string value = "World";
 
     res.match_err([&value](const auto &res_value) {
-        static_assert(is_same<decltype(res_value), const unique_ptr<string> &>::value,
+        static_assert(
+            is_same<decltype(res_value), const unique_ptr<string> &>::value,
             "res_value is expected to be of const unique_ptr<string> & type");
-            
+
         value = *res_value;
     });
 
@@ -2186,13 +2259,15 @@ TEST(Result, MatchErrRefOk) {
 }
 
 TEST(Result, MatchErrRefErr) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    const Result<unique_ptr<int>, unique_ptr<string>> res =
+        Err(make_unique<string>("Hello"));
     string value = "World";
 
     res.match_err([&value](auto &&res_value) {
-        static_assert(is_same<decltype(res_value), const unique_ptr<string> &>::value,
+        static_assert(
+            is_same<decltype(res_value), const unique_ptr<string> &>::value,
             "res_value is expected to be of const unique_ptr<string> & type");
-            
+
         value = *res_value;
     });
 
@@ -2222,9 +2297,8 @@ TEST(Result, UnwrapUnchecked) {
     ASSERT_TRUE(res.is_ok());
 
     // to show that it returns reference
-    static_assert(is_same<
-        decltype(move(res).unwrap_unchecked()),
-        int &>::value,
+    static_assert(
+        is_same<decltype(move(res).unwrap_unchecked()), int &>::value,
         "Result::UnwrapUnchecked does not return reference directly!");
 
     ASSERT_EQ(7, move(res).unwrap_unchecked());
@@ -2241,9 +2315,8 @@ TEST(Result, UnwrapErrUnchecked) {
 
 TEST(Macro, Let) {
     const auto fn = [](const bool flag) -> Result<int, string> {
-        auto res = flag
-            ? Result<double, string>(Ok(3.14))
-            : Err(string("Hello"));
+        auto res =
+            flag ? Result<double, string>(Ok(3.14)) : Err(string("Hello"));
 
         let(value, res);
         return Ok(static_cast<int>(value));
@@ -2264,9 +2337,8 @@ TEST(Macro, Let) {
 
 TEST(Macro, LetMut) {
     const auto fn = [](const bool flag) -> Result<int, string> {
-        auto res = flag
-            ? Result<double, string>(Ok(3.14))
-            : Err(string("Hello"));
+        auto res =
+            flag ? Result<double, string>(Ok(3.14)) : Err(string("Hello"));
 
         let_mut(value, res);
         value += 10;
@@ -2290,9 +2362,8 @@ TEST(Macro, LetRef) {
     static const int VAL = 7;
 
     const auto fn = [](const bool flag) -> Result<const int &, string> {
-        auto res = flag
-            ? Result<const int &, string>(Ok(cref(VAL)))
-            : Err(string("Hello"));
+        auto res = flag ? Result<const int &, string>(Ok(cref(VAL)))
+                        : Err(string("Hello"));
 
         let_ref(value, res);
         return Ok(cref(value));
@@ -2316,9 +2387,8 @@ TEST(Macro, LetMutRef) {
     static int VAL = 7;
 
     const auto fn = [](const bool flag) -> Result<const int &, string> {
-        auto res = flag
-            ? Result<int &, string>(Ok(ref(VAL)))
-            : Err(string("Hello"));
+        auto res =
+            flag ? Result<int &, string>(Ok(ref(VAL))) : Err(string("Hello"));
 
         let_mut_ref(value, res);
         value += 10;
@@ -2341,9 +2411,8 @@ TEST(Macro, LetMutRef) {
 
 TEST(Macro, RetIfErr) {
     const auto fn = [](const bool flag) -> Result<int, string> {
-        auto res = flag
-            ? Result<double, string>(Ok(3.14))
-            : Err(string("Hello"));
+        auto res =
+            flag ? Result<double, string>(Ok(3.14)) : Err(string("Hello"));
 
         ret_if_err(res);
         return Ok(0);
@@ -2362,7 +2431,7 @@ TEST(Macro, RetIfErr) {
     }
 }
 
-int main(int argc, char * argv[]) {
+int main(int argc, char *argv[]) {
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }
