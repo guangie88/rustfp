@@ -2198,7 +2198,7 @@ TEST(Option, ClonedRefSome) {
 
     ASSERT_TRUE(opt.is_none());
     ASSERT_TRUE(optb.is_some());
-    ASSERT_TRUE("Hello", optb.get_unchecked());
+    ASSERT_EQ("Hello", optb.get_unchecked());
     ASSERT_NE(&value, &optb.get_unchecked());
 }
 
