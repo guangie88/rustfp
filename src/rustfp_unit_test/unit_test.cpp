@@ -1409,32 +1409,13 @@ TEST_F(ComplexOps, ZipRefMapFold) {
 
 // option
 
-TEST(Option, Assignment) {
-    auto opt = Some(1);
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(1, opt.get_unchecked());
-
-    opt = None;
-    ASSERT_TRUE(opt.is_none());
-
-    opt = Some(7);
+TEST(Option, CtorSome) {
+    const auto opt(Some(7));
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ(7, opt.get_unchecked());
-
-    opt = Option<int>(None);
-    ASSERT_TRUE(opt.is_none());
-
-    opt = Option<int>(Some(8));
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(8, opt.get_unchecked());
 }
 
-TEST(Option, CtorNone) {
-    Option<int> opt(None);
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Option, CtorLRef) {
+TEST(Option, CopyCtor) {
     auto opt_rhs = Some(7);
     const auto opt(opt_rhs);
 
@@ -1445,7 +1426,7 @@ TEST(Option, CtorLRef) {
     ASSERT_EQ(7, opt_rhs.get_unchecked());
 }
 
-TEST(Option, CtorConstLRef) {
+TEST(Option, CopyConstCtor) {
     const auto opt_rhs = Some(7);
     const auto opt(opt_rhs);
 
@@ -1456,7 +1437,15 @@ TEST(Option, CtorConstLRef) {
     ASSERT_EQ(7, opt_rhs.get_unchecked());
 }
 
-TEST(Option, CtorMoveSimple) {
+TEST(Option, CopyCtorConvert) {
+    const auto opt_rhs = Some("Hello");
+    const Option<string> opt(opt_rhs);
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("Hello", opt.get_unchecked());
+}
+
+TEST(Option, MoveCtorSimple) {
     Option<int> opt_rhs(Some(7));
     const Option<int> opt(move(opt_rhs));
 
@@ -1465,7 +1454,7 @@ TEST(Option, CtorMoveSimple) {
     ASSERT_EQ(7, opt.get_unchecked());
 }
 
-TEST(Option, CtorMoveComplex) {
+TEST(Option, MoveCtorComplex) {
     auto opt_rhs = Some(make_unique<int>(7));
     const Option<unique_ptr<int>> opt(move(opt_rhs));
 
@@ -1474,139 +1463,120 @@ TEST(Option, CtorMoveComplex) {
     ASSERT_EQ(7, *opt.get_unchecked());
 }
 
-TEST(Option, MapSome) {
-    const auto opt =
-        Some(make_unique<int>(777))
-            .map([](auto &&value) {
-                static_assert(
-                    is_same<decltype(value), unique_ptr<int> &&>::value,
-                    "value is expected to be of unique_ptr<int> && type");
-
-                return make_unique<string>(to_string(*value));
-            })
-            .map([](auto &&value) {
-                static_assert(
-                    is_same<decltype(value), unique_ptr<string> &&>::value,
-                    "value is expected to be of unique_ptr<string> && type");
-
-                return "*" + *value + "*";
-            });
+TEST(Option, MoveCtorConvert) {
+    auto opt_rhs = Some("Hello");
+    const Option<string> opt(move(opt_rhs));
 
     ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("*777*", opt.get_unchecked());
+    ASSERT_TRUE(opt_rhs.is_none());
+    ASSERT_EQ("Hello", opt.get_unchecked());
 }
 
-TEST(Option, MapNone) {
-    auto opt = Option<int>(None);
-
-    move(opt).map([](auto &&value) {
-        static_assert(
-            is_same<decltype(value), int &&>::value,
-            "value is expected to be of int && type");
-
-        return "Hello";
-    });
-
+TEST(Option, CtorNone) {
+    Option<int> opt(None);
     ASSERT_TRUE(opt.is_none());
 }
 
-TEST(Option, AndThenSomeToSome) {
-    const auto opt = Some(make_unique<int>(777)).and_then([](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<int> &&>::value,
-            "value is expected to be of unique_ptr<int> && type");
-
-        return Some(make_unique<string>(to_string(*value)));
-    });
-
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("777", *opt.get_unchecked());
-}
-
-TEST(Option, AndThenSomeToNone) {
-    const auto opt =
-        Some(make_unique<int>(777))
-            .and_then([](auto &&value) -> Option<string> {
-                static_assert(
-                    is_same<decltype(value), unique_ptr<int> &&>::value,
-                    "value is expected to be of unique_ptr<int> && type");
-
-                return None;
-            });
-
+TEST(Option, AssignSome) {
+    Option<int> opt = None;
     ASSERT_TRUE(opt.is_none());
-}
 
-TEST(Option, AndThenNone) {
-    const auto opt = Option<unique_ptr<int>>(None).and_then([](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<int> &&>::value,
-            "value is expected to be of unique_ptr<int> && type");
-
-        return Some(make_unique<string>(to_string(*value)));
-    });
-
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Option, OrElseNoneToNone) {
-    const auto opt = Option<unique_ptr<int>>(None).or_else([] { return None; });
-
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Option, OrElseNoneToSome) {
-    const auto opt = Option<unique_ptr<int>>(None).or_else(
-        [] { return Some(make_unique<int>(7)); });
-
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, *opt.get_unchecked());
-}
-
-TEST(Option, OkOrElseSome) {
-    const auto res = Some(7).ok_or_else([] { return string("Hello"); });
-
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(7, res.get_unchecked());
-}
-
-TEST(Option, OkOrElseNone) {
-    const auto res =
-        Option<int>(None).ok_or_else([] { return string("Hello"); });
-
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Hello", res.get_err_unchecked());
-}
-
-TEST(Option, OkOrElseRefOk) {
-    const string ok_value = "Okay";
-    const string err_value = "Error";
-
-    const auto res = Some(cref(ok_value)).ok_or_else([&err_value] {
-        return cref(err_value);
-    });
-
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ("Okay", res.get_unchecked());
-    ASSERT_EQ(&ok_value, &res.get_unchecked());
-}
-
-TEST(Option, OkOrElseRefErr) {
-    const string err_value = "Error";
-
-    const auto res = Option<string>(None).ok_or_else(
-        [&err_value] { return cref(err_value); });
-
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Error", res.get_err_unchecked());
-    ASSERT_EQ(&err_value, &res.get_err_unchecked());
-}
-
-TEST(Option, OrElseSome) {
-    const auto opt = Some(7).or_else([] { return None; });
-
+    opt = Some(7);
     ASSERT_TRUE(opt.is_some());
     ASSERT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, CopyAssign) {
+    Option<int> opt = None;
+    const auto opt_rhs = Some(7);
+    opt = opt_rhs;
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_TRUE(opt_rhs.is_some());
+    ASSERT_EQ(7, opt.get_unchecked());
+    ASSERT_EQ(7, opt_rhs.get_unchecked());
+}
+
+TEST(Option, CopyAssignConvert) {
+    Option<string> opt = None;
+    const auto opt_rhs = Some("Hello");
+    opt = opt_rhs;
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_TRUE(opt_rhs.is_some());
+    ASSERT_EQ("Hello", opt.get_unchecked());
+    ASSERT_STREQ("Hello", opt_rhs.get_unchecked());
+}
+
+TEST(Option, MoveAssign) {
+    Option<int> opt = None;
+    auto opt_rhs = Some(7);
+    opt = move(opt_rhs);
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_TRUE(opt_rhs.is_none());
+    ASSERT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, MoveAssignConvert) {
+    Option<string> opt = None;
+    auto opt_rhs = Some("Hello");
+    opt = move(opt_rhs);
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_TRUE(opt_rhs.is_none());
+    ASSERT_EQ("Hello", opt.get_unchecked());
+}
+
+TEST(Option, AssignNone) {
+    auto opt = Some(7);
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, opt.get_unchecked());
+
+    opt = None;
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, GetUncheckedRef) {
+    const string value = "Hello";
+    auto opt = Some(cref(value));
+
+    ASSERT_TRUE(opt.is_some());
+    const auto &v = opt.get_unchecked();
+
+    static_assert(
+        is_same<decltype(v), const string &>::value,
+        "v is expected to be of const string & type");
+
+    ASSERT_EQ("Hello", v);
+}
+
+TEST(Option, UnwrapUnchecked) {
+    auto value = make_unique<string>("Hello");
+    auto opt = Some(move(value));
+
+    ASSERT_TRUE(opt.is_some());
+    auto v = move(opt).unwrap_unchecked();
+
+    static_assert(
+        is_same<decltype(v), unique_ptr<string>>::value,
+        "v is expected to be of const string type");
+
+    ASSERT_EQ("Hello", *v);
+}
+
+TEST(Option, UnwrapUncheckedRef) {
+    string x = "Hello";
+    auto opt = Some(ref(x));
+
+    ASSERT_TRUE(opt.is_some());
+    const auto &v = move(opt).unwrap_unchecked();
+
+    static_assert(
+        is_same<decltype(v), const string &>::value,
+        "v is expected to be of const string & type");
+
+    ASSERT_EQ("Hello", v);
 }
 
 TEST(Option, MatchXValueSome) {
@@ -1811,19 +1781,449 @@ TEST(Option, MatchNoneRefNoEffect) {
     ASSERT_EQ(7, opt.get_unchecked());
 }
 
-TEST(Option, GetUnchecked) {
-    const auto opt = Some(make_unique<string>("Hello"));
-
+TEST(Option, IsSomeTrue) {
+    const auto opt = Some(0);
     ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("Hello", *opt.get_unchecked());
 }
 
-TEST(Option, UnwrapUnchecked) {
-    string x = "Hello";
-    auto opt = Some(ref(x));
+TEST(Option, IsSomeFalse) {
+    const Option<int> opt = None;
+    ASSERT_FALSE(opt.is_some());
+}
+
+TEST(Option, IsNoneTrue) {
+    const Option<int> opt = None;
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, IsNoneFalse) {
+    const auto opt = Some(0);
+    ASSERT_FALSE(opt.is_none());
+}
+
+TEST(Option, UnwrapOrSome) {
+    auto opt = Some(0);
+    const auto v = move(opt).unwrap_or(1);
+    ASSERT_EQ(0, v);
+}
+
+TEST(Option, UnwrapOrNone) {
+    Option<int> opt = None;
+    const auto v = move(opt).unwrap_or(1);
+    ASSERT_EQ(1, v);
+}
+
+TEST(Option, UnwrapOrElseSome) {
+    auto opt = Some(0);
+    const auto v = move(opt).unwrap_or_else([] { return 1; });
+    ASSERT_EQ(0, v);
+}
+
+TEST(Option, UnwrapOrElseNone) {
+    Option<int> opt = None;
+    const auto v = move(opt).unwrap_or_else([] { return 1; });
+    ASSERT_EQ(1, v);
+}
+
+TEST(Option, MapSome) {
+    const auto opt =
+        Some(make_unique<int>(777))
+            .map([](auto &&value) {
+                static_assert(
+                    is_same<decltype(value), unique_ptr<int> &&>::value,
+                    "value is expected to be of unique_ptr<int> && type");
+
+                return make_unique<string>(to_string(*value));
+            })
+            .map([](auto &&value) {
+                static_assert(
+                    is_same<decltype(value), unique_ptr<string> &&>::value,
+                    "value is expected to be of unique_ptr<string> && type");
+
+                return "*" + *value + "*";
+            });
 
     ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("Hello", move(opt).unwrap_unchecked());
+    ASSERT_EQ("*777*", opt.get_unchecked());
+}
+
+TEST(Option, MapNone) {
+    auto opt = Option<int>(None);
+
+    move(opt).map([](auto &&value) {
+        static_assert(
+            is_same<decltype(value), int &&>::value,
+            "value is expected to be of int && type");
+
+        return "Hello";
+    });
+
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, MapOrSome) {
+    auto opt = Some(0);
+
+    const auto v = move(opt).map_or(string("one"), [](auto &&value) {
+        static_assert(
+            is_same<decltype(value), int &&>::value,
+            "value is expected to be of int && type");
+
+        return string("zero");
+    });
+
+    ASSERT_EQ("zero", v);
+}
+
+TEST(Option, MapOrNone) {
+    Option<int> opt = None;
+
+    const auto v = move(opt).map_or(string("one"), [](auto &&value) {
+        static_assert(
+            is_same<decltype(value), int &&>::value,
+            "value is expected to be of int && type");
+
+        return string("zero");
+    });
+
+    ASSERT_EQ("one", v);
+}
+
+TEST(Option, MapOrElseSome) {
+    auto opt = Some(0);
+
+    const auto v = move(opt).map_or_else(
+        [] { return string("one"); },
+        [](auto &&value) {
+            static_assert(
+                is_same<decltype(value), int &&>::value,
+                "value is expected to be of int && type");
+
+            return string("zero");
+        });
+
+    ASSERT_EQ("zero", v);
+}
+
+TEST(Option, MapOrElseNone) {
+    Option<int> opt = None;
+
+    const auto v = move(opt).map_or_else(
+        [] { return string("one"); },
+        [](auto &&value) {
+            static_assert(
+                is_same<decltype(value), int &&>::value,
+                "value is expected to be of int && type");
+
+            return string("zero");
+        });
+
+    ASSERT_EQ("one", v);
+}
+
+TEST(Option, OkOrSome) {
+    auto opt = Some(1);
+    const auto res = move(opt).ok_or(string("Error"));
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(1, res.get_unchecked());
+}
+
+TEST(Option, OkOrNone) {
+    Option<int> opt = None;
+    const auto res = move(opt).ok_or(string("Error"));
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Error", res.get_err_unchecked());
+}
+
+TEST(Option, OkOrElseSome) {
+    auto opt = Some(1);
+    const auto res = move(opt).ok_or_else([] { return string("Error"); });
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(1, res.get_unchecked());
+}
+
+TEST(Option, OkOrElseNone) {
+    Option<int> opt = None;
+    const auto res = move(opt).ok_or_else([] { return string("Error"); });
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Error", res.get_err_unchecked());
+}
+
+TEST(Option, OkOrElseRefOk) {
+    const string ok_value = "Okay";
+    const string err_value = "Error";
+
+    const auto res = Some(cref(ok_value)).ok_or_else([&err_value] {
+        return cref(err_value);
+    });
+
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ("Okay", res.get_unchecked());
+    ASSERT_EQ(&ok_value, &res.get_unchecked());
+}
+
+TEST(Option, OkOrElseRefErr) {
+    const string err_value = "Error";
+
+    const auto res = Option<string>(None).ok_or_else(
+        [&err_value] { return cref(err_value); });
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Error", res.get_err_unchecked());
+    ASSERT_EQ(&err_value, &res.get_err_unchecked());
+}
+
+TEST(Option, AndLhsSomeRhsSome) {
+    auto opt_lhs = Some(1);
+    auto opt_rhs = Some("one");
+
+    const auto opt = move(opt_lhs).and_(move(opt_rhs));
+    ASSERT_TRUE(opt_lhs.is_none());
+    ASSERT_TRUE(opt_rhs.is_none());
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_STREQ("one", opt.get_unchecked());
+}
+
+TEST(Option, AndLhsNoneRhsSome) {
+    Option<int> opt_lhs = None;
+    auto opt_rhs = Some("one");
+
+    const auto opt = move(opt_lhs).and_(move(opt_rhs));
+    ASSERT_TRUE(opt_lhs.is_none());
+    ASSERT_TRUE(opt_rhs.is_none());
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, AndLhsSomeRhsNone) {
+    auto opt_lhs = Some(1);
+    Option<const char *> opt_rhs = None;
+
+    const auto opt = move(opt_lhs).and_(move(opt_rhs));
+    ASSERT_TRUE(opt_lhs.is_none());
+    ASSERT_TRUE(opt_rhs.is_none());
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, AndLhsNoneRhsNone) {
+    Option<int> opt_lhs = None;
+    Option<const char *> opt_rhs = None;
+
+    const auto opt = move(opt_lhs).and_(move(opt_rhs));
+    ASSERT_TRUE(opt_lhs.is_none());
+    ASSERT_TRUE(opt_rhs.is_none());
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, AndThenSomeToSome) {
+    const auto opt = Some(make_unique<int>(777)).and_then([](auto &&value) {
+        static_assert(
+            is_same<decltype(value), unique_ptr<int> &&>::value,
+            "value is expected to be of unique_ptr<int> && type");
+
+        return Some(make_unique<string>(to_string(*value)));
+    });
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("777", *opt.get_unchecked());
+}
+
+TEST(Option, AndThenSomeToNone) {
+    const auto opt =
+        Some(make_unique<int>(777))
+            .and_then([](auto &&value) -> Option<string> {
+                static_assert(
+                    is_same<decltype(value), unique_ptr<int> &&>::value,
+                    "value is expected to be of unique_ptr<int> && type");
+
+                return None;
+            });
+
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, AndThenNone) {
+    const auto opt = Option<unique_ptr<int>>(None).and_then([](auto &&value) {
+        static_assert(
+            is_same<decltype(value), unique_ptr<int> &&>::value,
+            "value is expected to be of unique_ptr<int> && type");
+
+        return Some(make_unique<string>(to_string(*value)));
+    });
+
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, OrLhsSomeRhsSome) {
+    auto opt_lhs = Some(1);
+    auto opt_rhs = Some(7);
+
+    const auto opt = move(opt_lhs).or_(move(opt_rhs));
+    ASSERT_TRUE(opt_lhs.is_none());
+    ASSERT_TRUE(opt_rhs.is_none());
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(1, opt.get_unchecked());
+}
+
+TEST(Option, OrLhsNoneRhsSome) {
+    Option<int> opt_lhs = None;
+    auto opt_rhs = Some(7);
+
+    const auto opt = move(opt_lhs).or_(move(opt_rhs));
+    ASSERT_TRUE(opt_lhs.is_none());
+    ASSERT_TRUE(opt_rhs.is_none());
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, OrLhsSomeRhsNone) {
+    auto opt_lhs = Some(1);
+    Option<int> opt_rhs = None;
+
+    const auto opt = move(opt_lhs).or_(move(opt_rhs));
+    ASSERT_TRUE(opt_lhs.is_none());
+    ASSERT_TRUE(opt_rhs.is_none());
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(1, opt.get_unchecked());
+}
+
+TEST(Option, OrLhsNoneRhsNone) {
+    Option<int> opt_lhs = None;
+    Option<int> opt_rhs = None;
+
+    const auto opt = move(opt_lhs).or_(move(opt_rhs));
+    ASSERT_TRUE(opt_lhs.is_none());
+    ASSERT_TRUE(opt_rhs.is_none());
+
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, OrElseSome) {
+    const auto opt = Some(7).or_else([] { return None; });
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, opt.get_unchecked());
+}
+
+TEST(Option, OrElseNoneToNone) {
+    const auto opt = Option<unique_ptr<int>>(None).or_else([] { return None; });
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Option, OrElseNoneToSome) {
+    const auto opt = Option<unique_ptr<int>>(None).or_else(
+        [] { return Some(make_unique<int>(7)); });
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(7, *opt.get_unchecked());
+}
+
+TEST(Option, GetOrInsertSome) {
+    auto opt = Some(1);
+    auto &v = opt.get_or_insert(7);
+
+    ASSERT_EQ(1, v);
+    v = 8;
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(8, opt.get_unchecked());
+}
+
+TEST(Option, GetOrInsertNone) {
+    Option<int> opt = None;
+    auto &v = opt.get_or_insert(7);
+
+    ASSERT_EQ(7, v);
+    v = 8;
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(8, opt.get_unchecked());
+}
+
+TEST(Option, GetOrInsertWithSome) {
+    auto opt = Some(1);
+    auto &v = opt.get_or_insert_with([] { return 7; });
+
+    ASSERT_EQ(1, v);
+    v = 8;
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(8, opt.get_unchecked());
+}
+
+TEST(Option, GetOrInsertWithNone) {
+    Option<int> opt = None;
+    auto &v = opt.get_or_insert_with([] { return 7; });
+
+    ASSERT_EQ(7, v);
+    v = 8;
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(8, opt.get_unchecked());
+}
+
+TEST(Option, TakeSome) {
+    auto opt = Some(make_unique<int>(7));
+    const auto optb = opt.take();
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(optb.is_some());
+
+    ASSERT_EQ(7, *optb.get_unchecked());
+}
+
+TEST(Option, TakeNone) {
+    Option<int> opt = None;
+    const auto optb = opt.take();
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(optb.is_none());
+}
+
+TEST(Option, ClonedRefSome) {
+    const string value = "Hello";
+    auto opt = Some(cref(value));
+    const auto optb = move(opt).cloned();
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(optb.is_some());
+    ASSERT_TRUE("Hello", optb.get_unchecked());
+    ASSERT_NE(&value, &optb.get_unchecked());
+}
+
+TEST(Option, ClonedRefNone) {
+    Option<const string &> opt = None;
+    const auto optb = move(opt).cloned();
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(optb.is_none());
+}
+
+TEST(Option, UnwrapOrDefaultSome) {
+    auto opt = Some(string("Hello"));
+    const auto v = move(opt).unwrap_or_default();
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_EQ("Hello", v);
+}
+
+TEST(Option, UnwrapOrDefaultNone) {
+    Option<string> opt = None;
+    const auto v = move(opt).unwrap_or_default();
+
+    ASSERT_TRUE(opt.is_none());
+    ASSERT_TRUE(v.empty());
 }
 
 TEST(Option, OptIfTrue) {

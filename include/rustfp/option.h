@@ -156,87 +156,11 @@ public:
     auto operator=(const none_t &) -> Option<T> &;
 
     /**
-     * Performs a map of current item type to another item type.
-     *
-     * Only performs the given fn if is_some() == true. Changes the output type
-     * to Option<Tx>, given that fn: T -> Tx.
-     * @param FnTToTx function type which maps from T to Tx.
-     * @param fn function that takes in a rvalue reference of T to generate a
-     * new item type in the new Option.
-     * @see is_some
-     */
-    template <class FnTToTx>
-    auto map(FnTToTx &&fn)
-        && -> Option<special_decay_t<std::result_of_t<FnTToTx(T &&)>>>;
-
-    /**
-     * Performs a map of current item type to a new Option with another item
-     * type or no item.
-     *
-     * Only performs the given fn if is_some() == true.
-     *
-     * Changes the output type to Option<Tx>, given that fn: T -> Option<Tx>.
-     *
-     * @param FnTToOptTx function type which maps from T to Option<Tx>.
-     * @param fn function that takes in a rvalue reference of T to generate an
-     * Option with new item type.
-     * @see is_some
-     */
-    template <class FnTToOptTx>
-    auto and_then(FnTToOptTx &&fn)
-        && -> Option<typename std::result_of_t<FnTToOptTx(T &&)>::some_t>;
-
-    /**
-     * Performs a map of no item to a new Option with another item type or no
-     * item.
-     *
-     * Only performs the given fn if is_none() == true. Changes the output type
-     * to Option<Tx>, given that fn: () -> Option<Tx>.
-     * @param FnToOptTx function type which maps from () to Option<Tx>.
-     * @param fn function that takes in no argument to generate an Option
-     * with new item type.
-     * @see is_none
-     */
-    template <class FnToOptTx>
-    auto or_else(FnToOptTx &&fn) && -> Option<T>;
-
-    /**
-     * Upgrades from Option to Result.
-     *
-     * Some(item) maps to Ok(item) while None maps to Err(function generated
-     * value), given that fn: () -> Ex.
-     * @param FnToEx function type which maps from () to Ex, where Ex is the
-     * new error type.
-     * @param fn function that takes in no argument to generate an error
-     * item.
-     */
-    template <class FnToEx>
-    auto ok_or_else(FnToEx &&fn)
-        && -> Result<T, special_decay_t<std::result_of_t<FnToEx()>>>;
-
-    /**
-     * Returns true if the Option instance contains an item. Otherwise returns
-     * false.
-     *
-     * is_some() == !is_none().
-     * @see is_none
-     */
-    RUSTFP_CONSTEXPR auto is_some() const RUSTFP_NOEXCEPT -> bool;
-
-    /**
-     * Returns true if the Option instance does not contain an item. Otherwise
-     * returns false.
-     *
-     * is_none() == !is_some().
-     * @see is_some
-     */
-    RUSTFP_CONSTEXPR auto is_none() const RUSTFP_NOEXCEPT -> bool;
-
-    /**
      * Returns a lvalue const reference to the contained item.
      *
-     * Asserts that is_some() == true. If is_none() == true and the assertion
-     * does not take place, this would cause an undefined behaviour.
+     * Asserts that is_some() == true. If is_none() == true and the
+     * assertion does not take place, this would cause an undefined
+     * behaviour.
      * @see is_some
      * @see is_none
      */
@@ -355,6 +279,181 @@ public:
     template <class NoneFn>
     auto match_none(NoneFn &&none_fn) const & -> unit_t;
 
+    /**
+     * fn is_some(&self) -> bool
+     *
+     * Returns true if the option is a Some value.
+     */
+    RUSTFP_CONSTEXPR auto is_some() const RUSTFP_NOEXCEPT -> bool;
+
+    /**
+     * fn is_none(&self) -> bool
+     *
+     * Returns true if the option is a None value.
+     */
+    RUSTFP_CONSTEXPR auto is_none() const RUSTFP_NOEXCEPT -> bool;
+
+    /**
+     * fn unwrap_or(self, def: T) -> T
+     *
+     * Returns the contained value or a default.
+     */
+    template <class Tx>
+    auto unwrap_or(Tx &&def) && -> T;
+
+    /**
+     * fn unwrap_or_else<F>(self, f: F) -> T
+     * where
+     *     F: FnOnce() -> T,
+     *
+     * Returns the contained value or computes it from a closure.
+     */
+    template <class F>
+    auto unwrap_or_else(F &&f) && -> special_decay_t<std::result_of_t<F()>>;
+
+    /**
+     * fn map<U, F>(self, f: F) -> Option<U>
+     * where
+     *     F: FnOnce(T) -> U,
+     *
+     * Maps an Option<T> to Option<U> by applying a function to a contained
+     * value.
+     */
+    template <class F>
+    auto map(F &&fn) && -> Option<special_decay_t<std::result_of_t<F(T &&)>>>;
+
+    /**
+     * fn map_or<U, F>(self, default: U, f: F) -> U
+     * where
+     *     F: FnOnce(T) -> U,
+     *
+     * Applies a function to the contained value (if any), or returns a default
+     * (if not).
+     */
+    template <class U, class F>
+    auto map_or(U &&def, F &&f) -> U;
+
+    /**
+     * fn map_or_else<U, D, F>(self, default: D, f: F) -> U
+     * where
+     *     D: FnOnce() -> U,
+     *     F: FnOnce(T) -> U,
+     *
+     * Applies a function to the contained value (if any), or computes a default
+     * (if not).
+     */
+    template <class D, class F>
+    auto map_or_else(D &&def, F &&f) -> special_decay_t<std::result_of_t<D()>>;
+
+    /**
+     * fn ok_or<E>(self, err: E) -> Result<T, E>
+     *
+     * Transforms the Option<T> into a Result<T, E>, mapping Some(v) to Ok(v)
+     * and None to Err(err).
+     */
+    template <class E>
+    auto ok_or(E &&e) && -> Result<T, E>;
+
+    /**
+     * fn ok_or_else<E, F>(self, err: F) -> Result<T, E>
+     * where
+     *     F: FnOnce() -> E,
+     *
+     * Transforms the Option<T> into a Result<T, E>, mapping Some(v) to Ok(v)
+     * and None to Err(err()).
+     */
+    template <class F>
+    auto
+    ok_or_else(F &&err) && -> Result<T, special_decay_t<std::result_of_t<F()>>>;
+
+    /**
+     * fn and<U>(self, optb: Option<U>) -> Option<U>
+     *
+     * Returns None if the option is None, otherwise returns optb.
+     */
+    template <class U>
+    auto and_(Option<U> &&optb) && -> Option<U>;
+
+    /**
+     * fn and_then<U, F>(self, f: F) -> Option<U>
+     * where
+     *     F: FnOnce(T) -> Option<U>,
+     *
+     * Returns None if the option is None, otherwise calls f with the wrapped
+     * value and returns the result.
+     */
+    template <class F>
+    auto
+    and_then(F &&f) && -> Option<typename std::result_of_t<F(T &&)>::some_t>;
+
+    /**
+     * fn or(self, optb: Option<T>) -> Option<T>
+     *
+     * Returns the option if it contains a value, otherwise returns optb.
+     */
+    auto or_(Option<T> &&optb) && -> Option<T>;
+
+    /**
+     * fn or_else<F>(self, f: F) -> Option<T>
+     * where
+     *     F: FnOnce() -> Option<T>,
+     *
+     * Returns the option if it contains a value, otherwise calls f and returns
+     * the result.
+     */
+    template <class F>
+    auto or_else(F &&f) && -> Option<T>;
+
+    /**
+     * fn get_or_insert(&mut self, v: T) -> &mut T
+     *
+     * Inserts v into the option if it is None, then returns a mutable reference
+     * to the contained value.
+     */
+    template <class Tx>
+    auto get_or_insert(Tx &&v) -> T &;
+
+    /**
+     * fn get_or_insert_with<F>(&mut self, f: F) -> &mut T
+     * where
+     *     F: FnOnce() -> T,
+     *
+     * Inserts a value computed from f into the option if it is None, then
+     * returns a mutable reference to the contained value.
+     */
+    template <class F>
+    auto get_or_insert_with(F &&f) -> T &;
+
+    /**
+     * fn take(&mut self) -> Option<T>
+     *
+     * Takes the value out of the option, leaving a None in its place.
+     */
+    auto take() -> Option<T>;
+
+    /**
+     * impl<'a, T> Option<&'a T>
+     * where
+     *     T: Clone,
+     * fn cloned(self) -> Option<T>
+     *
+     * Maps an Option<&T> to an Option<T> by cloning the contents of the option.
+     */
+    auto cloned() && -> Option<std::remove_const_t<std::remove_reference_t<T>>>;
+
+    /**
+     * impl<T> Option<T>
+     * where
+     *     T: Default,
+     * fn unwrap_or_default(self) -> T
+     *
+     * Returns the contained value or a default
+     *
+     * Consumes the self argument then, if Some, returns the contained value,
+     * otherwise if None, returns the default value for that type.
+     */
+    auto unwrap_or_default() && -> T;
+
 private:
     optional_t opt;
 };
@@ -441,7 +540,7 @@ template <class T>
 template <class Tx>
 RUSTFP_CONSTEXPR Option<T>::Option(const Option<Tx> &rhs)
     RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_copy_constructible<optional_t>::value)
-    : opt(rhs.opt) {
+    : opt(rhs.opt ? optional_t(*rhs.opt) : nonstd::nullopt) {
 
     static_assert(
         std::is_constructible<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
@@ -463,7 +562,7 @@ template <class T>
 template <class Tx>
 RUSTFP_CONSTEXPR Option<T>::Option(Option<Tx> &&rhs)
     RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_constructible<optional_t>::value)
-    : opt(std::move(rhs.opt)) {
+    : opt(rhs.opt ? optional_t(std::move(*rhs.opt)) : nonstd::nullopt) {
 
     static_assert(
         std::is_constructible<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
@@ -502,12 +601,10 @@ template <class T>
 template <class Tx>
 auto Option<T>::operator=(const Option<Tx> &rhs) -> Option<T> & {
     static_assert(
-        std::is_assignable<
-            optional_t,
-            nonstd::optional_lite::optional<reverse_decay_t<Tx>>>::value,
+        std::is_assignable<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
         "T is not assignable from Tx");
 
-    opt = rhs.opt;
+    opt = rhs.opt ? optional_t(*rhs.opt) : nonstd::nullopt;
     return *this;
 }
 
@@ -518,6 +615,8 @@ auto Option<T>::operator=(Option<T> &&rhs) -> Option<T> & {
         "T is not move assignable");
 
     opt = std::move(rhs.opt);
+    rhs.opt.reset();
+
     return *this;
 }
 
@@ -525,12 +624,12 @@ template <class T>
 template <class Tx>
 auto Option<T>::operator=(Option<Tx> &&rhs) -> Option<T> & {
     static_assert(
-        std::is_assignable<
-            optional_t,
-            nonstd::optional_lite::optional<reverse_decay_t<Tx>>>::value,
+        std::is_assignable<reverse_decay_t<T>, reverse_decay_t<Tx>>::value,
         "T is not assignable from Tx");
 
-    opt = std::move(rhs.opt);
+    opt = rhs.opt ? optional_t(std::move(*rhs.opt)) : nonstd::nullopt;
+    rhs.opt.reset();
+
     return *this;
 }
 
@@ -538,59 +637,6 @@ template <class T>
 auto Option<T>::operator=(const none_t &) -> Option<T> & {
     opt.reset();
     return *this;
-}
-
-template <class T>
-template <class FnTToTx>
-auto Option<T>::map(FnTToTx &&fn)
-    && -> Option<special_decay_t<std::result_of_t<FnTToTx(T &&)>>> {
-
-    if (is_some()) {
-        // move is required because *this is lvalue reference
-        return Some(fn(std::move(*this).unwrap_unchecked()));
-    } else {
-        return None;
-    }
-}
-
-template <class T>
-template <class FnTToOptTx>
-auto Option<T>::and_then(FnTToOptTx &&fn)
-    && -> Option<typename std::result_of_t<FnTToOptTx(T &&)>::some_t> {
-
-    if (is_some()) {
-        return fn(std::move(*this).unwrap_unchecked());
-    } else {
-        return None;
-    }
-}
-
-template <class T>
-template <class FnToOptTx>
-auto Option<T>::or_else(FnToOptTx &&fn) && -> Option<T> {
-    return is_none() ? fn() : std::move(*this);
-}
-
-template <class T>
-template <class FnToEx>
-auto Option<T>::ok_or_else(
-    FnToEx &&fn) && -> Result<T, special_decay_t<std::result_of_t<FnToEx()>>> {
-
-    if (is_some()) {
-        return Ok(reverse_decay(std::move(*this).unwrap_unchecked()));
-    } else {
-        return Err(fn());
-    }
-}
-
-template <class T>
-RUSTFP_CONSTEXPR auto Option<T>::is_some() const RUSTFP_NOEXCEPT -> bool {
-    return opt.has_value();
-}
-
-template <class T>
-RUSTFP_CONSTEXPR auto Option<T>::is_none() const RUSTFP_NOEXCEPT -> bool {
-    return !opt.has_value();
 }
 
 template <class T>
@@ -669,6 +715,185 @@ auto Option<T>::match_none(NoneFn &&none_fn) const & -> unit_t {
     }
 
     return Unit;
+}
+
+template <class T>
+RUSTFP_CONSTEXPR auto Option<T>::is_some() const RUSTFP_NOEXCEPT -> bool {
+    return opt.has_value();
+}
+
+template <class T>
+RUSTFP_CONSTEXPR auto Option<T>::is_none() const RUSTFP_NOEXCEPT -> bool {
+    return !opt.has_value();
+}
+
+template <class T>
+template <class Tx>
+auto Option<T>::unwrap_or(Tx &&def) && -> T {
+    if (is_some()) {
+        return std::move(*this).unwrap_unchecked();
+    } else {
+        return std::forward<Tx>(def);
+    }
+}
+
+template <class T>
+template <class F>
+auto Option<T>::unwrap_or_else(
+    F &&f) && -> special_decay_t<std::result_of_t<F()>> {
+
+    if (is_some()) {
+        return std::move(*this).unwrap_unchecked();
+    } else {
+        return special_decay(f());
+    }
+}
+
+template <class T>
+template <class F>
+auto Option<T>::map(
+    F &&f) && -> Option<special_decay_t<std::result_of_t<F(T &&)>>> {
+
+    if (is_some()) {
+        return Some(f(std::move(*this).unwrap_unchecked()));
+    } else {
+        return None;
+    }
+}
+
+template <class T>
+template <class U, class F>
+auto Option<T>::map_or(U &&def, F &&f) -> U {
+    if (is_some()) {
+        return special_decay(f(std::move(*this).unwrap_unchecked()));
+    } else {
+        return std::forward<U>(def);
+    }
+}
+
+template <class T>
+template <class D, class F>
+auto Option<T>::map_or_else(D &&def, F &&f)
+    -> special_decay_t<std::result_of_t<D()>> {
+
+    if (is_some()) {
+        return special_decay(f(std::move(*this).unwrap_unchecked()));
+    } else {
+        return special_decay(def());
+    }
+}
+
+template <class T>
+template <class E>
+auto Option<T>::ok_or(E &&e) && -> Result<T, E> {
+    if (is_some()) {
+        return Ok(reverse_decay(std::move(*this).unwrap_unchecked()));
+    } else {
+        return Err(std::forward<E>(e));
+    }
+}
+
+template <class T>
+template <class F>
+auto Option<T>::ok_or_else(
+    F &&err) && -> Result<T, special_decay_t<std::result_of_t<F()>>> {
+
+    if (is_some()) {
+        return Ok(reverse_decay(std::move(*this).unwrap_unchecked()));
+    } else {
+        return Err(err());
+    }
+}
+
+template <class T>
+template <class U>
+auto Option<T>::and_(Option<U> &&optb) && -> Option<U> {
+    if (is_some()) {
+        opt.reset();
+        return std::move(optb);
+    } else {
+        optb.opt.reset();
+        return None;
+    }
+}
+
+template <class T>
+template <class F>
+auto Option<T>::and_then(
+    F &&f) && -> Option<typename std::result_of_t<F(T &&)>::some_t> {
+
+    if (is_some()) {
+        return f(std::move(*this).unwrap_unchecked());
+    } else {
+        return None;
+    }
+}
+
+template <class T>
+auto Option<T>::or_(Option<T> &&optb) && -> Option<T> {
+    if (is_some()) {
+        optb.opt.reset();
+        return std::move(*this);
+    } else {
+        return std::move(optb);
+    }
+}
+
+template <class T>
+template <class F>
+auto Option<T>::or_else(F &&f) && -> Option<T> {
+    return is_some() ? std::move(*this) : f();
+}
+
+template <class T>
+template <class Tx>
+auto Option<T>::get_or_insert(Tx &&v) -> T & {
+    if (is_none()) {
+        opt = std::forward<Tx>(v);
+    }
+
+    return *opt;
+}
+
+template <class T>
+template <class F>
+auto Option<T>::get_or_insert_with(F &&f) -> T & {
+    if (is_none()) {
+        opt = f();
+    }
+
+    return *opt;
+}
+
+template <class T>
+auto Option<T>::take() -> Option<T> {
+    if (is_some()) {
+        return Some(reverse_decay(std::move(*this).unwrap_unchecked()));
+    } else {
+        return None;
+    }
+}
+
+template <class T>
+auto Option<T>::cloned()
+    && -> Option<std::remove_const_t<std::remove_reference_t<T>>> {
+
+    if (is_some()) {
+        // force invoke copy ctor by not converting & to reference_wrapper
+        return Some(std::move(*this).unwrap_unchecked());
+    } else {
+        return None;
+    }
+}
+
+template <class T>
+auto Option<T>::unwrap_or_default() && -> T {
+    if (is_some()) {
+        // no need to convert & to reference_wrapper
+        return std::move(*this).unwrap_unchecked();
+    } else {
+        return T();
+    }
 }
 
 template <class T>
