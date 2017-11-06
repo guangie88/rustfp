@@ -715,12 +715,12 @@ TEST_F(Ops, CollectResultOk) {
 }
 
 TEST_F(Ops, CollectResultErr) {
-    static const int ZERO = 0;
-    static const int TWO = 2;
-    static const string ERR_MSG("ERROR!");
+    const int zero = 0;
+    const int two = 2;
+    const string err_msg = "ERROR!";
 
     vector<Result<const int &, const string &>> res_vec{
-        Ok(cref(ZERO)), Err(cref(ERR_MSG)), Ok(cref(TWO))};
+        Ok(cref(zero)), Err(cref(err_msg)), Ok(cref(two))};
 
     auto collected_res =
         into_iter(move(res_vec))
@@ -730,7 +730,7 @@ TEST_F(Ops, CollectResultErr) {
     ASSERT_TRUE(collected_res.is_err());
 
     const auto collected = move(collected_res).unwrap_err_unchecked();
-    ASSERT_EQ("ERROR!", collected);
+    ASSERT_EQ(err_msg, collected);
 }
 
 TEST_F(Ops, CollectVecRef) {
@@ -800,9 +800,7 @@ TEST_F(Ops, Cycle) {
 
 TEST_F(Ops, CycleNone) {
     const vector<string> vs{};
-
     const auto output_vs = iter(vs) | cycle() | collect<vector<string>>();
-
     ASSERT_TRUE(output_vs.empty());
 }
 
@@ -999,14 +997,13 @@ TEST_F(Ops, Map) {
 }
 
 TEST_F(Ops, MaxNone) {
-    static const vector<int> VALS;
+    const vector<int> VALS;
     const auto max_opt = iter(VALS) | max();
-
     ASSERT_TRUE(max_opt.is_none());
 }
 
 TEST_F(Ops, MaxSomeEasy) {
-    static const vector<string> VALS{"zzz", "hello", "world"};
+    const vector<string> VALS{"zzz", "hello", "world"};
     const auto max_opt = iter(VALS) | max();
 
     ASSERT_TRUE(max_opt.is_some());
@@ -1014,7 +1011,7 @@ TEST_F(Ops, MaxSomeEasy) {
 }
 
 TEST_F(Ops, MaxSomeHard) {
-    static const vector<int> VALS{-5, 1, 777, 123, 25, 0, 777, 777};
+    const vector<int> VALS{-5, 1, 777, 123, 25, 0, 777, 777};
 
     // hand coded max to get the address eventually
     ASSERT_TRUE(!VALS.empty());
@@ -1037,7 +1034,7 @@ TEST_F(Ops, MaxSomeHard) {
 }
 
 TEST_F(Ops, MaxByNone) {
-    static const vector<int> VALS;
+    const vector<int> VALS;
 
     const auto max_opt =
         iter(VALS) | max_by([](const auto lhs, const auto rhs) {
@@ -1056,7 +1053,7 @@ TEST_F(Ops, MaxByNone) {
 }
 
 TEST_F(Ops, MaxBySomeEasy) {
-    static const vector<int> VALS{3, 1, 2};
+    const vector<int> VALS{3, 1, 2};
 
     const auto max_opt =
         iter(VALS) | max_by([](const auto lhs, const auto rhs) {
@@ -1076,7 +1073,7 @@ TEST_F(Ops, MaxBySomeEasy) {
 }
 
 TEST_F(Ops, MaxBySomeHard) {
-    static const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
+    const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
 
     // hand coded max to get the address eventually
     ASSERT_TRUE(!VALS.empty());
@@ -1111,14 +1108,14 @@ TEST_F(Ops, MaxBySomeHard) {
 }
 
 TEST_F(Ops, MinNone) {
-    static const vector<int> VALS;
+    const vector<int> VALS;
     const auto min_opt = iter(VALS) | min();
 
     ASSERT_TRUE(min_opt.is_none());
 }
 
 TEST_F(Ops, MinSomeEasy) {
-    static const vector<string> VALS{"hello", "world", "zzz"};
+    const vector<string> VALS{"hello", "world", "zzz"};
     const auto min_opt = iter(VALS) | min();
 
     ASSERT_TRUE(min_opt.is_some());
@@ -1126,7 +1123,7 @@ TEST_F(Ops, MinSomeEasy) {
 }
 
 TEST_F(Ops, MinSomeHard) {
-    static const vector<int> VALS{-5, 1, -777, 123, 25, 0, -777, -777};
+    const vector<int> VALS{-5, 1, -777, 123, 25, 0, -777, -777};
 
     // hand coded min to get the address eventually
     ASSERT_TRUE(!VALS.empty());
@@ -1149,7 +1146,7 @@ TEST_F(Ops, MinSomeHard) {
 }
 
 TEST_F(Ops, MinByNone) {
-    static const vector<int> VALS;
+    const vector<int> VALS;
 
     const auto min_opt =
         iter(VALS) | min_by([](const auto lhs, const auto rhs) {
@@ -1168,7 +1165,7 @@ TEST_F(Ops, MinByNone) {
 }
 
 TEST_F(Ops, MinBySomeEasy) {
-    static const vector<int> VALS{1, 3, 2};
+    const vector<int> VALS{1, 3, 2};
 
     const auto min_opt =
         iter(VALS) | min_by([](const auto lhs, const auto rhs) {
@@ -1188,7 +1185,7 @@ TEST_F(Ops, MinBySomeEasy) {
 }
 
 TEST_F(Ops, MinBySomeHard) {
-    static const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
+    const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
 
     // hand coded min to get the address eventually
     ASSERT_TRUE(!VALS.empty());
@@ -1255,13 +1252,11 @@ TEST_F(Ops, TakeExceed) {
 // complex tests
 
 TEST_F(ComplexOps, OnceCycleFindMap) {
-    static constexpr auto MSG = "Hello";
-
     const auto opt =
-        once(Unit) | cycle() | find_map([](auto) { return Some(MSG); });
+        once(Unit) | cycle() | find_map([](auto) { return Some("Hello"); });
 
     ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(MSG, opt.get_unchecked());
+    ASSERT_STREQ("Hello", opt.get_unchecked());
 }
 
 TEST_F(ComplexOps, ManyIterCollect) {
@@ -2714,118 +2709,182 @@ TEST(Result, UnwrapErrUnchecked) {
 }
 
 TEST(Macro, Let) {
-    const auto fn = [](const bool flag) -> Result<int, string> {
-        auto res =
-            flag ? Result<double, string>(Ok(3.14)) : Err(string("Hello"));
+    const auto fn = [](const bool flag, size_t &count) -> Result<int, string> {
+        using inter_result_t = Result<double, string>;
 
-        let(value, res);
+        auto create_res = [](const bool flag, size_t &count) {
+            // to prove that the function is only called once
+            // despite expression being placed into the macro
+            ++count;
+            return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+        };
+
+        let(value, create_res(flag, count));
         return Ok(static_cast<int>(value));
     };
 
     {
-        const auto res = fn(true);
+        size_t count = 0;
+        const auto res = fn(true, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_ok());
         ASSERT_EQ(3, res.get_unchecked());
     }
 
     {
-        const auto res = fn(false);
+        size_t count = 0;
+        const auto res = fn(false, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_err());
         ASSERT_EQ("Hello", res.get_err_unchecked());
     }
 }
 
 TEST(Macro, LetMut) {
-    const auto fn = [](const bool flag) -> Result<int, string> {
-        auto res =
-            flag ? Result<double, string>(Ok(3.14)) : Err(string("Hello"));
+    const auto fn = [](const bool flag, size_t &count) -> Result<int, string> {
+        using inter_result_t = Result<double, string>;
 
-        let_mut(value, res);
+        auto create_res = [](const bool flag, size_t &count) {
+            // to prove that the function is only called once
+            // despite expression being placed into the macro
+            ++count;
+            return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+        };
+
+        let_mut(value, create_res(flag, count));
         value += 10;
         return Ok(static_cast<int>(value));
     };
 
     {
-        const auto res = fn(true);
+        size_t count = 0;
+        const auto res = fn(true, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_ok());
         ASSERT_EQ(13, res.get_unchecked());
     }
 
     {
-        const auto res = fn(false);
+        size_t count = 0;
+        const auto res = fn(false, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_err());
         ASSERT_EQ("Hello", res.get_err_unchecked());
     }
 }
 
 TEST(Macro, LetRef) {
-    static const int VAL = 7;
+    const int val = 7;
 
-    const auto fn = [](const bool flag) -> Result<const int &, string> {
-        auto res = flag ? Result<const int &, string>(Ok(cref(VAL)))
-                        : Err(string("Hello"));
+    const auto fn =
+        [&val](const bool flag, size_t &count) -> Result<const int &, string> {
 
-        let_ref(value, res);
+        using inter_result_t = Result<const int &, string>;
+
+        auto create_res = [&val](const bool flag, size_t &count) {
+            // to prove that the function is only called once
+            // despite expression being placed into the macro
+            ++count;
+            return flag ? inter_result_t(Ok(cref(val))) : Err(string("Hello"));
+        };
+
+        let_ref(value, create_res(flag, count));
         return Ok(cref(value));
     };
 
     {
-        const auto res = fn(true);
+        size_t count = 0;
+        const auto res = fn(true, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_ok());
-        ASSERT_EQ(VAL, res.get_unchecked());
-        ASSERT_EQ(&VAL, &res.get_unchecked());
+        ASSERT_EQ(val, res.get_unchecked());
+        ASSERT_EQ(&val, &res.get_unchecked());
     }
 
     {
-        const auto res = fn(false);
+        size_t count = 0;
+        const auto res = fn(false, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_err());
         ASSERT_EQ("Hello", res.get_err_unchecked());
     }
 }
 
 TEST(Macro, LetMutRef) {
-    static int VAL = 7;
+    int val = 7;
 
-    const auto fn = [](const bool flag) -> Result<const int &, string> {
-        auto res =
-            flag ? Result<int &, string>(Ok(ref(VAL))) : Err(string("Hello"));
+    const auto fn =
+        [&val](const bool flag, size_t &count) -> Result<const int &, string> {
 
-        let_mut_ref(value, res);
+        using inter_result_t = Result<int &, string>;
+
+        auto create_res = [&val](const bool flag, size_t &count) {
+            // to prove that the function is only called once
+            // despite expression being placed into the macro
+            ++count;
+            return flag ? inter_result_t(Ok(ref(val))) : Err(string("Hello"));
+        };
+
+        let_mut_ref(value, create_res(flag, count));
         value += 10;
         return Ok(cref(value));
     };
 
     {
-        const auto res = fn(true);
+        size_t count = 0;
+        const auto res = fn(true, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_ok());
         ASSERT_EQ(17, res.get_unchecked());
-        ASSERT_EQ(&VAL, &res.get_unchecked());
+        ASSERT_EQ(&val, &res.get_unchecked());
     }
 
     {
-        const auto res = fn(false);
+        size_t count = 0;
+        const auto res = fn(false, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_err());
         ASSERT_EQ("Hello", res.get_err_unchecked());
     }
 }
 
 TEST(Macro, RetIfErr) {
-    const auto fn = [](const bool flag) -> Result<int, string> {
-        auto res =
-            flag ? Result<double, string>(Ok(3.14)) : Err(string("Hello"));
+    const auto fn = [](const bool flag, size_t &count) -> Result<int, string> {
+        using inter_result_t = Result<double, string>;
 
-        ret_if_err(res);
+        auto create_res = [](const bool flag, size_t &count) {
+            // to prove that the function is only called once
+            // despite expression being placed into the macro
+            ++count;
+            return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+        };
+
+        ret_if_err(create_res(flag, count));
         return Ok(0);
     };
 
     {
-        const auto res = fn(true);
+        size_t count = 0;
+        const auto res = fn(true, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_ok());
         ASSERT_EQ(0, res.get_unchecked());
     }
 
     {
-        const auto res = fn(false);
+        size_t count = 0;
+        const auto res = fn(false, count);
+
+        ASSERT_EQ(1, count);
         ASSERT_TRUE(res.is_err());
         ASSERT_EQ("Hello", res.get_err_unchecked());
     }
