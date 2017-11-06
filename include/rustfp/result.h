@@ -67,58 +67,6 @@ public:
         RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<variant_t>::value)
             -> Result<T, E> &;
 
-    /**
-     * https://doc.rust-lang.org/std/result/enum.Result.html#method.map
-     *
-     * fn map<U, F>(self, op: F) -> Result<U, E>
-     * where
-     *     F: FnOnce(T) -> U,
-     */
-    template <class F>
-    auto
-    map(F &&op) && -> Result<special_decay_t<std::result_of_t<F(T &&)>>, E>;
-
-    /**
-     * https://doc.rust-lang.org/std/result/enum.Result.html#method.map_err
-     *
-     * fn map_err<F, O>(self, op: O) -> Result<T, F>
-     * where
-     *     O: FnOnce(E) -> F,
-     */
-    template <class O>
-    auto
-    map_err(O &&op) && -> Result<T, special_decay_t<std::result_of_t<O(E &&)>>>;
-
-    /**
-     * https://doc.rust-lang.org/std/result/enum.Result.html#method.and_then
-     *
-     * fn and_then<U, F>(self, op: F) -> Result<U, E>
-     * where
-     *     F: FnOnce(T) -> Result<U, E>,
-     */
-    template <class F>
-    auto
-    and_then(F &&op) && -> Result<typename std::result_of_t<F(T &&)>::ok_t, E>;
-
-    /**
-     * https://doc.rust-lang.org/std/result/enum.Result.html#method.or_else
-     *
-     * fn or_else<F, O>(self, op: O) -> Result<T, F>
-     * where
-     *     O: FnOnce(E) -> Result<T, F>,
-     */
-    template <class O>
-    auto
-    or_else(O &&op) && -> Result<T, typename std::result_of_t<O(E &&)>::err_t>;
-
-    auto ok() && -> Option<T>;
-
-    auto err() && -> Option<E>;
-
-    RUSTFP_CONSTEXPR auto is_ok() const RUSTFP_NOEXCEPT -> bool;
-
-    RUSTFP_CONSTEXPR auto is_err() const RUSTFP_NOEXCEPT -> bool;
-
     auto unwrap_unchecked() && -> T;
 
     auto unwrap_err_unchecked() && -> E;
@@ -149,6 +97,166 @@ public:
 
     template <class ErrFn>
     auto match_err(ErrFn &&err_fn) const & -> unit_t;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.is_ok
+     *
+     * fn is_ok(&self) -> bool
+     *
+     * Returns true if the result is Ok.
+     */
+    RUSTFP_CONSTEXPR auto is_ok() const RUSTFP_NOEXCEPT -> bool;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.is_err
+     *
+     * fn is_err(&self) -> bool
+     *
+     * Returns true if the result is Err.
+     */
+    RUSTFP_CONSTEXPR auto is_err() const RUSTFP_NOEXCEPT -> bool;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.ok
+     *
+     * fn ok(self) -> Option<T>
+     *
+     * Converts from Result<T, E> to Option<T>.
+     *
+     * Converts self into an Option<T>, consuming self, and discarding the
+     * error, if any.
+     */
+    auto ok() && -> Option<T>;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.err
+     *
+     * fn err(self) -> Option<E>
+     *
+     * Converts from Result<T, E> to Option<E>.
+     *
+     * Converts self into an Option<E>, consuming self, and discarding the
+     * success value, if any.
+     */
+    auto err() && -> Option<E>;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.map
+     *
+     * fn map<U, F>(self, op: F) -> Result<U, E>
+     * where
+     *     F: FnOnce(T) -> U,
+     *
+     * Maps a Result<T, E> to Result<U, E> by applying a function to a contained
+     * Ok value, leaving an Err value untouched.
+     *
+     * This function can be used to compose the results of two functions.
+     */
+    template <class F>
+    auto
+    map(F &&op) && -> Result<special_decay_t<std::result_of_t<F(T &&)>>, E>;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.map_err
+     *
+     * fn map_err<F, O>(self, op: O) -> Result<T, F>
+     * where
+     *     O: FnOnce(E) -> F,
+     *
+     * Maps a Result<T, E> to Result<T, F> by applying a function to a contained
+     * Err value, leaving an Ok value untouched.
+     *
+     * This function can be used to pass through a successful result while
+     * handling an error.
+     */
+    template <class O>
+    auto
+    map_err(O &&op) && -> Result<T, special_decay_t<std::result_of_t<O(E &&)>>>;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.and
+     *
+     * fn and<U>(self, res: Result<U, E>) -> Result<U, E>
+     *
+     * Returns res if the result is Ok, otherwise returns the Err value of self.
+     */
+    template <class U>
+    auto and_(Result<U, E> &&res) && -> Result<U, E>;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.and_then
+     *
+     * fn and_then<U, F>(self, op: F) -> Result<U, E>
+     * where
+     *     F: FnOnce(T) -> Result<U, E>,
+     *
+     * Calls op if the result is Ok, otherwise returns the Err value of self.
+     *
+     * This function can be used for control flow based on Result values.
+     */
+    template <class F>
+    auto
+    and_then(F &&op) && -> Result<typename std::result_of_t<F(T &&)>::ok_t, E>;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.or
+     *
+     * fn or<F>(self, res: Result<T, F>) -> Result<T, F>
+     *
+     * Returns res if the result is Err, otherwise returns the Ok value of self.
+     */
+    template <class F>
+    auto or_(Result<T, F> &&res) && -> Result<T, F>;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.or_else
+     *
+     * fn or_else<F, O>(self, op: O) -> Result<T, F>
+     * where
+     *     O: FnOnce(E) -> Result<T, F>,
+     *
+     * Calls op if the result is Err, otherwise returns the Ok value of self.
+     *
+     * This function can be used for control flow based on result values.
+     */
+    template <class O>
+    auto
+    or_else(O &&op) && -> Result<T, typename std::result_of_t<O(E &&)>::err_t>;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap_or
+     *
+     * fn unwrap_or(self, optb: T) -> T
+     *
+     * Unwraps a result, yielding the content of an Ok. Else, it returns optb.
+     */
+    template <class Tx>
+    auto unwrap_or(Tx &&optb) && -> T;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap_or_else
+     *
+     * fn unwrap_or_else<F>(self, op: F) -> T
+     * where
+     *     F: FnOnce(E) -> T,
+     *
+     * Unwraps a result, yielding the content of an Ok. If the value is an Err
+     * then it calls op with its value.
+     */
+    template <class F>
+    auto unwrap_or_else(F &&op) && -> T;
+
+    /**
+     * https://doc.rust-lang.org/std/result/enum.Result.html#method.unwrap_or_default
+     *
+     * fn unwrap_or_default(self) -> T
+     *
+     * Returns the contained value or a default
+     *
+     * Consumes the self argument then, if Ok, returns the contained value,
+     * otherwise if Err, returns the default value for that type.
+     */
+    auto unwrap_or_default() && -> T;
 
 private:
     variant_t value_err;
@@ -296,75 +404,6 @@ RUSTFP_CONSTEXPR auto Result<T, E>::operator=(details::ErrImpl<Ex> &&err)
 }
 
 template <class T, class E>
-template <class F>
-auto Result<T, E>::map(
-    F &&op) && -> Result<special_decay_t<std::result_of_t<F(T &&)>>, E> {
-
-    if (is_ok()) {
-        return Ok(op(details::move_unchecked(std::move(value_err))));
-    } else {
-        return Err(details::move_err_unchecked(std::move(value_err)));
-    }
-}
-
-template <class T, class E>
-template <class O>
-auto Result<T, E>::map_err(
-    O &&op) && -> Result<T, special_decay_t<std::result_of_t<O(E &&)>>> {
-
-    if (is_err()) {
-        return Err(op(details::move_err_unchecked(std::move(value_err))));
-    } else {
-        return Ok(details::move_unchecked(std::move(value_err)));
-    }
-}
-
-template <class T, class E>
-template <class F>
-auto Result<T, E>::and_then(
-    F &&op) && -> Result<typename std::result_of_t<F(T &&)>::ok_t, E> {
-
-    if (is_ok()) {
-        return op(details::move_unchecked(std::move(value_err)));
-    } else {
-        return Err(details::move_err_unchecked(std::move(value_err)));
-    }
-}
-
-template <class T, class E>
-template <class O>
-auto Result<T, E>::or_else(
-    O &&op) && -> Result<T, typename std::result_of_t<O(E &&)>::err_t> {
-
-    if (is_err()) {
-        return op(details::move_err_unchecked(std::move(value_err)));
-    } else {
-        return Ok(details::move_unchecked(std::move(value_err)));
-    }
-}
-
-template <class T, class E>
-auto Result<T, E>::ok() && -> Option<T> {
-    return is_ok() ? Some(details::move_unchecked(std::move(value_err))) : None;
-}
-
-template <class T, class E>
-auto Result<T, E>::err() && -> Option<E> {
-    return is_err() ? Some(details::move_err_unchecked(std::move(value_err)))
-                    : None;
-}
-
-template <class T, class E>
-RUSTFP_CONSTEXPR auto Result<T, E>::is_ok() const RUSTFP_NOEXCEPT -> bool {
-    return value_err.index() == 0;
-}
-
-template <class T, class E>
-RUSTFP_CONSTEXPR auto Result<T, E>::is_err() const RUSTFP_NOEXCEPT -> bool {
-    return value_err.index() == 1;
-}
-
-template <class T, class E>
 RUSTFP_CONSTEXPR auto Result<T, E>::get_unchecked() const RUSTFP_NOEXCEPT
     -> const T & {
 
@@ -457,6 +496,124 @@ auto Result<T, E>::match_err(ErrFn &&err_fn) const & -> unit_t {
     }
 
     return Unit;
+}
+
+template <class T, class E>
+RUSTFP_CONSTEXPR auto Result<T, E>::is_ok() const RUSTFP_NOEXCEPT -> bool {
+    return value_err.index() == 0;
+}
+
+template <class T, class E>
+RUSTFP_CONSTEXPR auto Result<T, E>::is_err() const RUSTFP_NOEXCEPT -> bool {
+    return value_err.index() == 1;
+}
+
+template <class T, class E>
+auto Result<T, E>::ok() && -> Option<T> {
+    return is_ok() ? Some(details::move_unchecked(std::move(value_err))) : None;
+}
+
+template <class T, class E>
+auto Result<T, E>::err() && -> Option<E> {
+    return is_err() ? Some(details::move_err_unchecked(std::move(value_err)))
+                    : None;
+}
+
+template <class T, class E>
+template <class F>
+auto Result<T, E>::map(
+    F &&op) && -> Result<special_decay_t<std::result_of_t<F(T &&)>>, E> {
+
+    if (is_ok()) {
+        return Ok(op(details::move_unchecked(std::move(value_err))));
+    } else {
+        return Err(details::move_err_unchecked(std::move(value_err)));
+    }
+}
+
+template <class T, class E>
+template <class O>
+auto Result<T, E>::map_err(
+    O &&op) && -> Result<T, special_decay_t<std::result_of_t<O(E &&)>>> {
+
+    if (is_err()) {
+        return Err(op(details::move_err_unchecked(std::move(value_err))));
+    } else {
+        return Ok(details::move_unchecked(std::move(value_err)));
+    }
+}
+
+template <class T, class E>
+template <class U>
+auto Result<T, E>::and_(Result<U, E> &&res) && -> Result<U, E> {
+    if (is_ok()) {
+        return std::move(res);
+    } else {
+        return Err(details::move_err_unchecked(std::move(value_err)));
+    }
+}
+
+template <class T, class E>
+template <class F>
+auto Result<T, E>::and_then(
+    F &&op) && -> Result<typename std::result_of_t<F(T &&)>::ok_t, E> {
+
+    if (is_ok()) {
+        return op(details::move_unchecked(std::move(value_err)));
+    } else {
+        return Err(details::move_err_unchecked(std::move(value_err)));
+    }
+}
+
+template <class T, class E>
+template <class F>
+auto Result<T, E>::or_(Result<T, F> &&res) && -> Result<T, F> {
+    if (is_err()) {
+        return std::move(res);
+    } else {
+        return Ok(details::move_unchecked(std::move(value_err)));
+    }
+}
+
+template <class T, class E>
+template <class O>
+auto Result<T, E>::or_else(
+    O &&op) && -> Result<T, typename std::result_of_t<O(E &&)>::err_t> {
+
+    if (is_err()) {
+        return op(details::move_err_unchecked(std::move(value_err)));
+    } else {
+        return Ok(details::move_unchecked(std::move(value_err)));
+    }
+}
+
+template <class T, class E>
+template <class Tx>
+auto Result<T, E>::unwrap_or(Tx &&optb) && -> T {
+    if (is_ok()) {
+        return details::move_unchecked(std::move(value_err));
+    } else {
+        return std::forward<Tx>(optb);
+    }
+}
+
+template <class T, class E>
+template <class F>
+auto Result<T, E>::unwrap_or_else(F &&op) && -> T {
+    if (is_ok()) {
+        return details::move_unchecked(std::move(value_err));
+    } else {
+        return op();
+    }
+}
+
+template <class T, class E>
+auto Result<T, E>::unwrap_or_default() && -> T {
+    if (is_ok()) {
+        return details::move_unchecked(std::move(value_err));
+    } else {
+        return T();
+    }
 }
 
 template <class T>

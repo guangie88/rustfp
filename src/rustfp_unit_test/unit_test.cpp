@@ -2252,198 +2252,41 @@ TEST(Result, ResErrAssignment) {
     ASSERT_EQ("World", res.get_err_unchecked());
 }
 
-TEST(Result, ResIfElseTrue) {
-    const auto res = res_if_else(true, [] { return 1; }, [] { return 3.14; });
+TEST(Result, GetUnchecked) {
+    const Result<int, string> res = Ok(7);
 
     ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(7, res.get_unchecked());
 }
 
-TEST(Result, ResIfElseFalse) {
-    const auto res = res_if_else(false, [] { return 1; }, [] { return 3.14; });
+TEST(Result, GetErrUnchecked) {
+    const Result<int, string> res = Err(string{"Hello"});
 
     ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Hello", res.get_err_unchecked());
 }
 
-TEST(Result, OkSome) {
-    Result<int, string> res = Ok(8);
-    const auto opt = move(res).ok();
+TEST(Result, UnwrapUnchecked) {
+    int x = 7;
+    Result<int &, int> res = Ok(ref(x));
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(8, opt.get_unchecked());
+    ASSERT_TRUE(res.is_ok());
+
+    // to show that it returns reference
+    static_assert(
+        is_same<decltype(move(res).unwrap_unchecked()), int &>::value,
+        "Result::UnwrapUnchecked does not return reference directly!");
+
+    ASSERT_EQ(7, move(res).unwrap_unchecked());
 }
 
-TEST(Result, OkNone) {
-    Result<int, string> res = Err(string{"World"});
-    const auto opt = move(res).ok();
+TEST(Result, UnwrapErrUnchecked) {
+    Result<string, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
+    ASSERT_TRUE(res.is_err());
 
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Result, ErrSome) {
-    Result<int, string> res = Err(string{"World"});
-    const auto opt = move(res).err();
-
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("World", opt.get_unchecked());
-}
-
-TEST(Result, ErrNone) {
-    Result<int, string> res = Ok(9);
-    const auto opt = move(res).err();
-
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Result, MapOk) {
-    Result<int, string> res = Ok(1);
-    const auto mapped_res = move(res).map([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return value + 0.5;
-    });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ(1.5, mapped_res.get_unchecked());
-}
-
-TEST(Result, MapErr) {
-    Result<int, string> res = Err(string{"Error"});
-    const auto mapped_res = move(res).map([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return to_string(value);
-    });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("Error", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, MapErrErr) {
-    Result<int, string> res = Err(string{"Error"});
-    const auto mapped_res = move(res).map_err([](const auto &value) {
-        static_assert(
-            is_same<decltype(value), const string &>::value,
-            "value is expected to be of const string & type");
-
-        return value + " value";
-    });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("Error value", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, MapErrOk) {
-    Result<int, int> res = Ok(-1);
-    const auto mapped_res = move(res).map_err([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return to_string(value);
-    });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ(-1, mapped_res.get_unchecked());
-}
-
-TEST(Result, AndThenOkToOk) {
-    Result<int, string> res = Ok(1);
-
-    const auto mapped_res =
-        move(res).and_then([](const auto value) -> Result<string, string> {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return Ok(to_string(value));
-        });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ("1", mapped_res.get_unchecked());
-}
-
-TEST(Result, AndThenOkToErr) {
-    Result<int, string> res = Ok(2);
-
-    const auto mapped_res =
-        move(res).and_then([](const auto value) -> Result<int, string> {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return Err(to_string(value));
-        });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("2", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, AndThenErr) {
-    Result<int, string> res = Err(string{"Error"});
-
-    const auto mapped_res =
-        move(res).and_then([](const auto value) -> Result<int, string> {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return Ok(value);
-        });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("Error", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, OrElseErrToOk) {
-    Result<int, string> res = Err(string{"Error"});
-
-    const auto mapped_res =
-        move(res).or_else([](const auto &value) -> Result<int, int> {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return Ok(7);
-        });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ(7, mapped_res.get_unchecked());
-}
-
-TEST(Result, OrElseErrToErr) {
-    Result<int, string> res = Err(string{"Error"});
-
-    const auto mapped_res =
-        move(res).or_else([](const auto &value) -> Result<int, string> {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return Err(string{"Still error"});
-        });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("Still error", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, OrElseOk) {
-    Result<int, string> res = Ok(5);
-
-    const auto mapped_res =
-        move(res).or_else([](const auto &value) -> Result<int, double> {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return Ok(6);
-        });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ(5, mapped_res.get_unchecked());
+    // to prove that the pointer can move
+    auto err_ptr = move(res).unwrap_err_unchecked();
+    ASSERT_EQ("Hello", *err_ptr);
 }
 
 TEST(Result, MatchOk) {
@@ -2671,41 +2514,312 @@ TEST(Result, MatchErrRefErr) {
     ASSERT_EQ("Hello", *res.get_err_unchecked());
 }
 
-TEST(Result, GetUnchecked) {
-    const Result<int, string> res = Ok(7);
+TEST(Result, MapOk) {
+    Result<int, string> res = Ok(1);
+    const auto mapped_res = move(res).map([](const auto value) {
+        static_assert(
+            is_same<decltype(value), const int>::value,
+            "value is expected to be of const int type");
+
+        return value + 0.5;
+    });
+
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ(1.5, mapped_res.get_unchecked());
+}
+
+TEST(Result, MapErr) {
+    Result<int, string> res = Err(string{"Error"});
+    const auto mapped_res = move(res).map([](const auto value) {
+        static_assert(
+            is_same<decltype(value), const int>::value,
+            "value is expected to be of const int type");
+
+        return to_string(value);
+    });
+
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("Error", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, MapErrErr) {
+    Result<int, string> res = Err(string{"Error"});
+    const auto mapped_res = move(res).map_err([](const auto &value) {
+        static_assert(
+            is_same<decltype(value), const string &>::value,
+            "value is expected to be of const string & type");
+
+        return value + " value";
+    });
+
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("Error value", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, MapErrOk) {
+    Result<int, int> res = Ok(-1);
+    const auto mapped_res = move(res).map_err([](const auto value) {
+        static_assert(
+            is_same<decltype(value), const int>::value,
+            "value is expected to be of const int type");
+
+        return to_string(value);
+    });
+
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ(-1, mapped_res.get_unchecked());
+}
+
+TEST(Result, AndOkWithOk) {
+    Result<int, string> res_left = Ok(1);
+    Result<double, string> res_right = Ok(3.14);
+
+    const auto res = move(res_left).and_(move(res_right));
 
     ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(7, res.get_unchecked());
+    ASSERT_EQ(3.14, res.get_unchecked());
 }
 
-TEST(Result, GetErrUnchecked) {
-    const Result<int, string> res = Err(string{"Hello"});
+TEST(Result, AndErrWithOk) {
+    Result<int, string> res_left = Err(string("Error"));
+    Result<double, string> res_right = Ok(3.14);
+
+    const auto res = move(res_left).and_(move(res_right));
 
     ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Hello", res.get_err_unchecked());
+    ASSERT_EQ("Error", res.get_err_unchecked());
 }
 
-TEST(Result, UnwrapUnchecked) {
-    int x = 7;
-    Result<int &, int> res = Ok(ref(x));
+TEST(Result, AndOkWithErr) {
+    Result<int, string> res_left = Ok(1);
+    Result<double, string> res_right = Err(string("Error"));
+
+    const auto res = move(res_left).and_(move(res_right));
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Error", res.get_err_unchecked());
+}
+
+TEST(Result, AndErrWithErr) {
+    Result<int, string> res_left = Err(string("Left Error"));
+    Result<double, string> res_right = Err(string("Right Error"));
+
+    const auto res = move(res_left).and_(move(res_right));
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Left Error", res.get_err_unchecked());
+}
+
+TEST(Result, AndThenOkWithOk) {
+    Result<int, string> res = Ok(1);
+
+    const auto mapped_res =
+        move(res).and_then([](const auto value) -> Result<string, string> {
+            static_assert(
+                is_same<decltype(value), const int>::value,
+                "value is expected to be of const int type");
+
+            return Ok(to_string(value));
+        });
+
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ("1", mapped_res.get_unchecked());
+}
+
+TEST(Result, AndThenOkWithErr) {
+    Result<int, string> res = Ok(2);
+
+    const auto mapped_res =
+        move(res).and_then([](const auto value) -> Result<int, string> {
+            static_assert(
+                is_same<decltype(value), const int>::value,
+                "value is expected to be of const int type");
+
+            return Err(to_string(value));
+        });
+
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("2", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, AndThenErr) {
+    Result<int, string> res = Err(string{"Error"});
+
+    const auto mapped_res =
+        move(res).and_then([](const auto value) -> Result<int, string> {
+            static_assert(
+                is_same<decltype(value), const int>::value,
+                "value is expected to be of const int type");
+
+            return Ok(value);
+        });
+
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("Error", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, OrOkWithOk) {
+    Result<int, string> res_left = Ok(1);
+    Result<int, double> res_right = Ok(2);
+
+    const auto res = move(res_left).or_(move(res_right));
 
     ASSERT_TRUE(res.is_ok());
-
-    // to show that it returns reference
-    static_assert(
-        is_same<decltype(move(res).unwrap_unchecked()), int &>::value,
-        "Result::UnwrapUnchecked does not return reference directly!");
-
-    ASSERT_EQ(7, move(res).unwrap_unchecked());
+    ASSERT_EQ(1, res.get_unchecked());
 }
 
-TEST(Result, UnwrapErrUnchecked) {
-    Result<string, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
-    ASSERT_TRUE(res.is_err());
+TEST(Result, OrErrWithOk) {
+    Result<int, string> res_left = Err(string("Error"));
+    Result<int, double> res_right = Ok(2);
 
-    // to prove that the pointer can move
-    auto err_ptr = move(res).unwrap_err_unchecked();
-    ASSERT_EQ("Hello", *err_ptr);
+    const auto res = move(res_left).or_(move(res_right));
+
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(2, res.get_unchecked());
+}
+
+TEST(Result, OrOkWithErr) {
+    Result<int, string> res_left = Ok(1);
+    Result<int, double> res_right = Err(3.14);
+
+    const auto res = move(res_left).or_(move(res_right));
+
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(1, res.get_unchecked());
+}
+
+TEST(Result, OrErrWithErr) {
+    Result<int, string> res_left = Err(string("Error"));
+    Result<int, double> res_right = Err(3.14);
+
+    const auto res = move(res_left).or_(move(res_right));
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ(3.14, res.get_err_unchecked());
+}
+
+TEST(Result, OrElseErrWithOk) {
+    Result<int, string> res = Err(string{"Error"});
+
+    const auto mapped_res =
+        move(res).or_else([](const auto &value) -> Result<int, int> {
+            static_assert(
+                is_same<decltype(value), const string &>::value,
+                "value is expected to be of const string & type");
+
+            return Ok(7);
+        });
+
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ(7, mapped_res.get_unchecked());
+}
+
+TEST(Result, OrElseErrWithErr) {
+    Result<int, string> res = Err(string{"Error"});
+
+    const auto mapped_res =
+        move(res).or_else([](const auto &value) -> Result<int, string> {
+            static_assert(
+                is_same<decltype(value), const string &>::value,
+                "value is expected to be of const string & type");
+
+            return Err(string{"Still error"});
+        });
+
+    ASSERT_TRUE(mapped_res.is_err());
+    ASSERT_EQ("Still error", mapped_res.get_err_unchecked());
+}
+
+TEST(Result, OrElseOk) {
+    Result<int, string> res = Ok(5);
+
+    const auto mapped_res =
+        move(res).or_else([](const auto &value) -> Result<int, double> {
+            static_assert(
+                is_same<decltype(value), const string &>::value,
+                "value is expected to be of const string & type");
+
+            return Ok(6);
+        });
+
+    ASSERT_TRUE(mapped_res.is_ok());
+    ASSERT_EQ(5, mapped_res.get_unchecked());
+}
+
+TEST(Result, UnwrapOrOk) {
+    Result<int, string> res = Ok(1);
+    const auto v = move(res).unwrap_or(7);
+    ASSERT_EQ(1, v);
+}
+
+TEST(Result, UnwrapOrErr) {
+    Result<int, string> res = Err(string("Error"));
+    const auto v = move(res).unwrap_or(7);
+    ASSERT_EQ(7, v);
+}
+
+TEST(Result, UnwrapOrElseOk) {
+    Result<int, string> res = Ok(1);
+    const auto v = move(res).unwrap_or_else([] { return 7; });
+    ASSERT_EQ(1, v);
+}
+
+TEST(Result, UnwrapOrElseErr) {
+    Result<int, string> res = Err(string("Error"));
+    const auto v = move(res).unwrap_or_else([] { return 7; });
+    ASSERT_EQ(7, v);
+}
+
+TEST(Result, UnwrapOrDefaultOk) {
+    Result<string, double> res = Ok(string("Hello"));
+    const auto v = move(res).unwrap_or_default();
+    ASSERT_EQ("Hello", v);
+}
+
+TEST(Result, UnwrapOrDefaultErr) {
+    Result<string, double> res = Err(3.14);
+    const auto v = move(res).unwrap_or_default();
+    ASSERT_TRUE(v.empty());
+}
+
+TEST(Result, ResIfElseTrue) {
+    const auto res = res_if_else(true, [] { return 1; }, [] { return 3.14; });
+    ASSERT_TRUE(res.is_ok());
+}
+
+TEST(Result, ResIfElseFalse) {
+    const auto res = res_if_else(false, [] { return 1; }, [] { return 3.14; });
+    ASSERT_TRUE(res.is_err());
+}
+
+TEST(Result, OkSome) {
+    Result<int, string> res = Ok(8);
+    const auto opt = move(res).ok();
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ(8, opt.get_unchecked());
+}
+
+TEST(Result, OkNone) {
+    Result<int, string> res = Err(string{"World"});
+    const auto opt = move(res).ok();
+
+    ASSERT_TRUE(opt.is_none());
+}
+
+TEST(Result, ErrSome) {
+    Result<int, string> res = Err(string{"World"});
+    const auto opt = move(res).err();
+
+    ASSERT_TRUE(opt.is_some());
+    ASSERT_EQ("World", opt.get_unchecked());
+}
+
+TEST(Result, ErrNone) {
+    Result<int, string> res = Ok(9);
+    const auto opt = move(res).err();
+
+    ASSERT_TRUE(opt.is_none());
 }
 
 TEST(Macro, Let) {
