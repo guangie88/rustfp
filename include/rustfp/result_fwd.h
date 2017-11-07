@@ -16,24 +16,22 @@ namespace rustfp {
 
 // forwarding section
 
-namespace details {
 template <class T>
 class OkImpl;
 
 template <class E>
 class ErrImpl;
-} // namespace details
 
 template <class T, class E>
 class Result;
 
 template <class T>
 RUSTFP_CONSTEXPR auto Ok(T &&value) RUSTFP_NOEXCEPT_EXPR(
-    std::is_nothrow_constructible<details::OkImpl<special_decay_t<T>>>::value)
-    -> details::OkImpl<special_decay_t<T>>;
+    std::is_nothrow_constructible<OkImpl<special_decay_t<T>>>::value)
+    -> OkImpl<special_decay_t<T>>;
 
 template <class E>
 RUSTFP_CONSTEXPR auto Err(E &&error) RUSTFP_NOEXCEPT_EXPR(
-    std::is_nothrow_constructible<details::ErrImpl<special_decay_t<E>>>::value)
-    -> details::ErrImpl<special_decay_t<E>>;
+    std::is_nothrow_constructible<ErrImpl<special_decay_t<E>>>::value)
+    -> ErrImpl<special_decay_t<E>>;
 } // namespace rustfp

@@ -36,7 +36,7 @@ namespace rustfp {
 template <class T, class E>
 class Result {
 private:
-    using variant_t = mpark::variant<details::OkImpl<T>, details::ErrImpl<E>>;
+    using variant_t = mpark::variant<OkImpl<T>, ErrImpl<E>>;
 
 public:
     /**
@@ -50,20 +50,20 @@ public:
     using err_t = E;
 
     template <class Tx>
-    RUSTFP_CONSTEXPR Result(details::OkImpl<Tx> &&value) RUSTFP_NOEXCEPT_EXPR(
+    RUSTFP_CONSTEXPR Result(OkImpl<Tx> &&value) RUSTFP_NOEXCEPT_EXPR(
         std::is_nothrow_move_constructible<variant_t>::value);
 
     template <class Ex>
-    RUSTFP_CONSTEXPR Result(details::ErrImpl<Ex> &&err) RUSTFP_NOEXCEPT_EXPR(
+    RUSTFP_CONSTEXPR Result(ErrImpl<Ex> &&err) RUSTFP_NOEXCEPT_EXPR(
         std::is_nothrow_move_constructible<variant_t>::value);
 
     template <class Tx>
-    RUSTFP_CONSTEXPR auto operator=(details::OkImpl<Tx> &&value)
+    RUSTFP_CONSTEXPR auto operator=(OkImpl<Tx> &&value)
         RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<variant_t>::value)
             -> Result<T, E> &;
 
     template <class Ex>
-    RUSTFP_CONSTEXPR auto operator=(details::ErrImpl<Ex> &&err)
+    RUSTFP_CONSTEXPR auto operator=(ErrImpl<Ex> &&err)
         RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<variant_t>::value)
             -> Result<T, E> &;
 
@@ -263,23 +263,6 @@ private:
 };
 
 template <class T>
-RUSTFP_CONSTEXPR auto Ok(T &&value) RUSTFP_NOEXCEPT_EXPR(
-    std::is_nothrow_constructible<details::OkImpl<special_decay_t<T>>>::value)
-    -> details::OkImpl<special_decay_t<T>>;
-
-template <class E>
-RUSTFP_CONSTEXPR auto Err(E &&error) RUSTFP_NOEXCEPT_EXPR(
-    std::is_nothrow_constructible<details::ErrImpl<special_decay_t<E>>>::value)
-    -> details::ErrImpl<special_decay_t<E>>;
-
-template <class OkFn, class ErrFn>
-auto res_if_else(const bool cond, OkFn &&ok_fn, ErrFn &&err_fn)
-    -> Result<std::result_of_t<OkFn()>, std::result_of_t<ErrFn()>>;
-
-// implementation section
-
-namespace details {
-template <class T>
 class OkImpl {
     template <class Tx, class Ex>
     friend class Result;
@@ -287,21 +270,14 @@ class OkImpl {
 public:
     template <class Tx>
     RUSTFP_CONSTEXPR explicit OkImpl(Tx &&value) RUSTFP_NOEXCEPT_EXPR(
-        std::is_nothrow_constructible<reverse_decay_t<T>>::value)
-        : value(std::forward<Tx>(value)) {
-    }
+        std::is_nothrow_constructible<reverse_decay_t<T>>::value);
 
-    inline RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT -> const T & {
-        return value;
-    }
+    RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT -> const T &;
 
-    inline RUSTFP_CONSTEXPR auto move()
+    RUSTFP_CONSTEXPR auto move()
         && RUSTFP_NOEXCEPT_EXPR(
                std::is_nothrow_constructible<reverse_decay_t<T>>::value)
-               -> reverse_decay_t<T> {
-
-        return std::move(value);
-    }
+               -> reverse_decay_t<T>;
 
 private:
     reverse_decay_t<T> value;
@@ -315,91 +291,98 @@ class ErrImpl {
 public:
     template <class Ex>
     RUSTFP_CONSTEXPR explicit ErrImpl(Ex &&err) RUSTFP_NOEXCEPT_EXPR(
-        std::is_nothrow_constructible<reverse_decay_t<E>>::value)
-        : err(std::forward<Ex>(err)) {
-    }
+        std::is_nothrow_constructible<reverse_decay_t<E>>::value);
 
-    inline RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT -> const E & {
+    RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT -> const E &;
 
-        return err;
-    }
-
-    inline RUSTFP_CONSTEXPR auto move()
+    RUSTFP_CONSTEXPR auto move()
         && RUSTFP_NOEXCEPT_EXPR(
                std::is_nothrow_constructible<reverse_decay_t<E>>::value)
-               -> reverse_decay_t<E> {
-
-        return std::move(err);
-    }
+               -> reverse_decay_t<E>;
 
 private:
     reverse_decay_t<E> err;
 };
 
+template <class T>
+RUSTFP_CONSTEXPR auto Ok(T &&value) RUSTFP_NOEXCEPT_EXPR(
+    std::is_nothrow_constructible<OkImpl<special_decay_t<T>>>::value)
+    -> OkImpl<special_decay_t<T>>;
+
+template <class E>
+RUSTFP_CONSTEXPR auto Err(E &&error) RUSTFP_NOEXCEPT_EXPR(
+    std::is_nothrow_constructible<ErrImpl<special_decay_t<E>>>::value)
+    -> ErrImpl<special_decay_t<E>>;
+
+template <class OkFn, class ErrFn>
+auto res_if_else(const bool cond, OkFn &&ok_fn, ErrFn &&err_fn)
+    -> Result<std::result_of_t<OkFn()>, std::result_of_t<ErrFn()>>;
+
+// implementation section
+
+namespace details {
 template <class T, class E>
 RUSTFP_CONSTEXPR auto get_unchecked(
-    const mpark::variant<details::OkImpl<T>, details::ErrImpl<E>> &value_err)
-    RUSTFP_NOEXCEPT -> const T & {
+    const mpark::variant<OkImpl<T>, ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT
+    -> const T & {
 
-    return mpark::get_if<details::OkImpl<T>>(&value_err)->get();
+    return mpark::get_if<OkImpl<T>>(&value_err)->get();
 }
 
 template <class T, class E>
 RUSTFP_CONSTEXPR auto get_err_unchecked(
-    const mpark::variant<details::OkImpl<T>, details::ErrImpl<E>> &value_err)
-    RUSTFP_NOEXCEPT -> const E & {
+    const mpark::variant<OkImpl<T>, ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT
+    -> const E & {
 
-    return mpark::get_if<details::ErrImpl<E>>(&value_err)->get();
+    return mpark::get_if<ErrImpl<E>>(&value_err)->get();
 }
 
 template <class T, class E>
-auto move_unchecked(
-    mpark::variant<details::OkImpl<T>, details::ErrImpl<E>> &&value_err)
+auto move_unchecked(mpark::variant<OkImpl<T>, ErrImpl<E>> &&value_err)
     -> reverse_decay_t<T> {
 
-    return std::move(*mpark::get_if<details::OkImpl<T>>(&value_err)).move();
+    return std::move(*mpark::get_if<OkImpl<T>>(&value_err)).move();
 }
 
 template <class T, class E>
-auto move_err_unchecked(
-    mpark::variant<details::OkImpl<T>, details::ErrImpl<E>> &&value_err)
+auto move_err_unchecked(mpark::variant<OkImpl<T>, ErrImpl<E>> &&value_err)
     -> reverse_decay_t<E> {
 
-    return std::move(*mpark::get_if<details::ErrImpl<E>>(&value_err)).move();
+    return std::move(*mpark::get_if<ErrImpl<E>>(&value_err)).move();
 }
 } // namespace details
 
 template <class T, class E>
 template <class Tx>
-RUSTFP_CONSTEXPR Result<T, E>::Result(details::OkImpl<Tx> &&value)
+RUSTFP_CONSTEXPR Result<T, E>::Result(OkImpl<Tx> &&value)
     RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_constructible<variant_t>::value)
-    : value_err(std::move(value)) {
+    : value_err(OkImpl<T>(std::move(value).move())) {
 }
 
 template <class T, class E>
 template <class Ex>
-RUSTFP_CONSTEXPR Result<T, E>::Result(details::ErrImpl<Ex> &&err)
+RUSTFP_CONSTEXPR Result<T, E>::Result(ErrImpl<Ex> &&err)
     RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_constructible<variant_t>::value)
-    : value_err(std::move(err)) {
+    : value_err(ErrImpl<E>(std::move(err).move())) {
 }
 
 template <class T, class E>
 template <class Tx>
-RUSTFP_CONSTEXPR auto Result<T, E>::operator=(details::OkImpl<Tx> &&value)
+RUSTFP_CONSTEXPR auto Result<T, E>::operator=(OkImpl<Tx> &&value)
     RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<variant_t>::value)
         -> Result<T, E> & {
 
-    value_err = std::move(value);
+    value_err = OkImpl<T>(std::move(value).move());
     return *this;
 }
 
 template <class T, class E>
 template <class Ex>
-RUSTFP_CONSTEXPR auto Result<T, E>::operator=(details::ErrImpl<Ex> &&err)
+RUSTFP_CONSTEXPR auto Result<T, E>::operator=(ErrImpl<Ex> &&err)
     RUSTFP_NOEXCEPT_EXPR(std::is_nothrow_move_assignable<variant_t>::value)
         -> Result<T, E> & {
 
-    value_err = std::move(err);
+    value_err = ErrImpl<E>(std::move(err).move());
     return *this;
 }
 
@@ -617,19 +600,61 @@ auto Result<T, E>::unwrap_or_default() && -> T {
 }
 
 template <class T>
-RUSTFP_CONSTEXPR auto Ok(T &&value) RUSTFP_NOEXCEPT_EXPR(
-    std::is_nothrow_constructible<details::OkImpl<special_decay_t<T>>>::value)
-    -> details::OkImpl<special_decay_t<T>> {
+template <class Tx>
+RUSTFP_CONSTEXPR OkImpl<T>::OkImpl(Tx &&value) RUSTFP_NOEXCEPT_EXPR(
+    std::is_nothrow_constructible<reverse_decay_t<T>>::value)
+    : value(std::forward<Tx>(value)) {
+}
 
-    return details::OkImpl<special_decay_t<T>>(std::forward<T>(value));
+template <class T>
+RUSTFP_CONSTEXPR auto OkImpl<T>::get() const RUSTFP_NOEXCEPT -> const T & {
+    return value;
+}
+
+template <class T>
+    RUSTFP_CONSTEXPR auto OkImpl<T>::move()
+    && RUSTFP_NOEXCEPT_EXPR(
+           std::is_nothrow_constructible<reverse_decay_t<T>>::value)
+           -> reverse_decay_t<T> {
+
+    return std::move(value);
+}
+
+template <class E>
+template <class Ex>
+RUSTFP_CONSTEXPR ErrImpl<E>::ErrImpl(Ex &&err) RUSTFP_NOEXCEPT_EXPR(
+    std::is_nothrow_constructible<reverse_decay_t<E>>::value)
+    : err(std::forward<Ex>(err)) {
+}
+
+template <class E>
+RUSTFP_CONSTEXPR auto ErrImpl<E>::get() const RUSTFP_NOEXCEPT -> const E & {
+    return err;
+}
+
+template <class E>
+    RUSTFP_CONSTEXPR auto ErrImpl<E>::move()
+    && RUSTFP_NOEXCEPT_EXPR(
+           std::is_nothrow_constructible<reverse_decay_t<E>>::value)
+           -> reverse_decay_t<E> {
+
+    return std::move(err);
+}
+
+template <class T>
+RUSTFP_CONSTEXPR auto Ok(T &&value) RUSTFP_NOEXCEPT_EXPR(
+    std::is_nothrow_constructible<OkImpl<special_decay_t<T>>>::value)
+    -> OkImpl<special_decay_t<T>> {
+
+    return OkImpl<special_decay_t<T>>(std::forward<T>(value));
 }
 
 template <class E>
 RUSTFP_CONSTEXPR auto Err(E &&error) RUSTFP_NOEXCEPT_EXPR(
-    std::is_nothrow_constructible<details::ErrImpl<special_decay_t<E>>>::value)
-    -> details::ErrImpl<special_decay_t<E>> {
+    std::is_nothrow_constructible<ErrImpl<special_decay_t<E>>>::value)
+    -> ErrImpl<special_decay_t<E>> {
 
-    return details::ErrImpl<special_decay_t<E>>(std::forward<E>(error));
+    return ErrImpl<special_decay_t<E>>(std::forward<E>(error));
 }
 
 template <class OkFn, class ErrFn>

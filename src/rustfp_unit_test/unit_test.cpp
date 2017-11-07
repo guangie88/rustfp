@@ -2236,20 +2236,70 @@ TEST(Option, OptIfFalse) {
 
 // result
 
-TEST(Result, ResOkAssignment) {
-    Result<unique_ptr<string>, string> res = Err(string("Hello"));
-    res = Ok(make_unique<string>("World"));
+TEST(Result, CtorOk) {
+    const Result<unique_ptr<int>, unique_ptr<string>> res(
+        Ok(make_unique<int>(7)));
 
     ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ("World", *res.get_unchecked());
+    ASSERT_EQ(7, *res.get_unchecked());
 }
 
-TEST(Result, ResErrAssignment) {
+TEST(Result, CtorOkConvert) {
+    // converts from const char * to string
+    const Result<string, string> res(Ok("Hello"));
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ("Hello", res.get_unchecked());
+}
+
+TEST(Result, CtorErr) {
+    const Result<unique_ptr<int>, unique_ptr<string>> res(
+        Err(make_unique<string>("Error")));
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Error", *res.get_err_unchecked());
+}
+
+TEST(Result, CtorErrConvert) {
+    // converts from const char * to string
+    const Result<string, string> res(Err("Error"));
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Error", res.get_err_unchecked());
+}
+
+TEST(Result, AssignmentOkToOkConvert) {
+    Result<string, double> res = Ok(string("Hello"));
+
+    // converts from const char * to string
+    res = Ok("World");
+
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ("World", res.get_unchecked());
+}
+
+TEST(Result, AssignmentOkToErr) {
     Result<unique_ptr<string>, string> res = Ok(make_unique<string>("Hello"));
     res = Err(string("World"));
 
     ASSERT_TRUE(res.is_err());
     ASSERT_EQ("World", res.get_err_unchecked());
+}
+
+TEST(Result, AssignmentErrToErrConvert) {
+    Result<double, string> res = Err(string("Hello"));
+
+    // converts from const char * to string
+    res = Err("World");
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("World", res.get_err_unchecked());
+}
+
+TEST(Result, AssignmentErrToOk) {
+    Result<unique_ptr<string>, string> res = Err(string("Hello"));
+    res = Ok(make_unique<string>("World"));
+
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ("World", *res.get_unchecked());
 }
 
 TEST(Result, GetUnchecked) {
