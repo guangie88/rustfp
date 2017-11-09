@@ -1796,6 +1796,130 @@ TEST(Option, IsNoneFalse) {
     ASSERT_FALSE(opt.is_none());
 }
 
+TEST(Option, AsRefOnSomeValue) {
+    const auto opt = Some(make_unique<int>(7));
+    const auto opt_ref = opt.as_ref();
+
+    ASSERT_TRUE(opt_ref.is_some());
+
+    static_assert(
+        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
+            value,
+        "opt_ref does not contain const unique_ptr<int> & type, which is "
+        "unexpected");
+
+    ASSERT_EQ(7, *opt_ref.get_unchecked());
+}
+
+TEST(Option, AsRefOnNoneValue) {
+    const Option<unique_ptr<int>> opt = None;
+    const auto opt_ref = opt.as_ref();
+
+    ASSERT_TRUE(opt_ref.is_none());
+
+    // does not evaluate at runtime, so no issues
+    static_assert(
+        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
+            value,
+        "opt_ref does not contain const unique_ptr<int> & type, which is "
+        "unexpected");
+}
+
+TEST(Option, AsRefOnSomeRef) {
+    const auto v = make_unique<int>(7);
+    const auto opt = Some(cref(v));
+    const auto opt_ref = opt.as_ref();
+
+    ASSERT_TRUE(opt_ref.is_some());
+
+    static_assert(
+        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
+            value,
+        "opt_ref does not contain const unique_ptr<int> & type, which is "
+        "unexpected");
+
+    ASSERT_EQ(7, *opt_ref.get_unchecked());
+}
+
+TEST(Option, AsRefOnNoneRef) {
+    const Option<const unique_ptr<int> &> opt = None;
+    const auto opt_ref = opt.as_ref();
+
+    ASSERT_TRUE(opt_ref.is_none());
+
+    // does not evaluate at runtime, so no issues
+    static_assert(
+        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
+            value,
+        "opt_ref does not contain const unique_ptr<int> & type, which is "
+        "unexpected");
+}
+
+TEST(Option, AsMutOnSomeValue) {
+    auto opt = Some(make_unique<int>(7));
+    const auto opt_ref = opt.as_mut();
+
+    ASSERT_TRUE(opt_ref.is_some());
+
+    static_assert(
+        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
+            value,
+        "opt_ref does not contain const unique_ptr<int> & type, which is "
+        "unexpected");
+
+    ASSERT_EQ(7, *opt_ref.get_unchecked());
+
+    *opt_ref.get_unchecked() = 8;
+    ASSERT_EQ(8, *opt_ref.get_unchecked());
+}
+
+TEST(Option, AsMutOnNoneValue) {
+    Option<unique_ptr<int>> opt = None;
+    const auto opt_ref = opt.as_mut();
+
+    ASSERT_TRUE(opt_ref.is_none());
+
+    // does not evaluate at runtime, so no issues
+    static_assert(
+        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
+            value,
+        "opt_ref does not contain const unique_ptr<int> & type, which is "
+        "unexpected");
+}
+
+TEST(Option, AsMutOnSomeRef) {
+    auto v = make_unique<int>(7);
+    auto opt = Some(ref(v));
+    const auto opt_ref = opt.as_mut();
+
+    ASSERT_TRUE(opt_ref.is_some());
+
+    static_assert(
+        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
+            value,
+        "opt_ref does not contain const unique_ptr<int> & type, which is "
+        "unexpected");
+
+    ASSERT_EQ(7, *opt_ref.get_unchecked());
+
+    *opt_ref.get_unchecked() = 8;
+    ASSERT_EQ(8, *opt_ref.get_unchecked());
+}
+
+TEST(Option, AsMutOnNoneRef) {
+    Option<unique_ptr<int> &> opt = None;
+    const auto opt_ref = opt.as_mut();
+
+    ASSERT_TRUE(opt_ref.is_none());
+
+    // does not evaluate at runtime, so no issues
+    static_assert(
+        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
+            value,
+        "opt_ref does not contain const unique_ptr<int> & type, which is "
+        "unexpected");
+}
+
 TEST(Option, UnwrapOrSome) {
     auto opt = Some(0);
     const auto v = move(opt).unwrap_or(1);

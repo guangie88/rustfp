@@ -164,7 +164,9 @@ public:
      * @see is_some
      * @see is_none
      */
-    RUSTFP_CONSTEXPR auto get_unchecked() const RUSTFP_NOEXCEPT -> const T &;
+    RUSTFP_CONSTEXPR auto get_unchecked() const RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<
+            std::add_const_t<std::remove_reference_t<T>>>;
 
     /**
      * Returns the moved contained item of type T which may possibly be a
@@ -292,6 +294,20 @@ public:
      * Returns true if the option is a None value.
      */
     RUSTFP_CONSTEXPR auto is_none() const RUSTFP_NOEXCEPT -> bool;
+
+    /**
+     * fn as_ref(&self) -> Option<&T>
+     *
+     * Converts from Option<T> to Option<&T>.
+     */
+    auto as_ref() const -> Option<const T &>;
+
+    /**
+     * fn as_mut(&mut self) -> Option<&mut T>
+     *
+     * Converts from Option<T> to Option<&mut T>.
+     */
+    auto as_mut() -> Option<T &>;
 
     /**
      * fn unwrap_or(self, def: T) -> T
@@ -641,7 +657,8 @@ auto Option<T>::operator=(const none_t &) -> Option<T> & {
 
 template <class T>
 RUSTFP_CONSTEXPR auto Option<T>::get_unchecked() const RUSTFP_NOEXCEPT
-    -> const T & {
+    -> std::add_lvalue_reference_t<
+        std::add_const_t<std::remove_reference_t<T>>> {
 
     // reference_wrapper can implicitly convert into reference
     return *opt;
@@ -725,6 +742,20 @@ RUSTFP_CONSTEXPR auto Option<T>::is_some() const RUSTFP_NOEXCEPT -> bool {
 template <class T>
 RUSTFP_CONSTEXPR auto Option<T>::is_none() const RUSTFP_NOEXCEPT -> bool {
     return !opt.has_value();
+}
+
+template <class T>
+auto Option<T>::as_ref() const -> Option<const T &> {
+    return is_some() ? Some(std::cref(*opt)) : None;
+}
+
+template <class T>
+auto Option<T>::as_mut() -> Option<T &> {
+    static_assert(
+        !std::is_const<T>::value,
+        "T must not have const specifier for Option::as_mut()");
+
+    return is_some() ? Some(std::ref(*opt)) : None;
 }
 
 template <class T>
