@@ -71,10 +71,13 @@ public:
 
     auto unwrap_err_unchecked() && -> E;
 
-    RUSTFP_CONSTEXPR auto get_unchecked() const RUSTFP_NOEXCEPT -> const T &;
+    RUSTFP_CONSTEXPR auto get_unchecked() const RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<
+            std::add_const_t<std::remove_reference_t<T>>>;
 
     RUSTFP_CONSTEXPR auto get_err_unchecked() const RUSTFP_NOEXCEPT
-        -> const E &;
+        -> std::add_lvalue_reference_t<
+            std::add_const_t<std::remove_reference_t<E>>>;
 
     template <class OkFn, class ErrFn>
     auto match(OkFn &&ok_fn, ErrFn &&err_fn) && -> std::common_type_t<
@@ -324,7 +327,8 @@ namespace details {
 template <class T, class E>
 RUSTFP_CONSTEXPR auto get_unchecked(
     const mpark::variant<OkImpl<T>, ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT
-    -> const T & {
+    -> std::add_lvalue_reference_t<
+        std::add_const_t<std::remove_reference_t<T>>> {
 
     return mpark::get_if<OkImpl<T>>(&value_err)->get();
 }
@@ -332,7 +336,8 @@ RUSTFP_CONSTEXPR auto get_unchecked(
 template <class T, class E>
 RUSTFP_CONSTEXPR auto get_err_unchecked(
     const mpark::variant<OkImpl<T>, ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT
-    -> const E & {
+    -> std::add_lvalue_reference_t<
+        std::add_const_t<std::remove_reference_t<E>>> {
 
     return mpark::get_if<ErrImpl<E>>(&value_err)->get();
 }
@@ -388,7 +393,8 @@ RUSTFP_CONSTEXPR auto Result<T, E>::operator=(ErrImpl<Ex> &&err)
 
 template <class T, class E>
 RUSTFP_CONSTEXPR auto Result<T, E>::get_unchecked() const RUSTFP_NOEXCEPT
-    -> const T & {
+    -> std::add_lvalue_reference_t<
+        std::add_const_t<std::remove_reference_t<T>>> {
 
     assert(is_ok());
     return details::get_unchecked(value_err);
@@ -396,7 +402,8 @@ RUSTFP_CONSTEXPR auto Result<T, E>::get_unchecked() const RUSTFP_NOEXCEPT
 
 template <class T, class E>
 RUSTFP_CONSTEXPR auto Result<T, E>::get_err_unchecked() const RUSTFP_NOEXCEPT
-    -> const E & {
+    -> std::add_lvalue_reference_t<
+        std::add_const_t<std::remove_reference_t<E>>> {
 
     assert(is_err());
     return details::get_err_unchecked(value_err);
