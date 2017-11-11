@@ -169,6 +169,18 @@ public:
             std::add_const_t<std::remove_reference_t<T>>>;
 
     /**
+     * Returns a lvalue non-const reference to the contained item.
+     *
+     * Asserts that is_some() == true. If is_none() == true and the
+     * assertion does not take place, this would cause an undefined
+     * behaviour.
+     * @see is_some
+     * @see is_none
+     */
+    RUSTFP_CONSTEXPR auto get_mut_unchecked() RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<std::remove_reference_t<T>>;
+
+    /**
      * Returns the moved contained item of type T which may possibly be a
      * reference type without any move operation performed if T was originally a
      * reference type.
@@ -519,11 +531,7 @@ public:
         : value(std::forward<Tx>(value)) {
     }
 
-    inline RUSTFP_CONSTEXPR auto get() const -> const T & {
-        return value;
-    }
-
-    inline RUSTFP_CONSTEXPR auto move() && -> reverse_decay_t<T> {
+    RUSTFP_CONSTEXPR auto move() && -> reverse_decay_t<T> {
         return std::move(value);
     }
 
@@ -659,6 +667,14 @@ template <class T>
 RUSTFP_CONSTEXPR auto Option<T>::get_unchecked() const RUSTFP_NOEXCEPT
     -> std::add_lvalue_reference_t<
         std::add_const_t<std::remove_reference_t<T>>> {
+
+    // reference_wrapper can implicitly convert into reference
+    return *opt;
+}
+
+template <class T>
+RUSTFP_CONSTEXPR auto Option<T>::get_mut_unchecked() RUSTFP_NOEXCEPT
+    -> std::add_lvalue_reference_t<std::remove_reference_t<T>> {
 
     // reference_wrapper can implicitly convert into reference
     return *opt;

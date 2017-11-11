@@ -1543,7 +1543,24 @@ TEST(Option, GetUncheckedRef) {
         is_same<decltype(v), const string &>::value,
         "v is expected to be of const string & type");
 
-    ASSERT_EQ("Hello", v);
+    ASSERT_EQ("Hello", value);
+}
+
+TEST(Option, GetMutUncheckedRef) {
+    string value = "Hello";
+    auto opt = Some(ref(value));
+
+    ASSERT_TRUE(opt.is_some());
+    auto &v = opt.get_mut_unchecked();
+
+    static_assert(
+        is_same<decltype(v), string &>::value,
+        "v is expected to be of string & type");
+
+    ASSERT_EQ("Hello", value);
+
+    v = "World";
+    ASSERT_EQ("World", value);
 }
 
 TEST(Option, UnwrapUnchecked) {
