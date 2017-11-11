@@ -2433,11 +2433,33 @@ TEST(Result, GetUnchecked) {
     ASSERT_EQ(7, res.get_unchecked());
 }
 
+TEST(Result, GetMutUnchecked) {
+    Result<int, string> res = Ok(7);
+
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(7, res.get_mut_unchecked());
+
+    res.get_mut_unchecked() = 8;
+    ASSERT_TRUE(res.is_ok());
+    ASSERT_EQ(8, res.get_mut_unchecked());
+}
+
 TEST(Result, GetErrUnchecked) {
     const Result<int, string> res = Err(string{"Hello"});
 
     ASSERT_TRUE(res.is_err());
     ASSERT_EQ("Hello", res.get_err_unchecked());
+}
+
+TEST(Result, GetErrMutUnchecked) {
+    Result<int, string> res = Err(string{"Hello"});
+
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("Hello", res.get_err_mut_unchecked());
+
+    res.get_err_mut_unchecked() = "World";
+    ASSERT_TRUE(res.is_err());
+    ASSERT_EQ("World", res.get_err_mut_unchecked());
 }
 
 TEST(Result, UnwrapUnchecked) {

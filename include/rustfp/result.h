@@ -75,9 +75,15 @@ public:
         -> std::add_lvalue_reference_t<
             std::add_const_t<std::remove_reference_t<T>>>;
 
+    RUSTFP_CONSTEXPR auto get_mut_unchecked() RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<std::remove_reference_t<T>>;
+
     RUSTFP_CONSTEXPR auto get_err_unchecked() const RUSTFP_NOEXCEPT
         -> std::add_lvalue_reference_t<
             std::add_const_t<std::remove_reference_t<E>>>;
+
+    RUSTFP_CONSTEXPR auto get_err_mut_unchecked() RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<std::remove_reference_t<E>>;
 
     template <class OkFn, class ErrFn>
     auto match(OkFn &&ok_fn, ErrFn &&err_fn) && -> std::common_type_t<
@@ -275,7 +281,12 @@ public:
     RUSTFP_CONSTEXPR explicit OkImpl(Tx &&value) RUSTFP_NOEXCEPT_EXPR(
         std::is_nothrow_constructible<reverse_decay_t<T>>::value);
 
-    RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT -> const T &;
+    RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<
+            std::add_const_t<std::remove_reference_t<T>>>;
+
+    RUSTFP_CONSTEXPR auto get_mut() RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<std::remove_reference_t<T>>;
 
     RUSTFP_CONSTEXPR auto move()
         && RUSTFP_NOEXCEPT_EXPR(
@@ -296,7 +307,12 @@ public:
     RUSTFP_CONSTEXPR explicit ErrImpl(Ex &&err) RUSTFP_NOEXCEPT_EXPR(
         std::is_nothrow_constructible<reverse_decay_t<E>>::value);
 
-    RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT -> const E &;
+    RUSTFP_CONSTEXPR auto get() const RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<
+            std::add_const_t<std::remove_reference_t<E>>>;
+
+    RUSTFP_CONSTEXPR auto get_mut() RUSTFP_NOEXCEPT
+        -> std::add_lvalue_reference_t<std::remove_reference_t<E>>;
 
     RUSTFP_CONSTEXPR auto move()
         && RUSTFP_NOEXCEPT_EXPR(
@@ -334,12 +350,28 @@ RUSTFP_CONSTEXPR auto get_unchecked(
 }
 
 template <class T, class E>
+RUSTFP_CONSTEXPR auto get_mut_unchecked(
+    mpark::variant<OkImpl<T>, ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT
+    -> std::add_lvalue_reference_t<std::remove_reference_t<T>> {
+
+    return mpark::get_if<OkImpl<T>>(&value_err)->get_mut();
+}
+
+template <class T, class E>
 RUSTFP_CONSTEXPR auto get_err_unchecked(
     const mpark::variant<OkImpl<T>, ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT
     -> std::add_lvalue_reference_t<
         std::add_const_t<std::remove_reference_t<E>>> {
 
     return mpark::get_if<ErrImpl<E>>(&value_err)->get();
+}
+
+template <class T, class E>
+RUSTFP_CONSTEXPR auto get_err_mut_unchecked(
+    mpark::variant<OkImpl<T>, ErrImpl<E>> &value_err) RUSTFP_NOEXCEPT
+    -> std::add_lvalue_reference_t<std::remove_reference_t<E>> {
+
+    return mpark::get_if<ErrImpl<E>>(&value_err)->get_mut();
 }
 
 template <class T, class E>
@@ -401,12 +433,28 @@ RUSTFP_CONSTEXPR auto Result<T, E>::get_unchecked() const RUSTFP_NOEXCEPT
 }
 
 template <class T, class E>
+RUSTFP_CONSTEXPR auto Result<T, E>::get_mut_unchecked() _NOEXCEPT
+    -> std::add_lvalue_reference_t<std::remove_reference_t<T>> {
+
+    assert(is_ok());
+    return details::get_mut_unchecked(value_err);
+}
+
+template <class T, class E>
 RUSTFP_CONSTEXPR auto Result<T, E>::get_err_unchecked() const RUSTFP_NOEXCEPT
     -> std::add_lvalue_reference_t<
         std::add_const_t<std::remove_reference_t<E>>> {
 
     assert(is_err());
     return details::get_err_unchecked(value_err);
+}
+
+template <class T, class E>
+RUSTFP_CONSTEXPR auto Result<T, E>::get_err_mut_unchecked() RUSTFP_NOEXCEPT
+    -> std::add_lvalue_reference_t<std::remove_reference_t<E>> {
+
+    assert(is_err());
+    return details::get_err_mut_unchecked(value_err);
 }
 
 template <class T, class E>
@@ -614,7 +662,17 @@ RUSTFP_CONSTEXPR OkImpl<T>::OkImpl(Tx &&value) RUSTFP_NOEXCEPT_EXPR(
 }
 
 template <class T>
-RUSTFP_CONSTEXPR auto OkImpl<T>::get() const RUSTFP_NOEXCEPT -> const T & {
+RUSTFP_CONSTEXPR auto OkImpl<T>::get() const RUSTFP_NOEXCEPT
+    -> std::add_lvalue_reference_t<
+        std::add_const_t<std::remove_reference_t<T>>> {
+
+    return value;
+}
+
+template <class T>
+RUSTFP_CONSTEXPR auto OkImpl<T>::get_mut() RUSTFP_NOEXCEPT
+    -> std::add_lvalue_reference_t<std::remove_reference_t<T>> {
+
     return value;
 }
 
@@ -635,7 +693,17 @@ RUSTFP_CONSTEXPR ErrImpl<E>::ErrImpl(Ex &&err) RUSTFP_NOEXCEPT_EXPR(
 }
 
 template <class E>
-RUSTFP_CONSTEXPR auto ErrImpl<E>::get() const RUSTFP_NOEXCEPT -> const E & {
+RUSTFP_CONSTEXPR auto ErrImpl<E>::get() const RUSTFP_NOEXCEPT
+    -> std::add_lvalue_reference_t<
+        std::add_const_t<std::remove_reference_t<E>>> {
+
+    return err;
+}
+
+template <class E>
+RUSTFP_CONSTEXPR auto ErrImpl<E>::get_mut() RUSTFP_NOEXCEPT
+    -> std::add_lvalue_reference_t<std::remove_reference_t<E>> {
+
     return err;
 }
 
