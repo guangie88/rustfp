@@ -73,11 +73,15 @@ script:
       )
       cmake --build . --target install -- -j 2
       ctest -R rustfp_unit_test -V
+      ec=$?
 
       if [ "${COV}" = "YES" ] && [ "${BUILD}" = "Debug" ]; then
         gcov ./CMakeFiles/rustfp_unit_test.dir/src/rustfp_unit_test/unit_test.cpp.gcno
+        ec=$?
         bash <(curl -s https://codecov.io/bash)
       fi
+
+      (exit $ec)
     done
   - popd
 

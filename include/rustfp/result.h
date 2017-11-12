@@ -433,7 +433,7 @@ RUSTFP_CONSTEXPR auto Result<T, E>::get_unchecked() const RUSTFP_NOEXCEPT
 }
 
 template <class T, class E>
-RUSTFP_CONSTEXPR auto Result<T, E>::get_mut_unchecked() _NOEXCEPT
+RUSTFP_CONSTEXPR auto Result<T, E>::get_mut_unchecked() RUSTFP_NOEXCEPT
     -> std::add_lvalue_reference_t<std::remove_reference_t<T>> {
 
     assert(is_ok());
