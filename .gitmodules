@@ -7,3 +7,6 @@
 [submodule "deps/optional-lite"]
 	path = deps/optional-lite
 	url = https://github.com/martinmoene/optional-lite.git
+[submodule "deps/Catch2"]
+	path = deps/Catch2
+	url = https://github.com/catchorg/Catch2.git
