@@ -1,5 +1,6 @@
-#define RUSTFP_SIMPLIFIED_LET
+#include "catch.hpp"
 
+#define RUSTFP_SIMPLIFIED_LET
 #include "rustfp/all.h"
 #include "rustfp/any.h"
 #include "rustfp/cloned.h"
@@ -26,8 +27,6 @@
 #include "rustfp/take.h"
 #include "rustfp/unit.h"
 #include "rustfp/zip.h"
-
-#include "gtest/gtest.h"
 
 #include <algorithm>
 #include <array>
@@ -182,1855 +181,1836 @@ auto similar_values(IterableLhs &&lhs, IterableRhs &&rhs, CompFn &&comp_fn)
 }
 } // namespace details
 
-// simple tests
+// simple ops
 
-class Ops : public ::testing::Test {
-protected:
-    void SetUp() override {
-        int_vec = vector<int>{0, 1, 2, 3, 4, 5};
-        str_vec = vector<string>{"Hello", "World", "How", "Are", "You", "?"};
+TEST_CASE("Ops section", "[Ops]") {
+    const auto int_vec = vector<int>{0, 1, 2, 3, 4, 5};
+
+    const auto str_vec =
+        vector<string>{"Hello", "World", "How", "Are", "You", "?"};
+
+    SECTION("Iter") {
+        auto it = iter(int_vec);
+
+        static_assert(
+            is_same<
+                typename remove_reference_t<decltype(it)>::Item,
+                const int &>::value,
+            "Ops::Iter failed Iter type checking!");
+
+        const auto opt0 = it.next();
+        REQUIRE(opt0.is_some());
+        REQUIRE(0 == opt0.get_unchecked());
+
+        static_assert(
+            is_same<
+                typename remove_reference_t<decltype(opt0)>::some_t,
+                const int &>::value,
+            "Ops::Iter failed Option type checking!");
+
+        const auto opt1 = it.next();
+        REQUIRE(opt1.is_some());
+        REQUIRE(1 == opt1.get_unchecked());
+
+        const auto opt2 = it.next();
+        REQUIRE(opt2.is_some());
+        REQUIRE(2 == opt2.get_unchecked());
+
+        const auto opt3 = it.next();
+        REQUIRE(opt3.is_some());
+        REQUIRE(3 == opt3.get_unchecked());
+
+        const auto opt4 = it.next();
+        REQUIRE(opt4.is_some());
+        REQUIRE(4 == opt4.get_unchecked());
+
+        const auto opt5 = it.next();
+        REQUIRE(opt5.is_some());
+        REQUIRE(5 == opt5.get_unchecked());
+
+        const auto opt6 = it.next();
+        REQUIRE(opt6.is_none());
     }
 
-    vector<int> int_vec;
-    vector<string> str_vec;
-};
+    SECTION("IterMut") {
+        auto v = int_vec;
 
-class ComplexOps : public ::testing::Test {
-protected:
-    void SetUp() override {
-        int_vec = vector<int>{0, 1, 2, 3, 4, 5};
+        // modify the values
+        iter_mut(v) | map([](auto &val) {
+            static_assert(
+                is_same<decltype(val), int &>::value,
+                "val is expected to be of int & type");
+
+            val *= val;
+            return ref(val);
+        }) | for_each([](auto &val) {
+            static_assert(
+                is_same<decltype(val), int &>::value,
+                "val is expected to be of int & type");
+
+            val += 1;
+        });
+
+        auto it = iter_mut(v);
+
+        static_assert(
+            is_same<typename remove_reference_t<decltype(it)>::Item, int &>::
+                value,
+            "Ops::IterMut failed Iter type checking!");
+
+        const auto opt0 = it.next();
+        REQUIRE(opt0.is_some());
+        REQUIRE(1 == opt0.get_unchecked());
+
+        static_assert(
+            is_same<
+                typename remove_reference_t<decltype(opt0)>::some_t,
+                int &>::value,
+            "Ops::IterMut failed Option type checking!");
+
+        const auto opt1 = it.next();
+        REQUIRE(opt1.is_some());
+        REQUIRE(2 == opt1.get_unchecked());
+
+        const auto opt2 = it.next();
+        REQUIRE(opt2.is_some());
+        REQUIRE(5 == opt2.get_unchecked());
+
+        const auto opt3 = it.next();
+        REQUIRE(opt3.is_some());
+        REQUIRE(10 == opt3.get_unchecked());
+
+        const auto opt4 = it.next();
+        REQUIRE(opt4.is_some());
+        REQUIRE(17 == opt4.get_unchecked());
+
+        const auto opt5 = it.next();
+        REQUIRE(opt5.is_some());
+        REQUIRE(26 == opt5.get_unchecked());
+
+        const auto opt6 = it.next();
+        REQUIRE(opt6.is_none());
     }
 
-    vector<int> int_vec;
-};
+    SECTION("IterMutChain") {
+        auto v = int_vec;
 
-TEST_F(Ops, Iter) {
-    auto it = iter(int_vec);
+        // modify the values
+        const auto v2 = iter_mut(v) | filter([](const auto val) {
+                            static_assert(
+                                is_same<decltype(val), const int>::value,
+                                "val is expected to be of const int type");
 
-    static_assert(
-        is_same<typename remove_reference_t<decltype(it)>::Item, const int &>::
-            value,
-        "Ops::Iter failed Iter type checking!");
+                            return val >= 2;
+                        })
+                        | map([](auto &val) {
+                              static_assert(
+                                  is_same<decltype(val), int &>::value,
+                                  "val is expected to be of int & type");
 
-    const auto opt0 = it.next();
-    ASSERT_TRUE(opt0.is_some());
-    ASSERT_EQ(0, opt0.get_unchecked());
+                              val -= 2;
+                              return ref(val);
+                          })
+                        | collect<vector<reference_wrapper<int>>>();
 
-    static_assert(
-        is_same<
-            typename remove_reference_t<decltype(opt0)>::some_t,
-            const int &>::value,
-        "Ops::Iter failed Option type checking!");
+        REQUIRE(4 == v2.size());
+        REQUIRE(0 == v2.at(0));
+        REQUIRE(1 == v2.at(1));
+        REQUIRE(2 == v2.at(2));
+        REQUIRE(3 == v2.at(3));
+    }
 
-    const auto opt1 = it.next();
-    ASSERT_TRUE(opt1.is_some());
-    ASSERT_EQ(1, opt1.get_unchecked());
+    SECTION("IntoIter") {
+        vector<unique_ptr<int>> v;
+        v.push_back(make_unique<int>(0));
+        v.push_back(make_unique<int>(1));
+        v.push_back(make_unique<int>(2));
 
-    const auto opt2 = it.next();
-    ASSERT_TRUE(opt2.is_some());
-    ASSERT_EQ(2, opt2.get_unchecked());
+        auto it = into_iter(move(v));
 
-    const auto opt3 = it.next();
-    ASSERT_TRUE(opt3.is_some());
-    ASSERT_EQ(3, opt3.get_unchecked());
-
-    const auto opt4 = it.next();
-    ASSERT_TRUE(opt4.is_some());
-    ASSERT_EQ(4, opt4.get_unchecked());
-
-    const auto opt5 = it.next();
-    ASSERT_TRUE(opt5.is_some());
-    ASSERT_EQ(5, opt5.get_unchecked());
-
-    const auto opt6 = it.next();
-    ASSERT_TRUE(opt6.is_none());
-}
-
-TEST_F(Ops, IterMut) {
-    auto v = int_vec;
-
-    // modify the values
-    iter_mut(v) | map([](auto &val) {
         static_assert(
-            is_same<decltype(val), int &>::value,
-            "val is expected to be of int & type");
+            is_same<
+                typename remove_reference_t<decltype(it)>::Item,
+                unique_ptr<int>>::value,
+            "Ops::IntoIter failed IntoIter type checking!");
 
-        val *= val;
-        return ref(val);
-    }) | for_each([](auto &val) {
+        auto opt0 = it.next();
+
         static_assert(
-            is_same<decltype(val), int &>::value,
-            "val is expected to be of int & type");
+            is_same<
+                typename remove_reference_t<decltype(opt0)>::some_t,
+                unique_ptr<int>>::value,
+            "Ops::IntoIter failed Option type checking!");
 
-        val += 1;
-    });
+        REQUIRE(opt0.is_some());
+        auto val0(move(opt0).unwrap_unchecked());
+        REQUIRE(0 == *val0);
 
-    auto it = iter_mut(v);
+        auto opt1 = it.next();
+        REQUIRE(opt1.is_some());
+        auto val1(move(opt1).unwrap_unchecked());
+        REQUIRE(1 == *val1);
 
-    static_assert(
-        is_same<typename remove_reference_t<decltype(it)>::Item, int &>::value,
-        "Ops::IterMut failed Iter type checking!");
+        auto opt2 = it.next();
+        REQUIRE(opt2.is_some());
+        auto val2(move(opt2).unwrap_unchecked());
+        REQUIRE(2 == *val2);
 
-    const auto opt0 = it.next();
-    ASSERT_TRUE(opt0.is_some());
-    ASSERT_EQ(1, opt0.get_unchecked());
+        REQUIRE(it.next().is_none());
+    }
 
-    static_assert(
-        is_same<typename remove_reference_t<decltype(opt0)>::some_t, int &>::
-            value,
-        "Ops::IterMut failed Option type checking!");
+    SECTION("IterBeginEndVec") {
+        vector<unique_ptr<int>> v;
+        v.push_back(make_unique<int>(0));
+        v.push_back(make_unique<int>(1));
+        v.push_back(make_unique<int>(2));
 
-    const auto opt1 = it.next();
-    ASSERT_TRUE(opt1.is_some());
-    ASSERT_EQ(2, opt1.get_unchecked());
+        auto it = iter_begin_end(v.begin(), v.cend());
 
-    const auto opt2 = it.next();
-    ASSERT_TRUE(opt2.is_some());
-    ASSERT_EQ(5, opt2.get_unchecked());
+        static_assert(
+            is_same<
+                typename remove_reference_t<decltype(it)>::Item,
+                const unique_ptr<int> &>::value,
+            "Ops::IterBeginEndVec failed IterBeginEnd type checking!");
 
-    const auto opt3 = it.next();
-    ASSERT_TRUE(opt3.is_some());
-    ASSERT_EQ(10, opt3.get_unchecked());
+        auto opt0 = it.next();
 
-    const auto opt4 = it.next();
-    ASSERT_TRUE(opt4.is_some());
-    ASSERT_EQ(17, opt4.get_unchecked());
+        static_assert(
+            is_same<
+                typename remove_reference_t<decltype(opt0)>::some_t,
+                const unique_ptr<int> &>::value,
+            "Ops::IterBeginEndVec failed Option type checking!");
 
-    const auto opt5 = it.next();
-    ASSERT_TRUE(opt5.is_some());
-    ASSERT_EQ(26, opt5.get_unchecked());
+        REQUIRE(opt0.is_some());
+        const auto &val0 = opt0.get_unchecked();
+        REQUIRE(0 == *val0);
 
-    const auto opt6 = it.next();
-    ASSERT_TRUE(opt6.is_none());
-}
+        auto opt1 = it.next();
+        REQUIRE(opt1.is_some());
+        const auto &val1 = opt1.get_unchecked();
+        REQUIRE(1 == *val1);
 
-TEST_F(Ops, IterMutChain) {
-    auto v = int_vec;
+        auto opt2 = it.next();
+        REQUIRE(opt2.is_some());
+        const auto &val2 = opt2.get_unchecked();
+        REQUIRE(2 == *val2);
 
-    // modify the values
-    const auto v2 = iter_mut(v) | filter([](const auto val) {
-                        static_assert(
-                            is_same<decltype(val), const int>::value,
-                            "val is expected to be of const int type");
+        REQUIRE(it.next().is_none());
+    }
 
-                        return val >= 2;
-                    })
-                    | map([](auto &val) {
-                          static_assert(
-                              is_same<decltype(val), int &>::value,
-                              "val is expected to be of int & type");
+    SECTION("IterBeginEndPtrs") {
+        // note the length is 4 since there is null character
+        const char VALUES[] = {"bad"};
+        auto it = iter_begin_end(
+            VALUES + 0, VALUES + extent<decltype(VALUES)>::value);
 
-                          val -= 2;
-                          return ref(val);
-                      })
-                    | collect<vector<reference_wrapper<int>>>();
+        static_assert(
+            is_same<
+                typename remove_reference_t<decltype(it)>::Item,
+                const char &>::value,
+            "Ops::IterBeginEndPtrs failed IterBeginEnd type checking!");
 
-    ASSERT_EQ(4, v2.size());
-    ASSERT_EQ(0, v2.at(0));
-    ASSERT_EQ(1, v2.at(1));
-    ASSERT_EQ(2, v2.at(2));
-    ASSERT_EQ(3, v2.at(3));
-}
+        auto opt0 = it.next();
 
-TEST_F(Ops, IntoIter) {
-    vector<unique_ptr<int>> v;
-    v.push_back(make_unique<int>(0));
-    v.push_back(make_unique<int>(1));
-    v.push_back(make_unique<int>(2));
+        static_assert(
+            is_same<
+                typename remove_reference_t<decltype(opt0)>::some_t,
+                const char &>::value,
+            "Ops::IterBeginEndPtrs failed Option type checking!");
 
-    auto it = into_iter(move(v));
+        REQUIRE(opt0.is_some());
+        const auto &val0 = opt0.get_unchecked();
+        REQUIRE('b' == val0);
 
-    static_assert(
-        is_same<
-            typename remove_reference_t<decltype(it)>::Item,
-            unique_ptr<int>>::value,
-        "Ops::IntoIter failed IntoIter type checking!");
+        auto opt1 = it.next();
+        REQUIRE(opt1.is_some());
+        const auto &val1 = opt1.get_unchecked();
+        REQUIRE('a' == val1);
 
-    auto opt0 = it.next();
+        auto opt2 = it.next();
+        REQUIRE(opt2.is_some());
+        const auto &val2 = opt2.get_unchecked();
+        REQUIRE('d' == val2);
 
-    static_assert(
-        is_same<
-            typename remove_reference_t<decltype(opt0)>::some_t,
-            unique_ptr<int>>::value,
-        "Ops::IntoIter failed Option type checking!");
+        auto opt3 = it.next();
+        REQUIRE(opt3.is_some());
+        const auto &val3 = opt3.get_unchecked();
+        REQUIRE('\0' == val3);
 
-    ASSERT_TRUE(opt0.is_some());
-    auto val0(move(opt0).unwrap_unchecked());
-    ASSERT_EQ(0, *val0);
+        REQUIRE(it.next().is_none());
+    }
 
-    auto opt1 = it.next();
-    ASSERT_TRUE(opt1.is_some());
-    auto val1(move(opt1).unwrap_unchecked());
-    ASSERT_EQ(1, *val1);
+    SECTION("AllTrue") {
+        const auto result =
+            iter(int_vec) | all([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
 
-    auto opt2 = it.next();
-    ASSERT_TRUE(opt2.is_some());
-    auto val2(move(opt2).unwrap_unchecked());
-    ASSERT_EQ(2, *val2);
+                return value < 6;
+            });
 
-    ASSERT_TRUE(it.next().is_none());
-}
+        REQUIRE(result);
+    }
 
-TEST_F(Ops, IterBeginEndVec) {
-    vector<unique_ptr<int>> v;
-    v.push_back(make_unique<int>(0));
-    v.push_back(make_unique<int>(1));
-    v.push_back(make_unique<int>(2));
+    SECTION("AllFalse") {
+        const auto result =
+            iter(int_vec) | all([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
 
-    auto it = iter_begin_end(v.begin(), v.cend());
+                return value > 0;
+            });
 
-    static_assert(
-        is_same<
-            typename remove_reference_t<decltype(it)>::Item,
-            const unique_ptr<int> &>::value,
-        "Ops::IterBeginEndVec failed IterBeginEnd type checking!");
+        REQUIRE(!result);
+    }
 
-    auto opt0 = it.next();
+    SECTION("AnyTrue") {
+        const auto result =
+            iter(int_vec) | any([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
 
-    static_assert(
-        is_same<
-            typename remove_reference_t<decltype(opt0)>::some_t,
-            const unique_ptr<int> &>::value,
-        "Ops::IterBeginEndVec failed Option type checking!");
+                return value == 5;
+            });
 
-    ASSERT_TRUE(opt0.is_some());
-    const auto &val0 = opt0.get_unchecked();
-    ASSERT_EQ(0, *val0);
+        REQUIRE(result);
+    }
 
-    auto opt1 = it.next();
-    ASSERT_TRUE(opt1.is_some());
-    const auto &val1 = opt1.get_unchecked();
-    ASSERT_EQ(1, *val1);
+    SECTION("AnyFalse") {
+        const auto result =
+            iter(int_vec) | any([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
 
-    auto opt2 = it.next();
-    ASSERT_TRUE(opt2.is_some());
-    const auto &val2 = opt2.get_unchecked();
-    ASSERT_EQ(2, *val2);
+                return value == 7;
+            });
 
-    ASSERT_TRUE(it.next().is_none());
-}
+        REQUIRE(!result);
+    }
 
-TEST_F(Ops, IterBeginEndPtrs) {
-    // note the length is 4 since there is null character
-    const char VALUES[] = {"bad"};
-    auto it =
-        iter_begin_end(VALUES + 0, VALUES + extent<decltype(VALUES)>::value);
+    SECTION("ClonedRef") {
+        const auto str_dup_vec =
+            iter(str_vec) | cloned() | collect<vector<string>>();
 
-    static_assert(
-        is_same<typename remove_reference_t<decltype(it)>::Item, const char &>::
-            value,
-        "Ops::IterBeginEndPtrs failed IterBeginEnd type checking!");
+        REQUIRE(details::no_mismatch_values(
+            str_vec, str_dup_vec, [](const auto &lhs, const auto &rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const string &>::value,
+                    "lhs is expected to be of const string & type");
 
-    auto opt0 = it.next();
+                static_assert(
+                    is_same<decltype(rhs), const string &>::value,
+                    "rhs is expected to be of const string & type");
 
-    static_assert(
-        is_same<
-            typename remove_reference_t<decltype(opt0)>::some_t,
-            const char &>::value,
-        "Ops::IterBeginEndPtrs failed Option type checking!");
+                // same value but different addresses
+                return (lhs == rhs) && (&lhs != &rhs);
+            }));
+    }
 
-    ASSERT_TRUE(opt0.is_some());
-    const auto &val0 = opt0.get_unchecked();
-    ASSERT_EQ('b', val0);
+    SECTION("ClonedValue") {
+        const auto int_str_vec =
+            iter(int_vec) | map([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
 
-    auto opt1 = it.next();
-    ASSERT_TRUE(opt1.is_some());
-    const auto &val1 = opt1.get_unchecked();
-    ASSERT_EQ('a', val1);
+                return to_string(value);
+            })
+            | cloned() | cloned() | cloned() | collect<vector<string>>();
 
-    auto opt2 = it.next();
-    ASSERT_TRUE(opt2.is_some());
-    const auto &val2 = opt2.get_unchecked();
-    ASSERT_EQ('d', val2);
+        REQUIRE(details::no_mismatch_values(
+            int_vec, int_str_vec, [](const auto &lhs, const auto &rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const int &>::value,
+                    "lhs is expected to be of const int & type");
 
-    auto opt3 = it.next();
-    ASSERT_TRUE(opt3.is_some());
-    const auto &val3 = opt3.get_unchecked();
-    ASSERT_EQ('\0', val3);
+                static_assert(
+                    is_same<decltype(rhs), const string &>::value,
+                    "rhs is expected to be of const string & type");
 
-    ASSERT_TRUE(it.next().is_none());
-}
+                return to_string(lhs) == rhs;
+            }));
+    }
 
-TEST_F(Ops, AllTrue) {
-    const auto result = iter(int_vec) | all([](const auto value) {
-                            static_assert(
-                                is_same<decltype(value), const int>::value,
-                                "value is expected to be of const int type");
+    SECTION("CollectVec") {
+        const auto dup_vec = range(0, int_vec.size()) | collect<vector<int>>();
 
-                            return value < 6;
-                        });
+        REQUIRE(details::no_mismatch_values(int_vec, dup_vec));
+    }
 
-    ASSERT_TRUE(result);
-}
+    SECTION("CollectList") {
+        const auto dup_cont =
+            iter(int_vec) | collect<list<reference_wrapper<const int>>>();
 
-TEST_F(Ops, AllFalse) {
-    const auto result = iter(int_vec) | all([](const auto value) {
-                            static_assert(
-                                is_same<decltype(value), const int>::value,
-                                "value is expected to be of const int type");
+        REQUIRE(details::no_mismatch_values(int_vec, dup_cont));
+    }
 
-                            return value > 0;
-                        });
+    SECTION("CollectSet") {
+        const auto dup_cont =
+            iter(int_vec) | collect<set<reference_wrapper<const int>>>();
 
-    ASSERT_FALSE(result);
-}
+        REQUIRE(details::no_mismatch_values(int_vec, dup_cont));
+    }
 
-TEST_F(Ops, AnyTrue) {
-    const auto result = iter(int_vec) | any([](const auto value) {
-                            static_assert(
-                                is_same<decltype(value), const int>::value,
-                                "value is expected to be of const int type");
+    SECTION("CollectUnorderedSet") {
+        // unordered_set cannot take in reference_wrapper as template type by
+        // default
+        const auto dup_cont = iter(int_vec) | collect<unordered_set<int>>();
 
-                            return value == 5;
-                        });
+        REQUIRE(details::similar_values(int_vec, dup_cont));
+    }
 
-    ASSERT_TRUE(result);
-}
+    SECTION("CollectMap") {
+        const auto dup_cont = iter(int_vec) | zip(iter(str_vec))
+                              | collect<std::map<
+                                    reference_wrapper<const int>,
+                                    reference_wrapper<const string>>>();
 
-TEST_F(Ops, AnyFalse) {
-    const auto result = iter(int_vec) | any([](const auto value) {
-                            static_assert(
-                                is_same<decltype(value), const int>::value,
-                                "value is expected to be of const int type");
+        // check the keys
+        REQUIRE(details::no_mismatch_values(
+            int_vec, dup_cont, [](const auto &lhs, const auto &rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const int &>::value,
+                    "lhs is expected to be of const int & type");
 
-                            return value == 7;
-                        });
+                static_assert(
+                    is_same<
+                        decltype(rhs),
+                        const pair<
+                            const reference_wrapper<const int>,
+                            reference_wrapper<const string>> &>::value,
+                    "rhs is expected to be of const pair<...> & type");
 
-    ASSERT_FALSE(result);
-}
+                return lhs == rhs.first.get();
+            }));
 
-TEST_F(Ops, ClonedRef) {
-    const auto str_dup_vec =
-        iter(str_vec) | cloned() | collect<vector<string>>();
+        // check the values
+        const auto dup_vals =
+            iter(dup_cont) | map([](const auto &p) {
+                static_assert(
+                    is_same<
+                        decltype(p),
+                        const pair<
+                            const reference_wrapper<const int>,
+                            reference_wrapper<const string>> &>::value,
+                    "lhs is expected to be of const pair<...> & type");
 
-    ASSERT_TRUE(details::no_mismatch_values(
-        str_vec, str_dup_vec, [](const auto &lhs, const auto &rhs) {
+                return cref(p.second);
+            })
+            | collect<vector<reference_wrapper<const string>>>();
+
+        REQUIRE(details::no_mismatch_values(
+            str_vec, dup_vals, [](const auto &lhs, const auto &rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const string &>::value,
+                    "lhs is expected to be of const string & type");
+
+                static_assert(
+                    is_same<
+                        decltype(rhs),
+                        const reference_wrapper<const string> &>::value,
+                    "rhs is expected to be of const ref<const string> & type");
+
+                return lhs == rhs.get();
+            }));
+    }
+
+    SECTION("CollectUnorderedMap") {
+        const auto dup_cont =
+            iter(int_vec) | zip(iter(str_vec))
+            | collect<unordered_map<int, reference_wrapper<const string>>>();
+
+        // check the keys
+        const auto dup_keys =
+            iter(dup_cont) | map([](const auto &p) {
+                static_assert(
+                    is_same<
+                        decltype(p),
+                        const pair<const int, reference_wrapper<const string>>
+                            &>::value,
+                    "p is expected to be of const pair<...> & type");
+
+                return cref(p.first);
+            })
+            | collect<vector<reference_wrapper<const int>>>();
+
+        REQUIRE(details::similar_values(int_vec, dup_keys));
+
+        // check the values
+        const auto dup_vals =
+            iter(dup_cont) | map([](const auto &p) {
+                static_assert(
+                    is_same<
+                        decltype(p),
+                        const pair<const int, reference_wrapper<const string>>
+                            &>::value,
+                    "p is expected to be of const pair<...> & type");
+
+                return cref(p.second);
+            })
+            | collect<vector<reference_wrapper<const string>>>();
+
+        REQUIRE(details::similar_values(
+            str_vec, dup_vals, [](const auto &lhs, const auto &rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const string &>::value,
+                    "lhs is expected to be of const string & type");
+
+                static_assert(
+                    is_same<
+                        decltype(rhs),
+                        const reference_wrapper<const string> &>::value,
+                    "rhs is expected to be of const ref<const string> & type");
+
+                return lhs == rhs.get();
+            }));
+    }
+
+    SECTION("CollectStack") {
+        auto dup_cont =
+            iter(int_vec) | collect<stack<reference_wrapper<const int>>>();
+
+        while (!dup_cont.empty()) {
+            const auto top = dup_cont.top();
+            REQUIRE(int_vec[dup_cont.size() - 1] == top);
+            dup_cont.pop();
+        }
+    }
+
+    SECTION("CollectQueue") {
+        auto dup_cont =
+            iter(int_vec) | collect<queue<reference_wrapper<const int>>>();
+
+        for (size_t i = 0; i < int_vec.size(); ++i) {
+            const auto front = dup_cont.front();
+            REQUIRE(int_vec[i] == front);
+            dup_cont.pop();
+        }
+    }
+
+    SECTION("CollectResultOk") {
+        vector<Result<int, string>> res_vec{Ok(0), Ok(1), Ok(2)};
+
+        auto collected_res =
+            into_iter(move(res_vec)) | collect<Result<vector<int>, string>>();
+
+        REQUIRE(collected_res.is_ok());
+
+        const auto collected = move(collected_res).unwrap_unchecked();
+        REQUIRE(3 == collected.size());
+        REQUIRE(0 == collected.at(0));
+        REQUIRE(1 == collected.at(1));
+        REQUIRE(2 == collected.at(2));
+    }
+
+    SECTION("CollectResultErr") {
+        const int zero = 0;
+        const int two = 2;
+        const string err_msg = "ERROR!";
+
+        vector<Result<const int &, const string &>> res_vec{
+            Ok(cref(zero)), Err(cref(err_msg)), Ok(cref(two))};
+
+        auto collected_res = into_iter(move(res_vec))
+                             | collect<Result<
+                                   vector<reference_wrapper<const int>>,
+                                   const string &>>();
+
+        REQUIRE(collected_res.is_err());
+
+        const auto collected = move(collected_res).unwrap_err_unchecked();
+        REQUIRE(err_msg == collected);
+    }
+
+    SECTION("CollectVecRef") {
+        const auto str_ref_vec =
+            iter(str_vec) | collect<vector<reference_wrapper<const string>>>();
+
+        REQUIRE(details::no_mismatch_values(
+            str_vec, str_ref_vec, [](const auto &lhs, const auto &rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const string &>::value,
+                    "lhs is expected to be of const string & type");
+
+                static_assert(
+                    is_same<
+                        decltype(rhs),
+                        const reference_wrapper<const string> &>::value,
+                    "rhs is expected to be of const ref<const string> & type");
+
+                return &lhs == &rhs.get();
+            }));
+    }
+
+    SECTION("CollectMapVecSum") {
+        const auto dup_vec =
+            range(0, int_vec.size()) | map([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return value + 0.5;
+            })
+            | collect<vector<double>>();
+
+        const auto fold_sum = iter(dup_vec) | fold(0.0, plus<double>());
+
+        const auto expected_sum = accumulate(
+            cbegin(int_vec),
+            cend(int_vec),
+            0.0,
+            [](const auto acc, const auto value) {
+                static_assert(
+                    is_same<decltype(acc), const double>::value,
+                    "acc is expected to be of const double type");
+
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return acc + value + 0.5;
+            });
+
+        REQUIRE(expected_sum == fold_sum);
+    }
+
+    SECTION("Cycle") {
+        const vector<string> vs{"Hello", "World"};
+
+        const auto output_vs =
+            iter(vs) | cycle() | take(5) | collect<vector<string>>();
+
+        REQUIRE(5 == output_vs.size());
+        REQUIRE("Hello" == output_vs[0]);
+        REQUIRE("World" == output_vs[1]);
+        REQUIRE("Hello" == output_vs[2]);
+        REQUIRE("World" == output_vs[3]);
+        REQUIRE("Hello" == output_vs[4]);
+    }
+
+    SECTION("CycleNone") {
+        const vector<string> vs{};
+        const auto output_vs = iter(vs) | cycle() | collect<vector<string>>();
+        REQUIRE(output_vs.empty());
+    }
+
+    SECTION("Once") {
+        auto movable_value = make_unique<string>("Hello");
+
+        const auto vec = once(move(movable_value)) | take(5)
+                         | collect<vector<unique_ptr<string>>>();
+
+        REQUIRE(1 == vec.size());
+        REQUIRE("Hello" == *vec[0]);
+    }
+
+    SECTION("Enumerate") {
+        int sum = 0;
+
+        iter(int_vec) | enumerate() | for_each([&sum](const auto &p) {
             static_assert(
-                is_same<decltype(lhs), const string &>::value,
-                "lhs is expected to be of const string & type");
+                is_same<decltype(p), const pair<size_t, const int &> &>::value,
+                "p is expected to be of const pair<...> & type");
 
+            // first and second are the same values
+            sum += p.first + p.second;
+        });
+
+        // * 2 because the index and values are the same values
+        // thus adding both together create a * 2 effect
+        REQUIRE(accumulate(cbegin(int_vec), cend(int_vec), 0) * 2 == sum);
+    }
+
+    SECTION("Filter") {
+        int sum = 0;
+
+        iter(int_vec) | filter([](const auto value) {
             static_assert(
-                is_same<decltype(rhs), const string &>::value,
-                "rhs is expected to be of const string & type");
+                is_same<decltype(value), const int>::value,
+                "value is expected to be of const int type");
 
-            // same value but different addresses
-            return (lhs == rhs) && (&lhs != &rhs);
-        }));
-}
+            return value % 2 == 1;
+        }) | for_each([&sum](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
+                "value is expected to be of const int type");
 
-TEST_F(Ops, ClonedValue) {
-    const auto int_str_vec =
+            sum += value;
+        });
+
+        REQUIRE(9 == sum);
+    }
+
+    SECTION("FilterMap") {
+        double sum = 0;
+
+        iter(int_vec) | filter_map([](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
+                "value is expected to be of const int type");
+
+            return value % 2 == 1 ? Some(value + 0.5) : None;
+        }) | for_each([&sum](const auto value) {
+            static_assert(
+                is_same<decltype(value), const double>::value,
+                "value is expected to be of const double type");
+
+            sum += value;
+        });
+
+        REQUIRE(10.5 == sum);
+    }
+
+    SECTION("FindSome") {
+        const auto find_some_opt =
+            iter(int_vec) | find([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return value == 5;
+            });
+
+        REQUIRE(find_some_opt.is_some());
+        REQUIRE(5 == find_some_opt.get_unchecked());
+    }
+
+    SECTION("FindNone") {
+        const auto find_none_opt =
+            iter(int_vec) | find([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return value == 6;
+            });
+
+        REQUIRE(find_none_opt.is_none());
+    }
+
+    SECTION("FindMapSome") {
+        const auto find_some_opt =
+            iter(int_vec) | find_map([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return value == 4 ? Some(value + 0.5) : None;
+            });
+
+        REQUIRE(find_some_opt.is_some());
+        REQUIRE(4.5 == find_some_opt.get_unchecked());
+    }
+
+    SECTION("FindMapNone") {
+        const auto find_none_opt =
+            iter(int_vec) | find_map([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return value == -1 ? Some(value) : None;
+            });
+
+        REQUIRE(find_none_opt.is_none());
+    }
+
+    SECTION("FlatMapEmpty") {
+        auto vv = vector<vector<int>>{};
+
+        const auto v_out =
+            into_iter(move(vv)) | flat_map([](auto &&v) {
+                static_assert(
+                    is_same<decltype(v), vector<int> &&>::value,
+                    "v is expected to be of vector<int> && type");
+
+                return move(v);
+            })
+            | collect<vector<int>>();
+
+        REQUIRE(v_out.empty());
+    }
+
+    SECTION("FlatMapSimple") {
+        auto vv = vector<vector<int>>{{}, {0, 1, 2}, {3}, {}, {4, 5}};
+
+        const auto v_out =
+            into_iter(move(vv)) | flat_map([](auto &&v) {
+                static_assert(
+                    is_same<decltype(v), vector<int> &&>::value,
+                    "v is expected to be of vector<int> && type");
+
+                return move(v);
+            })
+            | collect<vector<int>>();
+
+        REQUIRE(details::no_mismatch_values(
+            array<int, 6>{0, 1, 2, 3, 4, 5}, v_out));
+    }
+
+    SECTION("Fold") {
+        const auto fold_sum = iter(int_vec) | fold(10, plus<int>());
+
+        REQUIRE(accumulate(cbegin(int_vec), cend(int_vec), 10) == fold_sum);
+    }
+
+    SECTION("ForEach") {
+        int sum = 0;
+
+        iter(int_vec) | for_each([&sum](const auto value) {
+            static_assert(
+                is_same<decltype(value), const int>::value,
+                "value is expected to be of const int type");
+
+            sum += value;
+        });
+
+        REQUIRE(accumulate(cbegin(int_vec), cend(int_vec), 0) == sum);
+    }
+
+    SECTION("Map") {
+        double sum = 0.0;
+
         iter(int_vec) | map([](const auto value) {
             static_assert(
                 is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return to_string(value);
-        })
-        | cloned() | cloned() | cloned() | collect<vector<string>>();
-
-    ASSERT_TRUE(details::no_mismatch_values(
-        int_vec, int_str_vec, [](const auto &lhs, const auto &rhs) {
+            return value * 0.5;
+        }) | for_each([&sum](const auto value) {
             static_assert(
-                is_same<decltype(lhs), const int &>::value,
-                "lhs is expected to be of const int & type");
+                is_same<decltype(value), const double>::value,
+                "value is expected to be of const double type");
 
-            static_assert(
-                is_same<decltype(rhs), const string &>::value,
-                "rhs is expected to be of const string & type");
+            sum += value;
+        });
 
-            return to_string(lhs) == rhs;
-        }));
-}
-
-TEST_F(Ops, CollectVec) {
-    const auto dup_vec = range(0, int_vec.size()) | collect<vector<int>>();
-
-    ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_vec));
-}
-
-TEST_F(Ops, CollectList) {
-    const auto dup_cont =
-        iter(int_vec) | collect<list<reference_wrapper<const int>>>();
-
-    ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
-}
-
-TEST_F(Ops, CollectSet) {
-    const auto dup_cont =
-        iter(int_vec) | collect<set<reference_wrapper<const int>>>();
-
-    ASSERT_TRUE(details::no_mismatch_values(int_vec, dup_cont));
-}
-
-TEST_F(Ops, CollectUnorderedSet) {
-    // unordered_set cannot take in reference_wrapper as template type by
-    // default
-    const auto dup_cont = iter(int_vec) | collect<unordered_set<int>>();
-
-    ASSERT_TRUE(details::similar_values(int_vec, dup_cont));
-}
-
-TEST_F(Ops, CollectMap) {
-    const auto dup_cont = iter(int_vec) | zip(iter(str_vec))
-                          | collect<std::map<
-                                reference_wrapper<const int>,
-                                reference_wrapper<const string>>>();
-
-    // check the keys
-    ASSERT_TRUE(details::no_mismatch_values(
-        int_vec, dup_cont, [](const auto &lhs, const auto &rhs) {
-            static_assert(
-                is_same<decltype(lhs), const int &>::value,
-                "lhs is expected to be of const int & type");
-
-            static_assert(
-                is_same<
-                    decltype(rhs),
-                    const pair<
-                        const reference_wrapper<const int>,
-                        reference_wrapper<const string>> &>::value,
-                "rhs is expected to be of const pair<...> & type");
-
-            return lhs == rhs.first.get();
-        }));
-
-    // check the values
-    const auto dup_vals =
-        iter(dup_cont) | map([](const auto &p) {
-            static_assert(
-                is_same<
-                    decltype(p),
-                    const pair<
-                        const reference_wrapper<const int>,
-                        reference_wrapper<const string>> &>::value,
-                "lhs is expected to be of const pair<...> & type");
-
-            return cref(p.second);
-        })
-        | collect<vector<reference_wrapper<const string>>>();
-
-    ASSERT_TRUE(details::no_mismatch_values(
-        str_vec, dup_vals, [](const auto &lhs, const auto &rhs) {
-            static_assert(
-                is_same<decltype(lhs), const string &>::value,
-                "lhs is expected to be of const string & type");
-
-            static_assert(
-                is_same<
-                    decltype(rhs),
-                    const reference_wrapper<const string> &>::value,
-                "rhs is expected to be of const ref<const string> & type");
-
-            return lhs == rhs.get();
-        }));
-}
-
-TEST_F(Ops, CollectUnorderedMap) {
-    const auto dup_cont =
-        iter(int_vec) | zip(iter(str_vec))
-        | collect<unordered_map<int, reference_wrapper<const string>>>();
-
-    // check the keys
-    const auto dup_keys =
-        iter(dup_cont) | map([](const auto &p) {
-            static_assert(
-                is_same<
-                    decltype(p),
-                    const pair<const int, reference_wrapper<const string>>
-                        &>::value,
-                "p is expected to be of const pair<...> & type");
-
-            return cref(p.first);
-        })
-        | collect<vector<reference_wrapper<const int>>>();
-
-    ASSERT_TRUE(details::similar_values(int_vec, dup_keys));
-
-    // check the values
-    const auto dup_vals =
-        iter(dup_cont) | map([](const auto &p) {
-            static_assert(
-                is_same<
-                    decltype(p),
-                    const pair<const int, reference_wrapper<const string>>
-                        &>::value,
-                "p is expected to be of const pair<...> & type");
-
-            return cref(p.second);
-        })
-        | collect<vector<reference_wrapper<const string>>>();
-
-    ASSERT_TRUE(details::similar_values(
-        str_vec, dup_vals, [](const auto &lhs, const auto &rhs) {
-            static_assert(
-                is_same<decltype(lhs), const string &>::value,
-                "lhs is expected to be of const string & type");
-
-            static_assert(
-                is_same<
-                    decltype(rhs),
-                    const reference_wrapper<const string> &>::value,
-                "rhs is expected to be of const ref<const string> & type");
-
-            return lhs == rhs.get();
-        }));
-}
-
-TEST_F(Ops, CollectStack) {
-    auto dup_cont =
-        iter(int_vec) | collect<stack<reference_wrapper<const int>>>();
-
-    while (!dup_cont.empty()) {
-        const auto top = dup_cont.top();
-        ASSERT_EQ(int_vec[dup_cont.size() - 1], top);
-        dup_cont.pop();
+        REQUIRE(accumulate(cbegin(int_vec), cend(int_vec), 0) * 0.5 == sum);
     }
-}
 
-TEST_F(Ops, CollectQueue) {
-    auto dup_cont =
-        iter(int_vec) | collect<queue<reference_wrapper<const int>>>();
-
-    for (size_t i = 0; i < int_vec.size(); ++i) {
-        const auto front = dup_cont.front();
-        ASSERT_EQ(int_vec[i], front);
-        dup_cont.pop();
+    SECTION("MaxNone") {
+        const vector<int> VALS;
+        const auto max_opt = iter(VALS) | max();
+        REQUIRE(max_opt.is_none());
     }
-}
 
-TEST_F(Ops, CollectResultOk) {
-    vector<Result<int, string>> res_vec{Ok(0), Ok(1), Ok(2)};
+    SECTION("MaxSomeEasy") {
+        const vector<string> VALS{"zzz", "hello", "world"};
+        const auto max_opt = iter(VALS) | max();
 
-    auto collected_res =
-        into_iter(move(res_vec)) | collect<Result<vector<int>, string>>();
+        REQUIRE(max_opt.is_some());
+        REQUIRE("zzz" == max_opt.get_unchecked());
+    }
 
-    ASSERT_TRUE(collected_res.is_ok());
+    SECTION("MaxSomeHard") {
+        const vector<int> VALS{-5, 1, 777, 123, 25, 0, 777, 777};
 
-    const auto collected = move(collected_res).unwrap_unchecked();
-    ASSERT_EQ(3, collected.size());
-    ASSERT_EQ(0, collected.at(0));
-    ASSERT_EQ(1, collected.at(1));
-    ASSERT_EQ(2, collected.at(2));
-}
+        // hand coded max to get the address eventually
+        REQUIRE(!VALS.empty());
 
-TEST_F(Ops, CollectResultErr) {
-    const int zero = 0;
-    const int two = 2;
-    const string err_msg = "ERROR!";
+        size_t max_index = 0;
 
-    vector<Result<const int &, const string &>> res_vec{
-        Ok(cref(zero)), Err(cref(err_msg)), Ok(cref(two))};
-
-    auto collected_res =
-        into_iter(move(res_vec))
-        | collect<
-              Result<vector<reference_wrapper<const int>>, const string &>>();
-
-    ASSERT_TRUE(collected_res.is_err());
-
-    const auto collected = move(collected_res).unwrap_err_unchecked();
-    ASSERT_EQ(err_msg, collected);
-}
-
-TEST_F(Ops, CollectVecRef) {
-    const auto str_ref_vec =
-        iter(str_vec) | collect<vector<reference_wrapper<const string>>>();
-
-    ASSERT_TRUE(details::no_mismatch_values(
-        str_vec, str_ref_vec, [](const auto &lhs, const auto &rhs) {
-            static_assert(
-                is_same<decltype(lhs), const string &>::value,
-                "lhs is expected to be of const string & type");
-
-            static_assert(
-                is_same<
-                    decltype(rhs),
-                    const reference_wrapper<const string> &>::value,
-                "rhs is expected to be of const ref<const string> & type");
-
-            return &lhs == &rhs.get();
-        }));
-}
-
-TEST_F(Ops, CollectMapVecSum) {
-    const auto dup_vec = range(0, int_vec.size()) | map([](const auto value) {
-                             static_assert(
-                                 is_same<decltype(value), const int>::value,
-                                 "value is expected to be of const int type");
-
-                             return value + 0.5;
-                         })
-                         | collect<vector<double>>();
-
-    const auto fold_sum = iter(dup_vec) | fold(0.0, plus<double>());
-
-    const auto expected_sum = accumulate(
-        cbegin(int_vec),
-        cend(int_vec),
-        0.0,
-        [](const auto acc, const auto value) {
-            static_assert(
-                is_same<decltype(acc), const double>::value,
-                "acc is expected to be of const double type");
-
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return acc + value + 0.5;
-        });
-
-    ASSERT_EQ(expected_sum, fold_sum);
-}
-
-TEST_F(Ops, Cycle) {
-    const vector<string> vs{"Hello", "World"};
-
-    const auto output_vs =
-        iter(vs) | cycle() | take(5) | collect<vector<string>>();
-
-    ASSERT_EQ(5, output_vs.size());
-    ASSERT_EQ("Hello", output_vs[0]);
-    ASSERT_EQ("World", output_vs[1]);
-    ASSERT_EQ("Hello", output_vs[2]);
-    ASSERT_EQ("World", output_vs[3]);
-    ASSERT_EQ("Hello", output_vs[4]);
-}
-
-TEST_F(Ops, CycleNone) {
-    const vector<string> vs{};
-    const auto output_vs = iter(vs) | cycle() | collect<vector<string>>();
-    ASSERT_TRUE(output_vs.empty());
-}
-
-TEST_F(Ops, Once) {
-    auto movable_value = make_unique<string>("Hello");
-
-    const auto vec = once(move(movable_value)) | take(5)
-                     | collect<vector<unique_ptr<string>>>();
-
-    ASSERT_EQ(1, vec.size());
-    ASSERT_EQ("Hello", *vec[0]);
-}
-
-TEST_F(Ops, Enumerate) {
-    int sum = 0;
-
-    iter(int_vec) | enumerate() | for_each([&sum](const auto &p) {
-        static_assert(
-            is_same<decltype(p), const pair<size_t, const int &> &>::value,
-            "p is expected to be of const pair<...> & type");
-
-        // first and second are the same values
-        sum += p.first + p.second;
-    });
-
-    // * 2 because the index and values are the same values
-    // thus adding both together create a * 2 effect
-    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 2, sum);
-}
-
-TEST_F(Ops, Filter) {
-    int sum = 0;
-
-    iter(int_vec) | filter([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return value % 2 == 1;
-    }) | for_each([&sum](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        sum += value;
-    });
-
-    ASSERT_EQ(9, sum);
-}
-
-TEST_F(Ops, FilterMap) {
-    double sum = 0;
-
-    iter(int_vec) | filter_map([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return value % 2 == 1 ? Some(value + 0.5) : None;
-    }) | for_each([&sum](const auto value) {
-        static_assert(
-            is_same<decltype(value), const double>::value,
-            "value is expected to be of const double type");
-
-        sum += value;
-    });
-
-    ASSERT_EQ(10.5, sum);
-}
-
-TEST_F(Ops, FindSome) {
-    const auto find_some_opt =
-        iter(int_vec) | find([](const auto value) {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return value == 5;
-        });
-
-    ASSERT_TRUE(find_some_opt.is_some());
-    ASSERT_EQ(5, find_some_opt.get_unchecked());
-}
-
-TEST_F(Ops, FindNone) {
-    const auto find_none_opt =
-        iter(int_vec) | find([](const auto value) {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return value == 6;
-        });
-
-    ASSERT_TRUE(find_none_opt.is_none());
-}
-
-TEST_F(Ops, FindMapSome) {
-    const auto find_some_opt =
-        iter(int_vec) | find_map([](const auto value) {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return value == 4 ? Some(value + 0.5) : None;
-        });
-
-    ASSERT_TRUE(find_some_opt.is_some());
-    ASSERT_EQ(4.5, find_some_opt.get_unchecked());
-}
-
-TEST_F(Ops, FindMapNone) {
-    const auto find_none_opt =
-        iter(int_vec) | find_map([](const auto value) {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return value == -1 ? Some(value) : None;
-        });
-
-    ASSERT_TRUE(find_none_opt.is_none());
-}
-
-TEST_F(Ops, FlatMapEmpty) {
-    auto vv = vector<vector<int>>{};
-
-    const auto v_out = into_iter(move(vv)) | flat_map([](auto &&v) {
-                           static_assert(
-                               is_same<decltype(v), vector<int> &&>::value,
-                               "v is expected to be of vector<int> && type");
-
-                           return move(v);
-                       })
-                       | collect<vector<int>>();
-
-    ASSERT_TRUE(v_out.empty());
-}
-
-TEST_F(Ops, FlatMapSimple) {
-    auto vv = vector<vector<int>>{{}, {0, 1, 2}, {3}, {}, {4, 5}};
-
-    const auto v_out = into_iter(move(vv)) | flat_map([](auto &&v) {
-                           static_assert(
-                               is_same<decltype(v), vector<int> &&>::value,
-                               "v is expected to be of vector<int> && type");
-
-                           return move(v);
-                       })
-                       | collect<vector<int>>();
-
-    ASSERT_TRUE(
-        details::no_mismatch_values(array<int, 6>{0, 1, 2, 3, 4, 5}, v_out));
-}
-
-TEST_F(Ops, Fold) {
-    const auto fold_sum = iter(int_vec) | fold(10, plus<int>());
-
-    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 10), fold_sum);
-}
-
-TEST_F(Ops, ForEach) {
-    int sum = 0;
-
-    iter(int_vec) | for_each([&sum](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        sum += value;
-    });
-
-    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
-}
-
-TEST_F(Ops, Map) {
-    double sum = 0.0;
-
-    iter(int_vec) | map([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return value * 0.5;
-    }) | for_each([&sum](const auto value) {
-        static_assert(
-            is_same<decltype(value), const double>::value,
-            "value is expected to be of const double type");
-
-        sum += value;
-    });
-
-    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0) * 0.5, sum);
-}
-
-TEST_F(Ops, MaxNone) {
-    const vector<int> VALS;
-    const auto max_opt = iter(VALS) | max();
-    ASSERT_TRUE(max_opt.is_none());
-}
-
-TEST_F(Ops, MaxSomeEasy) {
-    const vector<string> VALS{"zzz", "hello", "world"};
-    const auto max_opt = iter(VALS) | max();
-
-    ASSERT_TRUE(max_opt.is_some());
-    ASSERT_EQ("zzz", max_opt.get_unchecked());
-}
-
-TEST_F(Ops, MaxSomeHard) {
-    const vector<int> VALS{-5, 1, 777, 123, 25, 0, 777, 777};
-
-    // hand coded max to get the address eventually
-    ASSERT_TRUE(!VALS.empty());
-
-    size_t max_index = 0;
-
-    for (size_t i = 1; i < VALS.size(); ++i) {
-        if (VALS[i] > VALS[max_index]) {
-            max_index = i;
+        for (size_t i = 1; i < VALS.size(); ++i) {
+            if (VALS[i] > VALS[max_index]) {
+                max_index = i;
+            }
         }
+
+        // found the value and referencing it
+        const auto &max_val = VALS[max_index];
+        const auto max_opt = iter(VALS) | max();
+
+        REQUIRE(max_opt.is_some());
+        REQUIRE(777 == max_opt.get_unchecked());
+        REQUIRE(&max_val == &max_opt.get_unchecked());
     }
 
-    // found the value and referencing it
-    const auto &max_val = VALS[max_index];
-    const auto max_opt = iter(VALS) | max();
+    SECTION("MaxByNone") {
+        const vector<int> VALS;
 
-    ASSERT_TRUE(max_opt.is_some());
-    ASSERT_EQ(777, max_opt.get_unchecked());
-    ASSERT_EQ(&max_val, &max_opt.get_unchecked());
-}
+        const auto max_opt =
+            iter(VALS) | max_by([](const auto lhs, const auto rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const int>::value,
+                    "lhs is expected to be of const int type");
 
-TEST_F(Ops, MaxByNone) {
-    const vector<int> VALS;
+                static_assert(
+                    is_same<decltype(rhs), const int>::value,
+                    "rhs is expected to be of const int type");
 
-    const auto max_opt =
-        iter(VALS) | max_by([](const auto lhs, const auto rhs) {
-            static_assert(
-                is_same<decltype(lhs), const int>::value,
-                "lhs is expected to be of const int type");
+                return lhs >= rhs;
+            });
 
-            static_assert(
-                is_same<decltype(rhs), const int>::value,
-                "rhs is expected to be of const int type");
+        REQUIRE(max_opt.is_none());
+    }
 
-            return lhs >= rhs;
-        });
+    SECTION("MaxBySomeEasy") {
+        const vector<int> VALS{3, 1, 2};
 
-    ASSERT_TRUE(max_opt.is_none());
-}
+        const auto max_opt =
+            iter(VALS) | max_by([](const auto lhs, const auto rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const int>::value,
+                    "lhs is expected to be of const int type");
 
-TEST_F(Ops, MaxBySomeEasy) {
-    const vector<int> VALS{3, 1, 2};
+                static_assert(
+                    is_same<decltype(rhs), const int>::value,
+                    "rhs is expected to be of const int type");
 
-    const auto max_opt =
-        iter(VALS) | max_by([](const auto lhs, const auto rhs) {
-            static_assert(
-                is_same<decltype(lhs), const int>::value,
-                "lhs is expected to be of const int type");
+                return lhs >= rhs;
+            });
 
-            static_assert(
-                is_same<decltype(rhs), const int>::value,
-                "rhs is expected to be of const int type");
+        REQUIRE(max_opt.is_some());
+        REQUIRE(3 == max_opt.get_unchecked());
+    }
 
-            return lhs >= rhs;
-        });
+    SECTION("MaxBySomeHard") {
+        const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
 
-    ASSERT_TRUE(max_opt.is_some());
-    ASSERT_EQ(3, max_opt.get_unchecked());
-}
+        // hand coded max to get the address eventually
+        REQUIRE(!VALS.empty());
 
-TEST_F(Ops, MaxBySomeHard) {
-    const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
+        size_t max_index = 0;
 
-    // hand coded max to get the address eventually
-    ASSERT_TRUE(!VALS.empty());
-
-    size_t max_index = 0;
-
-    for (size_t i = 1; i < VALS.size(); ++i) {
-        if (VALS[i] > VALS[max_index]) {
-            max_index = i;
+        for (size_t i = 1; i < VALS.size(); ++i) {
+            if (VALS[i] > VALS[max_index]) {
+                max_index = i;
+            }
         }
+
+        // found the value and referencing it
+        const auto &max_val = VALS[max_index];
+
+        const auto max_opt =
+            iter(VALS) | max_by([](const auto lhs, const auto rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const int>::value,
+                    "lhs is expected to be of const int type");
+
+                static_assert(
+                    is_same<decltype(rhs), const int>::value,
+                    "rhs is expected to be of const int type");
+
+                return lhs >= rhs;
+            });
+
+        REQUIRE(max_opt.is_some());
+        REQUIRE(9 == max_opt.get_unchecked());
+        REQUIRE(&max_val == &max_opt.get_unchecked());
     }
 
-    // found the value and referencing it
-    const auto &max_val = VALS[max_index];
+    SECTION("MinNone") {
+        const vector<int> VALS;
+        const auto min_opt = iter(VALS) | min();
 
-    const auto max_opt =
-        iter(VALS) | max_by([](const auto lhs, const auto rhs) {
-            static_assert(
-                is_same<decltype(lhs), const int>::value,
-                "lhs is expected to be of const int type");
+        REQUIRE(min_opt.is_none());
+    }
 
-            static_assert(
-                is_same<decltype(rhs), const int>::value,
-                "rhs is expected to be of const int type");
+    SECTION("MinSomeEasy") {
+        const vector<string> VALS{"hello", "world", "zzz"};
+        const auto min_opt = iter(VALS) | min();
 
-            return lhs >= rhs;
-        });
+        REQUIRE(min_opt.is_some());
+        REQUIRE("hello" == min_opt.get_unchecked());
+    }
 
-    ASSERT_TRUE(max_opt.is_some());
-    ASSERT_EQ(9, max_opt.get_unchecked());
-    ASSERT_EQ(&max_val, &max_opt.get_unchecked());
-}
+    SECTION("MinSomeHard") {
+        const vector<int> VALS{-5, 1, -777, 123, 25, 0, -777, -777};
 
-TEST_F(Ops, MinNone) {
-    const vector<int> VALS;
-    const auto min_opt = iter(VALS) | min();
+        // hand coded min to get the address eventually
+        REQUIRE(!VALS.empty());
 
-    ASSERT_TRUE(min_opt.is_none());
-}
+        size_t min_index = 0;
 
-TEST_F(Ops, MinSomeEasy) {
-    const vector<string> VALS{"hello", "world", "zzz"};
-    const auto min_opt = iter(VALS) | min();
-
-    ASSERT_TRUE(min_opt.is_some());
-    ASSERT_EQ("hello", min_opt.get_unchecked());
-}
-
-TEST_F(Ops, MinSomeHard) {
-    const vector<int> VALS{-5, 1, -777, 123, 25, 0, -777, -777};
-
-    // hand coded min to get the address eventually
-    ASSERT_TRUE(!VALS.empty());
-
-    size_t min_index = 0;
-
-    for (size_t i = 1; i < VALS.size(); ++i) {
-        if (VALS[i] < VALS[min_index]) {
-            min_index = i;
+        for (size_t i = 1; i < VALS.size(); ++i) {
+            if (VALS[i] < VALS[min_index]) {
+                min_index = i;
+            }
         }
+
+        // found the value and referencing it
+        const auto &min_val = VALS[min_index];
+        const auto min_opt = iter(VALS) | min();
+
+        REQUIRE(min_opt.is_some());
+        REQUIRE(-777 == min_opt.get_unchecked());
+        REQUIRE(&min_val == &min_opt.get_unchecked());
     }
 
-    // found the value and referencing it
-    const auto &min_val = VALS[min_index];
-    const auto min_opt = iter(VALS) | min();
+    SECTION("MinByNone") {
+        const vector<int> VALS;
 
-    ASSERT_TRUE(min_opt.is_some());
-    ASSERT_EQ(-777, min_opt.get_unchecked());
-    ASSERT_EQ(&min_val, &min_opt.get_unchecked());
-}
+        const auto min_opt =
+            iter(VALS) | min_by([](const auto lhs, const auto rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const int>::value,
+                    "lhs is expected to be of const int type");
 
-TEST_F(Ops, MinByNone) {
-    const vector<int> VALS;
+                static_assert(
+                    is_same<decltype(rhs), const int>::value,
+                    "rhs is expected to be of const int type");
 
-    const auto min_opt =
-        iter(VALS) | min_by([](const auto lhs, const auto rhs) {
-            static_assert(
-                is_same<decltype(lhs), const int>::value,
-                "lhs is expected to be of const int type");
+                return lhs <= rhs;
+            });
 
-            static_assert(
-                is_same<decltype(rhs), const int>::value,
-                "rhs is expected to be of const int type");
+        REQUIRE(min_opt.is_none());
+    }
 
-            return lhs <= rhs;
-        });
+    SECTION("MinBySomeEasy") {
+        const vector<int> VALS{1, 3, 2};
 
-    ASSERT_TRUE(min_opt.is_none());
-}
+        const auto min_opt =
+            iter(VALS) | min_by([](const auto lhs, const auto rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const int>::value,
+                    "lhs is expected to be of const int type");
 
-TEST_F(Ops, MinBySomeEasy) {
-    const vector<int> VALS{1, 3, 2};
+                static_assert(
+                    is_same<decltype(rhs), const int>::value,
+                    "rhs is expected to be of const int type");
 
-    const auto min_opt =
-        iter(VALS) | min_by([](const auto lhs, const auto rhs) {
-            static_assert(
-                is_same<decltype(lhs), const int>::value,
-                "lhs is expected to be of const int type");
+                return lhs <= rhs;
+            });
 
-            static_assert(
-                is_same<decltype(rhs), const int>::value,
-                "rhs is expected to be of const int type");
+        REQUIRE(min_opt.is_some());
+        REQUIRE(1 == min_opt.get_unchecked());
+    }
 
-            return lhs <= rhs;
-        });
+    SECTION("MinBySomeHard") {
+        const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
 
-    ASSERT_TRUE(min_opt.is_some());
-    ASSERT_EQ(1, min_opt.get_unchecked());
-}
+        // hand coded min to get the address eventually
+        REQUIRE(!VALS.empty());
 
-TEST_F(Ops, MinBySomeHard) {
-    const vector<int> VALS{5, 2, 7, 3, 3, 2, 2, 9};
+        size_t min_index = 0;
 
-    // hand coded min to get the address eventually
-    ASSERT_TRUE(!VALS.empty());
-
-    size_t min_index = 0;
-
-    for (size_t i = 1; i < VALS.size(); ++i) {
-        if (VALS[i] < VALS[min_index]) {
-            min_index = i;
+        for (size_t i = 1; i < VALS.size(); ++i) {
+            if (VALS[i] < VALS[min_index]) {
+                min_index = i;
+            }
         }
+
+        // found the value and referencing it
+        const auto &min_val = VALS[min_index];
+
+        const auto min_opt =
+            iter(VALS) | min_by([](const auto lhs, const auto rhs) {
+                static_assert(
+                    is_same<decltype(lhs), const int>::value,
+                    "lhs is expected to be of const int type");
+
+                static_assert(
+                    is_same<decltype(rhs), const int>::value,
+                    "rhs is expected to be of const int type");
+
+                return lhs <= rhs;
+            });
+
+        REQUIRE(min_opt.is_some());
+        REQUIRE(2 == min_opt.get_unchecked());
+        REQUIRE(&min_val == &min_opt.get_unchecked());
     }
 
-    // found the value and referencing it
-    const auto &min_val = VALS[min_index];
+    SECTION("Range") {
+        const auto sum = range(0, 6) | fold(5, plus<int>());
+        REQUIRE(accumulate(cbegin(int_vec), cend(int_vec), 5) == sum);
+    }
 
-    const auto min_opt =
-        iter(VALS) | min_by([](const auto lhs, const auto rhs) {
-            static_assert(
-                is_same<decltype(lhs), const int>::value,
-                "lhs is expected to be of const int type");
+    SECTION("SkipWithin") {
+        const auto sum = iter(int_vec) | skip(3) | fold(0, plus<int>());
+        REQUIRE(12 == sum);
+    }
 
-            static_assert(
-                is_same<decltype(rhs), const int>::value,
-                "rhs is expected to be of const int type");
+    SECTION("SkipPass") {
+        const auto sum = iter(int_vec) | skip(100) | fold(0, plus<int>());
+        REQUIRE(0 == sum);
+    }
 
-            return lhs <= rhs;
-        });
+    SECTION("TakeWithin") {
+        const auto sum = iter(int_vec) | take(3) | fold(0, plus<int>());
+        REQUIRE(3 == sum);
+    }
 
-    ASSERT_TRUE(min_opt.is_some());
-    ASSERT_EQ(2, min_opt.get_unchecked());
-    ASSERT_EQ(&min_val, &min_opt.get_unchecked());
-}
-
-TEST_F(Ops, Range) {
-    const auto sum = range(0, 6) | fold(5, plus<int>());
-
-    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 5), sum);
-}
-
-TEST_F(Ops, SkipWithin) {
-    const auto sum = iter(int_vec) | skip(3) | fold(0, plus<int>());
-
-    ASSERT_EQ(12, sum);
-}
-
-TEST_F(Ops, SkipPass) {
-    const auto sum = iter(int_vec) | skip(100) | fold(0, plus<int>());
-
-    ASSERT_EQ(0, sum);
-}
-
-TEST_F(Ops, TakeWithin) {
-    const auto sum = iter(int_vec) | take(3) | fold(0, plus<int>());
-
-    ASSERT_EQ(3, sum);
-}
-
-TEST_F(Ops, TakeExceed) {
-    const auto sum = iter(int_vec) | take(100) | fold(0, plus<int>());
-
-    ASSERT_EQ(accumulate(cbegin(int_vec), cend(int_vec), 0), sum);
+    SECTION("TakeExceed") {
+        const auto sum = iter(int_vec) | take(100) | fold(0, plus<int>());
+        REQUIRE(accumulate(cbegin(int_vec), cend(int_vec), 0) == sum);
+    }
 }
 
 // complex tests
 
-TEST_F(ComplexOps, OnceCycleFindMap) {
-    const auto opt =
-        once(Unit) | cycle() | find_map([](auto) { return Some("Hello"); });
+TEST_CASE("Complex ops section", "[ComplexOps]") {
+    const auto int_vec = vector<int>{0, 1, 2, 3, 4, 5};
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_STREQ("Hello", opt.get_unchecked());
-}
+    SECTION("OnceCycleFindMap") {
+        const auto opt =
+            once(Unit) | cycle() | find_map([](auto) { return Some("Hello"); });
 
-TEST_F(ComplexOps, ManyIterCollect) {
-    vector<unique_ptr<int>> v;
-    v.push_back(make_unique<int>(0));
-    v.push_back(make_unique<int>(1));
-    v.push_back(make_unique<int>(2));
-    v.push_back(make_unique<int>(3));
-    v.push_back(make_unique<int>(4));
+        REQUIRE(opt.is_some());
+        REQUIRE("Hello" == string(opt.get_unchecked()));
+    }
 
-    // collect as reference once
-    const auto v2 =
-        iter(v) | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
+    SECTION("ManyIterCollect") {
+        vector<unique_ptr<int>> v;
+        v.push_back(make_unique<int>(0));
+        v.push_back(make_unique<int>(1));
+        v.push_back(make_unique<int>(2));
+        v.push_back(make_unique<int>(3));
+        v.push_back(make_unique<int>(4));
 
-    // collect as reference twice
-    // note how reference_wrapper<reference_wrapper>
-    // got collapsed back into just reference_wrapper
-    // this is because c++ does not allow reference_wrapper<reference_wrapper>
-    // so it is a must to collapse anyway
-    // which makes a slightly deviation from Rust ref of ref (which is possible)
+        // collect as reference once
+        const auto v2 =
+            iter(v)
+            | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
 
-    const auto v3 =
-        iter(v2) | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
+        // collect as reference twice
+        // note how reference_wrapper<reference_wrapper>
+        // got collapsed back into just reference_wrapper
+        // this is because c++ does not allow
+        // reference_wrapper<reference_wrapper> so it is a must to collapse
+        // anyway which makes a slightly deviation from Rust ref of ref (which
+        // is possible)
 
-    const auto v4 =
-        iter(v3) | map([](const auto &r_ptr) {
-            static_assert(
-                is_same<decltype(r_ptr), const unique_ptr<int> &>::value,
-                "r_ptr is expected to be of const unique_ptr<int> & type");
+        const auto v3 =
+            iter(v2)
+            | collect<vector<reference_wrapper<const unique_ptr<int>>>>();
 
-            return cref(*r_ptr);
-        })
-        | filter([](const auto &r) {
-              static_assert(
-                  is_same<decltype(r), const int &>::value,
-                  "r is expected to be of const int & type");
+        const auto v4 =
+            iter(v3) | map([](const auto &r_ptr) {
+                static_assert(
+                    is_same<decltype(r_ptr), const unique_ptr<int> &>::value,
+                    "r_ptr is expected to be of const unique_ptr<int> & type");
 
-              return r % 2 == 1;
-          })
-        | collect<vector<reference_wrapper<const int>>>();
+                return cref(*r_ptr);
+            })
+            | filter([](const auto &r) {
+                  static_assert(
+                      is_same<decltype(r), const int &>::value,
+                      "r is expected to be of const int & type");
 
-    // no copy of any value was ever done from the original v
+                  return r % 2 == 1;
+              })
+            | collect<vector<reference_wrapper<const int>>>();
 
-    ASSERT_EQ(2, v4.size());
-    ASSERT_EQ(1, v4.at(0));
-    ASSERT_EQ(3, v4.at(1));
-}
+        // no copy of any value was ever done from the original v
 
-TEST_F(ComplexOps, FilterMapFold) {
-    const auto eleven_div_str =
-        range(1, 100) | filter([](const auto value) {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+        REQUIRE(2 == v4.size());
+        REQUIRE(1 == v4.at(0));
+        REQUIRE(3 == v4.at(1));
+    }
 
-            return value % 11 == 0;
-        })
-        | map([](const auto value) {
-              static_assert(
-                  is_same<decltype(value), const int>::value,
-                  "value is expected to be of const int type");
+    SECTION("FilterMapFold") {
+        const auto eleven_div_str =
+            range(1, 100) | filter([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
 
-              return to_string(value);
-          })
-        | fold(string{}, [](const auto acc, const auto &rhs) {
-              static_assert(
-                  is_same<decltype(acc), const string>::value,
-                  "acc is expected to be of const string type");
+                return value % 11 == 0;
+            })
+            | map([](const auto value) {
+                  static_assert(
+                      is_same<decltype(value), const int>::value,
+                      "value is expected to be of const int type");
 
-              static_assert(
-                  is_same<decltype(rhs), const string &>::value,
-                  "rhs is expected to be of const string & type");
+                  return to_string(value);
+              })
+            | fold(string{}, [](const auto acc, const auto &rhs) {
+                  static_assert(
+                      is_same<decltype(acc), const string>::value,
+                      "acc is expected to be of const string type");
 
-              return acc + rhs + " ";
-          });
+                  static_assert(
+                      is_same<decltype(rhs), const string &>::value,
+                      "rhs is expected to be of const string & type");
 
-    ASSERT_EQ("11 22 33 44 55 66 77 88 99 ", eleven_div_str);
-}
+                  return acc + rhs + " ";
+              });
 
-TEST_F(ComplexOps, FilterMapFind) {
-    const auto find_opt =
-        range(1, 100) | filter([](const auto value) {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+        REQUIRE("11 22 33 44 55 66 77 88 99 " == eleven_div_str);
+    }
 
-            return value % 17 == 0;
-        })
-        | map([](const auto value) {
-              static_assert(
-                  is_same<decltype(value), const int>::value,
-                  "value is expected to be of const int type");
+    SECTION("FilterMapFind") {
+        const auto find_opt =
+            range(1, 100) | filter([](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
 
-              // .5 is a easily representable value in mantissa
-              // so that the floating float comparison can directly compare the
-              // values
-              return value + 0.5;
-          })
-        | find([](const auto value) {
-              static_assert(
-                  is_same<decltype(value), const double>::value,
-                  "value is expected to be of const double type");
+                return value % 17 == 0;
+            })
+            | map([](const auto value) {
+                  static_assert(
+                      is_same<decltype(value), const int>::value,
+                      "value is expected to be of const int type");
 
-              return value == 34.5;
-          });
+                  // .5 is a easily representable value in mantissa
+                  // so that the floating float comparison can directly compare
+                  // the values
+                  return value + 0.5;
+              })
+            | find([](const auto value) {
+                  static_assert(
+                      is_same<decltype(value), const double>::value,
+                      "value is expected to be of const double type");
 
-    ASSERT_TRUE(find_opt.is_some());
-    ASSERT_EQ(34.5, find_opt.get_unchecked());
-}
+                  return value == 34.5;
+              });
 
-TEST_F(ComplexOps, ZipRefMapFold) {
-    const auto zipped_int_vec =
-        iter(int_vec) | zip(iter(int_vec) | skip(1))
-        | collect<vector<pair<const int &, const int &>>>();
+        REQUIRE(find_opt.is_some());
+        REQUIRE(34.5 == find_opt.get_unchecked());
+    }
 
-    const auto folded_str =
-        iter(zipped_int_vec) | map([](const auto &index_value_pair) {
-            static_assert(
-                is_same<
-                    decltype(index_value_pair),
-                    const pair<const int &, const int &> &>::value,
-                "index_value_pair is expected to be of const pair<...> type");
+    SECTION("ZipRefMapFold") {
+        const auto zipped_int_vec =
+            iter(int_vec) | zip(iter(int_vec) | skip(1))
+            | collect<vector<pair<const int &, const int &>>>();
 
-            stringstream ss;
-            ss << '(' << index_value_pair.first << ','
-               << index_value_pair.second << ')';
-            return ss.str();
-        })
-        | fold(string{}, [](const auto acc, const auto value) {
-              static_assert(
-                  is_same<decltype(acc), const string>::value,
-                  "acc is expected to be of const string type");
+        const auto folded_str =
+            iter(zipped_int_vec) | map([](const auto &index_value_pair) {
+                static_assert(
+                    is_same<
+                        decltype(index_value_pair),
+                        const pair<const int &, const int &> &>::value,
+                    "index_value_pair is expected to be of const pair<...> "
+                    "type");
 
-              static_assert(
-                  is_same<decltype(value), const string>::value,
-                  "value is expected to be of const string type");
+                stringstream ss;
+                ss << '(' << index_value_pair.first << ','
+                   << index_value_pair.second << ')';
+                return ss.str();
+            })
+            | fold(string{}, [](const auto acc, const auto value) {
+                  static_assert(
+                      is_same<decltype(acc), const string>::value,
+                      "acc is expected to be of const string type");
 
-              stringstream ss;
-              ss << acc << value << ' ';
-              return ss.str();
-          });
+                  static_assert(
+                      is_same<decltype(value), const string>::value,
+                      "value is expected to be of const string type");
 
-    ASSERT_EQ("(0,1) (1,2) (2,3) (3,4) (4,5) ", folded_str);
+                  stringstream ss;
+                  ss << acc << value << ' ';
+                  return ss.str();
+              });
+
+        REQUIRE("(0,1) (1,2) (2,3) (3,4) (4,5) " == folded_str);
+    }
 }
 
 // option
 
-TEST(Option, CtorSome) {
-    const auto opt(Some(7));
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, opt.get_unchecked());
-}
+TEST_CASE("Option methods", "[Option]") {
+    SECTION("CtorSome") {
+        const auto opt(Some(7));
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == opt.get_unchecked());
+    }
 
-TEST(Option, CopyCtor) {
-    auto opt_rhs = Some(7);
-    const auto opt(opt_rhs);
+    SECTION("CopyCtor") {
+        auto opt_rhs = Some(7);
+        const auto opt(opt_rhs);
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_some());
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_some());
 
-    ASSERT_EQ(7, opt.get_unchecked());
-    ASSERT_EQ(7, opt_rhs.get_unchecked());
-}
+        REQUIRE(7 == opt.get_unchecked());
+        REQUIRE(7 == opt_rhs.get_unchecked());
+    }
 
-TEST(Option, CopyConstCtor) {
-    const auto opt_rhs = Some(7);
-    const auto opt(opt_rhs);
+    SECTION("CopyConstCtor") {
+        const auto opt_rhs = Some(7);
+        const auto opt(opt_rhs);
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_some());
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_some());
 
-    ASSERT_EQ(7, opt.get_unchecked());
-    ASSERT_EQ(7, opt_rhs.get_unchecked());
-}
+        REQUIRE(7 == opt.get_unchecked());
+        REQUIRE(7 == opt_rhs.get_unchecked());
+    }
 
-TEST(Option, CopyCtorConvert) {
-    const auto opt_rhs = Some("Hello");
-    const Option<string> opt(opt_rhs);
+    SECTION("CopyCtorConvert") {
+        const auto opt_rhs = Some("Hello");
+        const Option<string> opt(opt_rhs);
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("Hello", opt.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE("Hello" == opt.get_unchecked());
+    }
 
-TEST(Option, MoveCtorSimple) {
-    Option<int> opt_rhs(Some(7));
-    const Option<int> opt(move(opt_rhs));
+    SECTION("MoveCtorSimple") {
+        Option<int> opt_rhs(Some(7));
+        const Option<int> opt(move(opt_rhs));
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_none());
-    ASSERT_EQ(7, opt.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_none());
+        REQUIRE(7 == opt.get_unchecked());
+    }
 
-TEST(Option, MoveCtorComplex) {
-    auto opt_rhs = Some(make_unique<int>(7));
-    const Option<unique_ptr<int>> opt(move(opt_rhs));
+    SECTION("MoveCtorComplex") {
+        auto opt_rhs = Some(make_unique<int>(7));
+        const Option<unique_ptr<int>> opt(move(opt_rhs));
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_none());
-    ASSERT_EQ(7, *opt.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_none());
+        REQUIRE(7 == *opt.get_unchecked());
+    }
 
-TEST(Option, MoveCtorConvert) {
-    auto opt_rhs = Some("Hello");
-    const Option<string> opt(move(opt_rhs));
+    SECTION("MoveCtorConvert") {
+        auto opt_rhs = Some("Hello");
+        const Option<string> opt(move(opt_rhs));
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_none());
-    ASSERT_EQ("Hello", opt.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_none());
+        REQUIRE("Hello" == opt.get_unchecked());
+    }
 
-TEST(Option, CtorNone) {
-    Option<int> opt(None);
-    ASSERT_TRUE(opt.is_none());
-}
+    SECTION("CtorNone") {
+        Option<int> opt(None);
+        REQUIRE(opt.is_none());
+    }
 
-TEST(Option, AssignSome) {
-    Option<int> opt = None;
-    ASSERT_TRUE(opt.is_none());
+    SECTION("AssignSome") {
+        Option<int> opt = None;
+        REQUIRE(opt.is_none());
 
-    opt = Some(7);
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, opt.get_unchecked());
-}
+        opt = Some(7);
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == opt.get_unchecked());
+    }
 
-TEST(Option, CopyAssign) {
-    Option<int> opt = None;
-    const auto opt_rhs = Some(7);
-    opt = opt_rhs;
+    SECTION("CopyAssign") {
+        Option<int> opt = None;
+        const auto opt_rhs = Some(7);
+        opt = opt_rhs;
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_some());
-    ASSERT_EQ(7, opt.get_unchecked());
-    ASSERT_EQ(7, opt_rhs.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_some());
+        REQUIRE(7 == opt.get_unchecked());
+        REQUIRE(7 == opt_rhs.get_unchecked());
+    }
 
-TEST(Option, CopyAssignConvert) {
-    Option<string> opt = None;
-    const auto opt_rhs = Some("Hello");
-    opt = opt_rhs;
+    SECTION("CopyAssignConvert") {
+        Option<string> opt = None;
+        const auto opt_rhs = Some("Hello");
+        opt = opt_rhs;
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_some());
-    ASSERT_EQ("Hello", opt.get_unchecked());
-    ASSERT_STREQ("Hello", opt_rhs.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_some());
+        REQUIRE("Hello" == opt.get_unchecked());
+        REQUIRE("Hello" == string(opt_rhs.get_unchecked()));
+    }
 
-TEST(Option, MoveAssign) {
-    Option<int> opt = None;
-    auto opt_rhs = Some(7);
-    opt = move(opt_rhs);
+    SECTION("MoveAssign") {
+        Option<int> opt = None;
+        auto opt_rhs = Some(7);
+        opt = move(opt_rhs);
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_none());
-    ASSERT_EQ(7, opt.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_none());
+        REQUIRE(7 == opt.get_unchecked());
+    }
 
-TEST(Option, MoveAssignConvert) {
-    Option<string> opt = None;
-    auto opt_rhs = Some("Hello");
-    opt = move(opt_rhs);
+    SECTION("MoveAssignConvert") {
+        Option<string> opt = None;
+        auto opt_rhs = Some("Hello");
+        opt = move(opt_rhs);
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_TRUE(opt_rhs.is_none());
-    ASSERT_EQ("Hello", opt.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(opt_rhs.is_none());
+        REQUIRE("Hello" == opt.get_unchecked());
+    }
 
-TEST(Option, AssignNone) {
-    auto opt = Some(7);
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, opt.get_unchecked());
+    SECTION("AssignNone") {
+        auto opt = Some(7);
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == opt.get_unchecked());
 
-    opt = None;
-    ASSERT_TRUE(opt.is_none());
-}
+        opt = None;
+        REQUIRE(opt.is_none());
+    }
 
-TEST(Option, GetUncheckedRef) {
-    const string value = "Hello";
-    auto opt = Some(cref(value));
+    SECTION("GetUncheckedRef") {
+        const string value = "Hello";
+        auto opt = Some(cref(value));
 
-    ASSERT_TRUE(opt.is_some());
-    const auto &v = opt.get_unchecked();
+        REQUIRE(opt.is_some());
+        const auto &v = opt.get_unchecked();
 
-    static_assert(
-        is_same<decltype(v), const string &>::value,
-        "v is expected to be of const string & type");
+        static_assert(
+            is_same<decltype(v), const string &>::value,
+            "v is expected to be of const string & type");
 
-    ASSERT_EQ("Hello", value);
-}
+        REQUIRE("Hello" == value);
+    }
 
-TEST(Option, GetMutUncheckedRef) {
-    string value = "Hello";
-    auto opt = Some(ref(value));
+    SECTION("GetMutUncheckedRef") {
+        string value = "Hello";
+        auto opt = Some(ref(value));
 
-    ASSERT_TRUE(opt.is_some());
-    auto &v = opt.get_mut_unchecked();
+        REQUIRE(opt.is_some());
+        auto &v = opt.get_mut_unchecked();
 
-    static_assert(
-        is_same<decltype(v), string &>::value,
-        "v is expected to be of string & type");
+        static_assert(
+            is_same<decltype(v), string &>::value,
+            "v is expected to be of string & type");
 
-    ASSERT_EQ("Hello", value);
+        REQUIRE("Hello" == value);
 
-    v = "World";
-    ASSERT_EQ("World", value);
-}
+        v = "World";
+        REQUIRE("World" == value);
+    }
 
-TEST(Option, UnwrapUnchecked) {
-    auto value = make_unique<string>("Hello");
-    auto opt = Some(move(value));
+    SECTION("UnwrapUnchecked") {
+        auto value = make_unique<string>("Hello");
+        auto opt = Some(move(value));
 
-    ASSERT_TRUE(opt.is_some());
-    auto v = move(opt).unwrap_unchecked();
+        REQUIRE(opt.is_some());
+        auto v = move(opt).unwrap_unchecked();
 
-    static_assert(
-        is_same<decltype(v), unique_ptr<string>>::value,
-        "v is expected to be of const string type");
+        static_assert(
+            is_same<decltype(v), unique_ptr<string>>::value,
+            "v is expected to be of const string type");
 
-    ASSERT_EQ("Hello", *v);
-}
+        REQUIRE("Hello" == *v);
+    }
 
-TEST(Option, UnwrapUncheckedRef) {
-    string x = "Hello";
-    auto opt = Some(ref(x));
+    SECTION("UnwrapUncheckedRef") {
+        string x = "Hello";
+        auto opt = Some(ref(x));
 
-    ASSERT_TRUE(opt.is_some());
-    const auto &v = move(opt).unwrap_unchecked();
+        REQUIRE(opt.is_some());
+        const auto &v = move(opt).unwrap_unchecked();
 
-    static_assert(
-        is_same<decltype(v), const string &>::value,
-        "v is expected to be of const string & type");
+        static_assert(
+            is_same<decltype(v), const string &>::value,
+            "v is expected to be of const string & type");
 
-    ASSERT_EQ("Hello", v);
-}
+        REQUIRE("Hello" == v);
+    }
 
-TEST(Option, MatchXValueSome) {
-    const auto value = Some(7).match(
-        [](const auto value) {
+    SECTION("MatchXValueSome") {
+        const auto value = Some(7).match(
+            [](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return to_string(value);
+            },
+            [] { return "NONE"; });
+
+        REQUIRE("7" == value);
+    }
+
+    SECTION("MatchMoveSome") {
+        auto opt = Some(make_unique<int>(8));
+
+        const auto value = move(opt).match(
+            [](const auto &value) {
+                static_assert(
+                    is_same<decltype(value), const unique_ptr<int> &>::value,
+                    "value is expected to be of const unique_ptr<int> & type");
+
+                return to_string(*value);
+            },
+            [] { return "NONE"; });
+
+        REQUIRE(opt.is_none());
+        REQUIRE("8" == value);
+    }
+
+    SECTION("MatchXValueNone") {
+        const auto value = Option<int>(None).match(
+            [](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return to_string(value);
+            },
+            [] { return "NONE"; });
+
+        REQUIRE("NONE" == value);
+    }
+
+    SECTION("MatchRefSome") {
+        const auto opt = Some(7);
+
+        const auto value = opt.match(
+            [](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return to_string(value);
+            },
+            [] { return "NONE"; });
+
+        REQUIRE(opt.is_some());
+        REQUIRE("7" == value);
+    }
+
+    SECTION("MatchRefNone") {
+        const auto opt = Option<int>(None);
+
+        const auto value = opt.match(
+            [](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return to_string(value);
+            },
+            [] { return "NONE"; });
+
+        REQUIRE(opt.is_none());
+        REQUIRE("NONE" == value);
+    }
+
+    SECTION("MatchSomeXValueSomeAssignBack") {
+        auto ptr = make_unique<int>(7);
+
+        Some(move(ptr)).match_some([&ptr](auto &&value) {
             static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+                is_same<decltype(value), unique_ptr<int> &&>::value,
+                "value is expected to be of unique_ptr<int> && type");
 
-            return to_string(value);
-        },
-        [] { return "NONE"; });
+            // assign back so that there is something to test
+            ptr = move(value);
+        });
 
-    ASSERT_EQ("7", value);
-}
+        REQUIRE(static_cast<bool>(ptr));
+        REQUIRE(7 == *ptr);
+    }
 
-TEST(Option, MatchMoveSome) {
-    auto opt = Some(make_unique<int>(8));
+    SECTION("MatchSomeXValueSomeNoEffect") {
+        auto ptr = make_unique<int>(7);
 
-    const auto value = move(opt).match(
-        [](const auto &value) {
+        Some(move(ptr)).match_some([&ptr](auto &&value) {
+            static_assert(
+                is_same<decltype(value), unique_ptr<int> &&>::value,
+                "value is expected to be of unique_ptr<int> && type");
+
+            // do nothing
+        });
+
+        REQUIRE(!static_cast<bool>(ptr));
+    }
+
+    SECTION("MatchSomeXValueNone") {
+        auto ptr = make_unique<int>(7);
+
+        Option<int>(None).match_some([&ptr](auto &&value) {
+            static_assert(
+                is_same<decltype(value), int &&>::value,
+                "value is expected to be of int && type");
+
+            // not happening
+            ptr = nullptr;
+        });
+
+        REQUIRE(static_cast<bool>(ptr));
+        REQUIRE(7 == *ptr);
+    }
+
+    SECTION("MatchSomeRefDoSomething") {
+        const auto opt = Some(make_unique<int>(7));
+        bool flag = false;
+
+        opt.match_some([&flag](const auto &value) {
             static_assert(
                 is_same<decltype(value), const unique_ptr<int> &>::value,
                 "value is expected to be of const unique_ptr<int> & type");
 
-            return to_string(*value);
-        },
-        [] { return "NONE"; });
+            flag = true;
+        });
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_EQ("8", value);
-}
+        REQUIRE(flag);
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == *opt.get_unchecked());
+    }
 
-TEST(Option, MatchXValueNone) {
-    const auto value = Option<int>(None).match(
-        [](const auto value) {
+    SECTION("MatchSomeRefNoEffect") {
+        const auto opt = Option<int>(None);
+        bool flag = false;
+
+        opt.match_some([&flag](const auto &value) {
             static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+                is_same<decltype(value), const int &>::value,
+                "value is expected to be of const int & type");
 
-            return to_string(value);
-        },
-        [] { return "NONE"; });
+            flag = true;
+        });
 
-    ASSERT_EQ("NONE", value);
-}
+        REQUIRE(!flag);
+        REQUIRE(opt.is_none());
+    }
 
-TEST(Option, MatchRefSome) {
-    const auto opt = Some(7);
+    SECTION("MatchNoneXValueNoneDoSomething") {
+        unique_ptr<int> ptr;
 
-    const auto value = opt.match(
-        [](const auto value) {
+        Option<int>(None).match_none([&ptr] {
+            // assign back so that there is something to test
+            ptr = make_unique<int>(8);
+        });
+
+        REQUIRE(static_cast<bool>(ptr));
+        REQUIRE(8 == *ptr);
+    }
+
+    SECTION("MatchNoneXValueSomeNoEffect") {
+        unique_ptr<int> ptr;
+
+        Some(777).match_none([&ptr] {
+            // assign back so that there is something to test
+            ptr = make_unique<int>(777);
+        });
+
+        REQUIRE(!static_cast<bool>(ptr));
+    }
+
+    SECTION("MatchNoneRefDoSomething") {
+        const auto opt = Option<int>(None);
+        bool flag = false;
+
+        opt.match_none([&flag] { flag = true; });
+
+        REQUIRE(flag);
+        REQUIRE(opt.is_none());
+    }
+
+    SECTION("MatchNoneRefNoEffect") {
+        const auto opt = Some(7);
+        bool flag = false;
+
+        opt.match_none([&flag] { flag = true; });
+
+        REQUIRE(!flag);
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == opt.get_unchecked());
+    }
+
+    SECTION("IsSomeTrue") {
+        const auto opt = Some(0);
+        REQUIRE(opt.is_some());
+    }
+
+    SECTION("IsSomeFalse") {
+        const Option<int> opt = None;
+        REQUIRE(!opt.is_some());
+    }
+
+    SECTION("IsNoneTrue") {
+        const Option<int> opt = None;
+        REQUIRE(opt.is_none());
+    }
+
+    SECTION("IsNoneFalse") {
+        const auto opt = Some(0);
+        REQUIRE(!opt.is_none());
+    }
+
+    SECTION("AsRefOnSomeValue") {
+        const auto opt = Some(make_unique<int>(7));
+        const auto opt_ref = opt.as_ref();
+
+        REQUIRE(opt_ref.is_some());
+
+        static_assert(
+            is_same<
+                const unique_ptr<int> &,
+                decltype(opt_ref.get_unchecked())>::value,
+            "opt_ref does not contain const unique_ptr<int> & type, which is "
+            "unexpected");
+
+        REQUIRE(7 == *opt_ref.get_unchecked());
+    }
+
+    SECTION("AsRefOnNoneValue") {
+        const Option<unique_ptr<int>> opt = None;
+        const auto opt_ref = opt.as_ref();
+
+        REQUIRE(opt_ref.is_none());
+
+        // does not evaluate at runtime, so no issues
+        static_assert(
+            is_same<
+                const unique_ptr<int> &,
+                decltype(opt_ref.get_unchecked())>::value,
+            "opt_ref does not contain const unique_ptr<int> & type, which is "
+            "unexpected");
+    }
+
+    SECTION("AsRefOnSomeRef") {
+        const auto v = make_unique<int>(7);
+        const auto opt = Some(cref(v));
+        const auto opt_ref = opt.as_ref();
+
+        REQUIRE(opt_ref.is_some());
+
+        static_assert(
+            is_same<
+                const unique_ptr<int> &,
+                decltype(opt_ref.get_unchecked())>::value,
+            "opt_ref does not contain const unique_ptr<int> & type, which is "
+            "unexpected");
+
+        REQUIRE(7 == *opt_ref.get_unchecked());
+    }
+
+    SECTION("AsRefOnNoneRef") {
+        const Option<const unique_ptr<int> &> opt = None;
+        const auto opt_ref = opt.as_ref();
+
+        REQUIRE(opt_ref.is_none());
+
+        // does not evaluate at runtime, so no issues
+        static_assert(
+            is_same<
+                const unique_ptr<int> &,
+                decltype(opt_ref.get_unchecked())>::value,
+            "opt_ref does not contain const unique_ptr<int> & type, which is "
+            "unexpected");
+    }
+
+    SECTION("AsMutOnSomeValue") {
+        auto opt = Some(make_unique<int>(7));
+        const auto opt_ref = opt.as_mut();
+
+        REQUIRE(opt_ref.is_some());
+
+        static_assert(
+            is_same<
+                const unique_ptr<int> &,
+                decltype(opt_ref.get_unchecked())>::value,
+            "opt_ref does not contain const unique_ptr<int> & type, which is "
+            "unexpected");
+
+        REQUIRE(7 == *opt_ref.get_unchecked());
+
+        *opt_ref.get_unchecked() = 8;
+        REQUIRE(8 == *opt_ref.get_unchecked());
+    }
+
+    SECTION("AsMutOnNoneValue") {
+        Option<unique_ptr<int>> opt = None;
+        const auto opt_ref = opt.as_mut();
+
+        REQUIRE(opt_ref.is_none());
+
+        // does not evaluate at runtime, so no issues
+        static_assert(
+            is_same<
+                const unique_ptr<int> &,
+                decltype(opt_ref.get_unchecked())>::value,
+            "opt_ref does not contain const unique_ptr<int> & type, which is "
+            "unexpected");
+    }
+
+    SECTION("AsMutOnSomeRef") {
+        auto v = make_unique<int>(7);
+        auto opt = Some(ref(v));
+        const auto opt_ref = opt.as_mut();
+
+        REQUIRE(opt_ref.is_some());
+
+        static_assert(
+            is_same<
+                const unique_ptr<int> &,
+                decltype(opt_ref.get_unchecked())>::value,
+            "opt_ref does not contain const unique_ptr<int> & type, which is "
+            "unexpected");
+
+        REQUIRE(7 == *opt_ref.get_unchecked());
+
+        *opt_ref.get_unchecked() = 8;
+        REQUIRE(8 == *opt_ref.get_unchecked());
+    }
+
+    SECTION("AsMutOnNoneRef") {
+        Option<unique_ptr<int> &> opt = None;
+        const auto opt_ref = opt.as_mut();
+
+        REQUIRE(opt_ref.is_none());
+
+        // does not evaluate at runtime, so no issues
+        static_assert(
+            is_same<
+                const unique_ptr<int> &,
+                decltype(opt_ref.get_unchecked())>::value,
+            "opt_ref does not contain const unique_ptr<int> & type, which is "
+            "unexpected");
+    }
+
+    SECTION("UnwrapOrSome") {
+        auto opt = Some(0);
+        const auto v = move(opt).unwrap_or(1);
+        REQUIRE(0 == v);
+    }
+
+    SECTION("UnwrapOrNone") {
+        Option<int> opt = None;
+        const auto v = move(opt).unwrap_or(1);
+        REQUIRE(1 == v);
+    }
+
+    SECTION("UnwrapOrElseSome") {
+        auto opt = Some(0);
+        const auto v = move(opt).unwrap_or_else([] { return 1; });
+        REQUIRE(0 == v);
+    }
+
+    SECTION("UnwrapOrElseNone") {
+        Option<int> opt = None;
+        const auto v = move(opt).unwrap_or_else([] { return 1; });
+        REQUIRE(1 == v);
+    }
+
+    SECTION("MapSome") {
+        const auto opt =
+            Some(make_unique<int>(777))
+                .map([](auto &&value) {
+                    static_assert(
+                        is_same<decltype(value), unique_ptr<int> &&>::value,
+                        "value is expected to be of unique_ptr<int> && type");
+
+                    return make_unique<string>(to_string(*value));
+                })
+                .map([](auto &&value) {
+                    static_assert(
+                        is_same<decltype(value), unique_ptr<string> &&>::value,
+                        "value is expected to be of unique_ptr<string> && "
+                        "type");
+
+                    return "*" + *value + "*";
+                });
+
+        REQUIRE(opt.is_some());
+        REQUIRE("*777*" == opt.get_unchecked());
+    }
+
+    SECTION("MapNone") {
+        auto opt = Option<int>(None);
+
+        move(opt).map([](auto &&value) {
             static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+                is_same<decltype(value), int &&>::value,
+                "value is expected to be of int && type");
 
-            return to_string(value);
-        },
-        [] { return "NONE"; });
+            return "Hello";
+        });
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("7", value);
-}
+        REQUIRE(opt.is_none());
+    }
 
-TEST(Option, MatchRefNone) {
-    const auto opt = Option<int>(None);
+    SECTION("MapOrSome") {
+        auto opt = Some(0);
 
-    const auto value = opt.match(
-        [](const auto value) {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
-
-            return to_string(value);
-        },
-        [] { return "NONE"; });
-
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_EQ("NONE", value);
-}
-
-TEST(Option, MatchSomeXValueSomeAssignBack) {
-    auto ptr = make_unique<int>(7);
-
-    Some(move(ptr)).match_some([&ptr](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<int> &&>::value,
-            "value is expected to be of unique_ptr<int> && type");
-
-        // assign back so that there is something to test
-        ptr = move(value);
-    });
-
-    ASSERT_TRUE(static_cast<bool>(ptr));
-    ASSERT_EQ(7, *ptr);
-}
-
-TEST(Option, MatchSomeXValueSomeNoEffect) {
-    auto ptr = make_unique<int>(7);
-
-    Some(move(ptr)).match_some([&ptr](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<int> &&>::value,
-            "value is expected to be of unique_ptr<int> && type");
-
-        // do nothing
-    });
-
-    ASSERT_FALSE(static_cast<bool>(ptr));
-}
-
-TEST(Option, MatchSomeXValueNone) {
-    auto ptr = make_unique<int>(7);
-
-    Option<int>(None).match_some([&ptr](auto &&value) {
-        static_assert(
-            is_same<decltype(value), int &&>::value,
-            "value is expected to be of int && type");
-
-        // not happening
-        ptr = nullptr;
-    });
-
-    ASSERT_TRUE(static_cast<bool>(ptr));
-    ASSERT_EQ(7, *ptr);
-}
-
-TEST(Option, MatchSomeRefDoSomething) {
-    const auto opt = Some(make_unique<int>(7));
-    bool flag = false;
-
-    opt.match_some([&flag](const auto &value) {
-        static_assert(
-            is_same<decltype(value), const unique_ptr<int> &>::value,
-            "value is expected to be of const unique_ptr<int> & type");
-
-        flag = true;
-    });
-
-    ASSERT_TRUE(flag);
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, *opt.get_unchecked());
-}
-
-TEST(Option, MatchSomeRefNoEffect) {
-    const auto opt = Option<int>(None);
-    bool flag = false;
-
-    opt.match_some([&flag](const auto &value) {
-        static_assert(
-            is_same<decltype(value), const int &>::value,
-            "value is expected to be of const int & type");
-
-        flag = true;
-    });
-
-    ASSERT_FALSE(flag);
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Option, MatchNoneXValueNoneDoSomething) {
-    unique_ptr<int> ptr;
-
-    Option<int>(None).match_none([&ptr] {
-        // assign back so that there is something to test
-        ptr = make_unique<int>(8);
-    });
-
-    ASSERT_TRUE(static_cast<bool>(ptr));
-    ASSERT_EQ(8, *ptr);
-}
-
-TEST(Option, MatchNoneXValueSomeNoEffect) {
-    unique_ptr<int> ptr;
-
-    Some(777).match_none([&ptr] {
-        // assign back so that there is something to test
-        ptr = make_unique<int>(777);
-    });
-
-    ASSERT_FALSE(static_cast<bool>(ptr));
-}
-
-TEST(Option, MatchNoneRefDoSomething) {
-    const auto opt = Option<int>(None);
-    bool flag = false;
-
-    opt.match_none([&flag] { flag = true; });
-
-    ASSERT_TRUE(flag);
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Option, MatchNoneRefNoEffect) {
-    const auto opt = Some(7);
-    bool flag = false;
-
-    opt.match_none([&flag] { flag = true; });
-
-    ASSERT_FALSE(flag);
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, opt.get_unchecked());
-}
-
-TEST(Option, IsSomeTrue) {
-    const auto opt = Some(0);
-    ASSERT_TRUE(opt.is_some());
-}
-
-TEST(Option, IsSomeFalse) {
-    const Option<int> opt = None;
-    ASSERT_FALSE(opt.is_some());
-}
-
-TEST(Option, IsNoneTrue) {
-    const Option<int> opt = None;
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Option, IsNoneFalse) {
-    const auto opt = Some(0);
-    ASSERT_FALSE(opt.is_none());
-}
-
-TEST(Option, AsRefOnSomeValue) {
-    const auto opt = Some(make_unique<int>(7));
-    const auto opt_ref = opt.as_ref();
-
-    ASSERT_TRUE(opt_ref.is_some());
-
-    static_assert(
-        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
-            value,
-        "opt_ref does not contain const unique_ptr<int> & type, which is "
-        "unexpected");
-
-    ASSERT_EQ(7, *opt_ref.get_unchecked());
-}
-
-TEST(Option, AsRefOnNoneValue) {
-    const Option<unique_ptr<int>> opt = None;
-    const auto opt_ref = opt.as_ref();
-
-    ASSERT_TRUE(opt_ref.is_none());
-
-    // does not evaluate at runtime, so no issues
-    static_assert(
-        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
-            value,
-        "opt_ref does not contain const unique_ptr<int> & type, which is "
-        "unexpected");
-}
-
-TEST(Option, AsRefOnSomeRef) {
-    const auto v = make_unique<int>(7);
-    const auto opt = Some(cref(v));
-    const auto opt_ref = opt.as_ref();
-
-    ASSERT_TRUE(opt_ref.is_some());
-
-    static_assert(
-        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
-            value,
-        "opt_ref does not contain const unique_ptr<int> & type, which is "
-        "unexpected");
-
-    ASSERT_EQ(7, *opt_ref.get_unchecked());
-}
-
-TEST(Option, AsRefOnNoneRef) {
-    const Option<const unique_ptr<int> &> opt = None;
-    const auto opt_ref = opt.as_ref();
-
-    ASSERT_TRUE(opt_ref.is_none());
-
-    // does not evaluate at runtime, so no issues
-    static_assert(
-        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
-            value,
-        "opt_ref does not contain const unique_ptr<int> & type, which is "
-        "unexpected");
-}
-
-TEST(Option, AsMutOnSomeValue) {
-    auto opt = Some(make_unique<int>(7));
-    const auto opt_ref = opt.as_mut();
-
-    ASSERT_TRUE(opt_ref.is_some());
-
-    static_assert(
-        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
-            value,
-        "opt_ref does not contain const unique_ptr<int> & type, which is "
-        "unexpected");
-
-    ASSERT_EQ(7, *opt_ref.get_unchecked());
-
-    *opt_ref.get_unchecked() = 8;
-    ASSERT_EQ(8, *opt_ref.get_unchecked());
-}
-
-TEST(Option, AsMutOnNoneValue) {
-    Option<unique_ptr<int>> opt = None;
-    const auto opt_ref = opt.as_mut();
-
-    ASSERT_TRUE(opt_ref.is_none());
-
-    // does not evaluate at runtime, so no issues
-    static_assert(
-        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
-            value,
-        "opt_ref does not contain const unique_ptr<int> & type, which is "
-        "unexpected");
-}
-
-TEST(Option, AsMutOnSomeRef) {
-    auto v = make_unique<int>(7);
-    auto opt = Some(ref(v));
-    const auto opt_ref = opt.as_mut();
-
-    ASSERT_TRUE(opt_ref.is_some());
-
-    static_assert(
-        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
-            value,
-        "opt_ref does not contain const unique_ptr<int> & type, which is "
-        "unexpected");
-
-    ASSERT_EQ(7, *opt_ref.get_unchecked());
-
-    *opt_ref.get_unchecked() = 8;
-    ASSERT_EQ(8, *opt_ref.get_unchecked());
-}
-
-TEST(Option, AsMutOnNoneRef) {
-    Option<unique_ptr<int> &> opt = None;
-    const auto opt_ref = opt.as_mut();
-
-    ASSERT_TRUE(opt_ref.is_none());
-
-    // does not evaluate at runtime, so no issues
-    static_assert(
-        is_same<const unique_ptr<int> &, decltype(opt_ref.get_unchecked())>::
-            value,
-        "opt_ref does not contain const unique_ptr<int> & type, which is "
-        "unexpected");
-}
-
-TEST(Option, UnwrapOrSome) {
-    auto opt = Some(0);
-    const auto v = move(opt).unwrap_or(1);
-    ASSERT_EQ(0, v);
-}
-
-TEST(Option, UnwrapOrNone) {
-    Option<int> opt = None;
-    const auto v = move(opt).unwrap_or(1);
-    ASSERT_EQ(1, v);
-}
-
-TEST(Option, UnwrapOrElseSome) {
-    auto opt = Some(0);
-    const auto v = move(opt).unwrap_or_else([] { return 1; });
-    ASSERT_EQ(0, v);
-}
-
-TEST(Option, UnwrapOrElseNone) {
-    Option<int> opt = None;
-    const auto v = move(opt).unwrap_or_else([] { return 1; });
-    ASSERT_EQ(1, v);
-}
-
-TEST(Option, MapSome) {
-    const auto opt =
-        Some(make_unique<int>(777))
-            .map([](auto &&value) {
-                static_assert(
-                    is_same<decltype(value), unique_ptr<int> &&>::value,
-                    "value is expected to be of unique_ptr<int> && type");
-
-                return make_unique<string>(to_string(*value));
-            })
-            .map([](auto &&value) {
-                static_assert(
-                    is_same<decltype(value), unique_ptr<string> &&>::value,
-                    "value is expected to be of unique_ptr<string> && type");
-
-                return "*" + *value + "*";
-            });
-
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("*777*", opt.get_unchecked());
-}
-
-TEST(Option, MapNone) {
-    auto opt = Option<int>(None);
-
-    move(opt).map([](auto &&value) {
-        static_assert(
-            is_same<decltype(value), int &&>::value,
-            "value is expected to be of int && type");
-
-        return "Hello";
-    });
-
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Option, MapOrSome) {
-    auto opt = Some(0);
-
-    const auto v = move(opt).map_or(string("one"), [](auto &&value) {
-        static_assert(
-            is_same<decltype(value), int &&>::value,
-            "value is expected to be of int && type");
-
-        return string("zero");
-    });
-
-    ASSERT_EQ("zero", v);
-}
-
-TEST(Option, MapOrNone) {
-    Option<int> opt = None;
-
-    const auto v = move(opt).map_or(string("one"), [](auto &&value) {
-        static_assert(
-            is_same<decltype(value), int &&>::value,
-            "value is expected to be of int && type");
-
-        return string("zero");
-    });
-
-    ASSERT_EQ("one", v);
-}
-
-TEST(Option, MapOrElseSome) {
-    auto opt = Some(0);
-
-    const auto v = move(opt).map_or_else(
-        [] { return string("one"); },
-        [](auto &&value) {
+        const auto v = move(opt).map_or(string("one"), [](auto &&value) {
             static_assert(
                 is_same<decltype(value), int &&>::value,
                 "value is expected to be of int && type");
@@ -2038,15 +2018,13 @@ TEST(Option, MapOrElseSome) {
             return string("zero");
         });
 
-    ASSERT_EQ("zero", v);
-}
+        REQUIRE("zero" == v);
+    }
 
-TEST(Option, MapOrElseNone) {
-    Option<int> opt = None;
+    SECTION("MapOrNone") {
+        Option<int> opt = None;
 
-    const auto v = move(opt).map_or_else(
-        [] { return string("one"); },
-        [](auto &&value) {
+        const auto v = move(opt).map_or(string("one"), [](auto &&value) {
             static_assert(
                 is_same<decltype(value), int &&>::value,
                 "value is expected to be of int && type");
@@ -2054,1170 +2032,1230 @@ TEST(Option, MapOrElseNone) {
             return string("zero");
         });
 
-    ASSERT_EQ("one", v);
-}
+        REQUIRE("one" == v);
+    }
 
-TEST(Option, OkOrSome) {
-    auto opt = Some(1);
-    const auto res = move(opt).ok_or(string("Error"));
+    SECTION("MapOrElseSome") {
+        auto opt = Some(0);
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(1, res.get_unchecked());
-}
+        const auto v = move(opt).map_or_else(
+            [] { return string("one"); },
+            [](auto &&value) {
+                static_assert(
+                    is_same<decltype(value), int &&>::value,
+                    "value is expected to be of int && type");
 
-TEST(Option, OkOrNone) {
-    Option<int> opt = None;
-    const auto res = move(opt).ok_or(string("Error"));
+                return string("zero");
+            });
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Error", res.get_err_unchecked());
-}
+        REQUIRE("zero" == v);
+    }
 
-TEST(Option, OkOrElseSome) {
-    auto opt = Some(1);
-    const auto res = move(opt).ok_or_else([] { return string("Error"); });
+    SECTION("MapOrElseNone") {
+        Option<int> opt = None;
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(1, res.get_unchecked());
-}
+        const auto v = move(opt).map_or_else(
+            [] { return string("one"); },
+            [](auto &&value) {
+                static_assert(
+                    is_same<decltype(value), int &&>::value,
+                    "value is expected to be of int && type");
 
-TEST(Option, OkOrElseNone) {
-    Option<int> opt = None;
-    const auto res = move(opt).ok_or_else([] { return string("Error"); });
+                return string("zero");
+            });
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Error", res.get_err_unchecked());
-}
+        REQUIRE("one" == v);
+    }
 
-TEST(Option, OkOrElseRefOk) {
-    const string ok_value = "Okay";
-    const string err_value = "Error";
+    SECTION("OkOrSome") {
+        auto opt = Some(1);
+        const auto res = move(opt).ok_or(string("Error"));
 
-    const auto res = Some(cref(ok_value)).ok_or_else([&err_value] {
-        return cref(err_value);
-    });
+        REQUIRE(opt.is_none());
+        REQUIRE(res.is_ok());
+        REQUIRE(1 == res.get_unchecked());
+    }
 
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ("Okay", res.get_unchecked());
-    ASSERT_EQ(&ok_value, &res.get_unchecked());
-}
+    SECTION("OkOrNone") {
+        Option<int> opt = None;
+        const auto res = move(opt).ok_or(string("Error"));
 
-TEST(Option, OkOrElseRefErr) {
-    const string err_value = "Error";
+        REQUIRE(opt.is_none());
+        REQUIRE(res.is_err());
+        REQUIRE("Error" == res.get_err_unchecked());
+    }
 
-    const auto res = Option<string>(None).ok_or_else(
-        [&err_value] { return cref(err_value); });
+    SECTION("OkOrElseSome") {
+        auto opt = Some(1);
+        const auto res = move(opt).ok_or_else([] { return string("Error"); });
 
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Error", res.get_err_unchecked());
-    ASSERT_EQ(&err_value, &res.get_err_unchecked());
-}
+        REQUIRE(opt.is_none());
+        REQUIRE(res.is_ok());
+        REQUIRE(1 == res.get_unchecked());
+    }
 
-TEST(Option, AndLhsSomeRhsSome) {
-    auto opt_lhs = Some(1);
-    auto opt_rhs = Some("one");
+    SECTION("OkOrElseNone") {
+        Option<int> opt = None;
+        const auto res = move(opt).ok_or_else([] { return string("Error"); });
 
-    const auto opt = move(opt_lhs).and_(move(opt_rhs));
-    ASSERT_TRUE(opt_lhs.is_none());
-    ASSERT_TRUE(opt_rhs.is_none());
+        REQUIRE(opt.is_none());
+        REQUIRE(res.is_err());
+        REQUIRE("Error" == res.get_err_unchecked());
+    }
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_STREQ("one", opt.get_unchecked());
-}
+    SECTION("OkOrElseRefOk") {
+        const string ok_value = "Okay";
+        const string err_value = "Error";
 
-TEST(Option, AndLhsNoneRhsSome) {
-    Option<int> opt_lhs = None;
-    auto opt_rhs = Some("one");
+        const auto res = Some(cref(ok_value)).ok_or_else([&err_value] {
+            return cref(err_value);
+        });
 
-    const auto opt = move(opt_lhs).and_(move(opt_rhs));
-    ASSERT_TRUE(opt_lhs.is_none());
-    ASSERT_TRUE(opt_rhs.is_none());
-    ASSERT_TRUE(opt.is_none());
-}
+        REQUIRE(res.is_ok());
+        REQUIRE("Okay" == res.get_unchecked());
+        REQUIRE(&ok_value == &res.get_unchecked());
+    }
 
-TEST(Option, AndLhsSomeRhsNone) {
-    auto opt_lhs = Some(1);
-    Option<const char *> opt_rhs = None;
+    SECTION("OkOrElseRefErr") {
+        const string err_value = "Error";
 
-    const auto opt = move(opt_lhs).and_(move(opt_rhs));
-    ASSERT_TRUE(opt_lhs.is_none());
-    ASSERT_TRUE(opt_rhs.is_none());
-    ASSERT_TRUE(opt.is_none());
-}
+        const auto res = Option<string>(None).ok_or_else(
+            [&err_value] { return cref(err_value); });
 
-TEST(Option, AndLhsNoneRhsNone) {
-    Option<int> opt_lhs = None;
-    Option<const char *> opt_rhs = None;
+        REQUIRE(res.is_err());
+        REQUIRE("Error" == res.get_err_unchecked());
+        REQUIRE(&err_value == &res.get_err_unchecked());
+    }
 
-    const auto opt = move(opt_lhs).and_(move(opt_rhs));
-    ASSERT_TRUE(opt_lhs.is_none());
-    ASSERT_TRUE(opt_rhs.is_none());
-    ASSERT_TRUE(opt.is_none());
-}
+    SECTION("AndLhsSomeRhsSome") {
+        auto opt_lhs = Some(1);
+        auto opt_rhs = Some("one");
 
-TEST(Option, AndThenSomeToSome) {
-    const auto opt = Some(make_unique<int>(777)).and_then([](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<int> &&>::value,
-            "value is expected to be of unique_ptr<int> && type");
+        const auto opt = move(opt_lhs).and_(move(opt_rhs));
+        REQUIRE(opt_lhs.is_none());
+        REQUIRE(opt_rhs.is_none());
 
-        return Some(make_unique<string>(to_string(*value)));
-    });
+        REQUIRE(opt.is_some());
+        REQUIRE("one" == string(opt.get_unchecked()));
+    }
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("777", *opt.get_unchecked());
-}
+    SECTION("AndLhsNoneRhsSome") {
+        Option<int> opt_lhs = None;
+        auto opt_rhs = Some("one");
 
-TEST(Option, AndThenSomeToNone) {
-    const auto opt =
-        Some(make_unique<int>(777))
-            .and_then([](auto &&value) -> Option<string> {
+        const auto opt = move(opt_lhs).and_(move(opt_rhs));
+        REQUIRE(opt_lhs.is_none());
+        REQUIRE(opt_rhs.is_none());
+        REQUIRE(opt.is_none());
+    }
+
+    SECTION("AndLhsSomeRhsNone") {
+        auto opt_lhs = Some(1);
+        Option<const char *> opt_rhs = None;
+
+        const auto opt = move(opt_lhs).and_(move(opt_rhs));
+        REQUIRE(opt_lhs.is_none());
+        REQUIRE(opt_rhs.is_none());
+        REQUIRE(opt.is_none());
+    }
+
+    SECTION("AndLhsNoneRhsNone") {
+        Option<int> opt_lhs = None;
+        Option<const char *> opt_rhs = None;
+
+        const auto opt = move(opt_lhs).and_(move(opt_rhs));
+        REQUIRE(opt_lhs.is_none());
+        REQUIRE(opt_rhs.is_none());
+        REQUIRE(opt.is_none());
+    }
+
+    SECTION("AndThenSomeToSome") {
+        const auto opt = Some(make_unique<int>(777)).and_then([](auto &&value) {
+            static_assert(
+                is_same<decltype(value), unique_ptr<int> &&>::value,
+                "value is expected to be of unique_ptr<int> && type");
+
+            return Some(make_unique<string>(to_string(*value)));
+        });
+
+        REQUIRE(opt.is_some());
+        REQUIRE("777" == *opt.get_unchecked());
+    }
+
+    SECTION("AndThenSomeToNone") {
+        const auto opt =
+            Some(make_unique<int>(777))
+                .and_then([](auto &&value) -> Option<string> {
+                    static_assert(
+                        is_same<decltype(value), unique_ptr<int> &&>::value,
+                        "value is expected to be of unique_ptr<int> && type");
+
+                    return None;
+                });
+
+        REQUIRE(opt.is_none());
+    }
+
+    SECTION("AndThenNone") {
+        const auto opt =
+            Option<unique_ptr<int>>(None).and_then([](auto &&value) {
                 static_assert(
                     is_same<decltype(value), unique_ptr<int> &&>::value,
                     "value is expected to be of unique_ptr<int> && type");
 
-                return None;
+                return Some(make_unique<string>(to_string(*value)));
             });
 
-    ASSERT_TRUE(opt.is_none());
-}
+        REQUIRE(opt.is_none());
+    }
 
-TEST(Option, AndThenNone) {
-    const auto opt = Option<unique_ptr<int>>(None).and_then([](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<int> &&>::value,
-            "value is expected to be of unique_ptr<int> && type");
+    SECTION("OrLhsSomeRhsSome") {
+        auto opt_lhs = Some(1);
+        auto opt_rhs = Some(7);
 
-        return Some(make_unique<string>(to_string(*value)));
-    });
+        const auto opt = move(opt_lhs).or_(move(opt_rhs));
+        REQUIRE(opt_lhs.is_none());
+        REQUIRE(opt_rhs.is_none());
 
-    ASSERT_TRUE(opt.is_none());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(1 == opt.get_unchecked());
+    }
 
-TEST(Option, OrLhsSomeRhsSome) {
-    auto opt_lhs = Some(1);
-    auto opt_rhs = Some(7);
+    SECTION("OrLhsNoneRhsSome") {
+        Option<int> opt_lhs = None;
+        auto opt_rhs = Some(7);
 
-    const auto opt = move(opt_lhs).or_(move(opt_rhs));
-    ASSERT_TRUE(opt_lhs.is_none());
-    ASSERT_TRUE(opt_rhs.is_none());
+        const auto opt = move(opt_lhs).or_(move(opt_rhs));
+        REQUIRE(opt_lhs.is_none());
+        REQUIRE(opt_rhs.is_none());
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(1, opt.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == opt.get_unchecked());
+    }
 
-TEST(Option, OrLhsNoneRhsSome) {
-    Option<int> opt_lhs = None;
-    auto opt_rhs = Some(7);
+    SECTION("OrLhsSomeRhsNone") {
+        auto opt_lhs = Some(1);
+        Option<int> opt_rhs = None;
 
-    const auto opt = move(opt_lhs).or_(move(opt_rhs));
-    ASSERT_TRUE(opt_lhs.is_none());
-    ASSERT_TRUE(opt_rhs.is_none());
+        const auto opt = move(opt_lhs).or_(move(opt_rhs));
+        REQUIRE(opt_lhs.is_none());
+        REQUIRE(opt_rhs.is_none());
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, opt.get_unchecked());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(1 == opt.get_unchecked());
+    }
 
-TEST(Option, OrLhsSomeRhsNone) {
-    auto opt_lhs = Some(1);
-    Option<int> opt_rhs = None;
+    SECTION("OrLhsNoneRhsNone") {
+        Option<int> opt_lhs = None;
+        Option<int> opt_rhs = None;
 
-    const auto opt = move(opt_lhs).or_(move(opt_rhs));
-    ASSERT_TRUE(opt_lhs.is_none());
-    ASSERT_TRUE(opt_rhs.is_none());
+        const auto opt = move(opt_lhs).or_(move(opt_rhs));
+        REQUIRE(opt_lhs.is_none());
+        REQUIRE(opt_rhs.is_none());
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(1, opt.get_unchecked());
-}
+        REQUIRE(opt.is_none());
+    }
 
-TEST(Option, OrLhsNoneRhsNone) {
-    Option<int> opt_lhs = None;
-    Option<int> opt_rhs = None;
+    SECTION("OrElseSome") {
+        const auto opt = Some(7).or_else([] { return None; });
 
-    const auto opt = move(opt_lhs).or_(move(opt_rhs));
-    ASSERT_TRUE(opt_lhs.is_none());
-    ASSERT_TRUE(opt_rhs.is_none());
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == opt.get_unchecked());
+    }
 
-    ASSERT_TRUE(opt.is_none());
-}
+    SECTION("OrElseNoneToNone") {
+        const auto opt =
+            Option<unique_ptr<int>>(None).or_else([] { return None; });
 
-TEST(Option, OrElseSome) {
-    const auto opt = Some(7).or_else([] { return None; });
+        REQUIRE(opt.is_none());
+    }
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, opt.get_unchecked());
-}
+    SECTION("OrElseNoneToSome") {
+        const auto opt = Option<unique_ptr<int>>(None).or_else(
+            [] { return Some(make_unique<int>(7)); });
 
-TEST(Option, OrElseNoneToNone) {
-    const auto opt = Option<unique_ptr<int>>(None).or_else([] { return None; });
-    ASSERT_TRUE(opt.is_none());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == *opt.get_unchecked());
+    }
 
-TEST(Option, OrElseNoneToSome) {
-    const auto opt = Option<unique_ptr<int>>(None).or_else(
-        [] { return Some(make_unique<int>(7)); });
+    SECTION("GetOrInsertSome") {
+        auto opt = Some(1);
+        auto &v = opt.get_or_insert(7);
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, *opt.get_unchecked());
-}
+        REQUIRE(1 == v);
+        v = 8;
 
-TEST(Option, GetOrInsertSome) {
-    auto opt = Some(1);
-    auto &v = opt.get_or_insert(7);
+        REQUIRE(opt.is_some());
+        REQUIRE(8 == opt.get_unchecked());
+    }
 
-    ASSERT_EQ(1, v);
-    v = 8;
+    SECTION("GetOrInsertNone") {
+        Option<int> opt = None;
+        auto &v = opt.get_or_insert(7);
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(8, opt.get_unchecked());
-}
+        REQUIRE(7 == v);
+        v = 8;
 
-TEST(Option, GetOrInsertNone) {
-    Option<int> opt = None;
-    auto &v = opt.get_or_insert(7);
+        REQUIRE(opt.is_some());
+        REQUIRE(8 == opt.get_unchecked());
+    }
 
-    ASSERT_EQ(7, v);
-    v = 8;
+    SECTION("GetOrInsertWithSome") {
+        auto opt = Some(1);
+        auto &v = opt.get_or_insert_with([] { return 7; });
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(8, opt.get_unchecked());
-}
+        REQUIRE(1 == v);
+        v = 8;
 
-TEST(Option, GetOrInsertWithSome) {
-    auto opt = Some(1);
-    auto &v = opt.get_or_insert_with([] { return 7; });
+        REQUIRE(opt.is_some());
+        REQUIRE(8 == opt.get_unchecked());
+    }
 
-    ASSERT_EQ(1, v);
-    v = 8;
+    SECTION("GetOrInsertWithNone") {
+        Option<int> opt = None;
+        auto &v = opt.get_or_insert_with([] { return 7; });
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(8, opt.get_unchecked());
-}
+        REQUIRE(7 == v);
+        v = 8;
 
-TEST(Option, GetOrInsertWithNone) {
-    Option<int> opt = None;
-    auto &v = opt.get_or_insert_with([] { return 7; });
+        REQUIRE(opt.is_some());
+        REQUIRE(8 == opt.get_unchecked());
+    }
 
-    ASSERT_EQ(7, v);
-    v = 8;
+    SECTION("TakeSome") {
+        auto opt = Some(make_unique<int>(7));
+        const auto optb = opt.take();
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(8, opt.get_unchecked());
-}
+        REQUIRE(opt.is_none());
+        REQUIRE(optb.is_some());
 
-TEST(Option, TakeSome) {
-    auto opt = Some(make_unique<int>(7));
-    const auto optb = opt.take();
+        REQUIRE(7 == *optb.get_unchecked());
+    }
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(optb.is_some());
+    SECTION("TakeNone") {
+        Option<int> opt = None;
+        const auto optb = opt.take();
 
-    ASSERT_EQ(7, *optb.get_unchecked());
-}
+        REQUIRE(opt.is_none());
+        REQUIRE(optb.is_none());
+    }
 
-TEST(Option, TakeNone) {
-    Option<int> opt = None;
-    const auto optb = opt.take();
+    SECTION("ClonedRefSome") {
+        const string value = "Hello";
+        auto opt = Some(cref(value));
+        const auto optb = move(opt).cloned();
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(optb.is_none());
-}
+        REQUIRE(opt.is_none());
+        REQUIRE(optb.is_some());
+        REQUIRE("Hello" == optb.get_unchecked());
+        REQUIRE(&value != &optb.get_unchecked());
+    }
 
-TEST(Option, ClonedRefSome) {
-    const string value = "Hello";
-    auto opt = Some(cref(value));
-    const auto optb = move(opt).cloned();
+    SECTION("ClonedRefNone") {
+        Option<const string &> opt = None;
+        const auto optb = move(opt).cloned();
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(optb.is_some());
-    ASSERT_EQ("Hello", optb.get_unchecked());
-    ASSERT_NE(&value, &optb.get_unchecked());
-}
+        REQUIRE(opt.is_none());
+        REQUIRE(optb.is_none());
+    }
 
-TEST(Option, ClonedRefNone) {
-    Option<const string &> opt = None;
-    const auto optb = move(opt).cloned();
+    SECTION("UnwrapOrDefaultSome") {
+        auto opt = Some(string("Hello"));
+        const auto v = move(opt).unwrap_or_default();
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(optb.is_none());
-}
+        REQUIRE(opt.is_none());
+        REQUIRE("Hello" == v);
+    }
 
-TEST(Option, UnwrapOrDefaultSome) {
-    auto opt = Some(string("Hello"));
-    const auto v = move(opt).unwrap_or_default();
+    SECTION("UnwrapOrDefaultNone") {
+        Option<string> opt = None;
+        const auto v = move(opt).unwrap_or_default();
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_EQ("Hello", v);
-}
+        REQUIRE(opt.is_none());
+        REQUIRE(v.empty());
+    }
 
-TEST(Option, UnwrapOrDefaultNone) {
-    Option<string> opt = None;
-    const auto v = move(opt).unwrap_or_default();
+    SECTION("OptIfTrue") {
+        const auto opt = opt_if(true, [] { return 7; });
 
-    ASSERT_TRUE(opt.is_none());
-    ASSERT_TRUE(v.empty());
-}
+        REQUIRE(opt.is_some());
+        REQUIRE(7 == opt.get_unchecked());
+    }
 
-TEST(Option, OptIfTrue) {
-    const auto opt = opt_if(true, [] { return 7; });
+    SECTION("OptIfFalse") {
+        const auto opt = opt_if(false, [] { return 0; });
 
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(7, opt.get_unchecked());
-}
-
-TEST(Option, OptIfFalse) {
-    const auto opt = opt_if(false, [] { return 0; });
-
-    ASSERT_TRUE(opt.is_none());
+        REQUIRE(opt.is_none());
+    }
 }
 
 // result
 
-TEST(Result, CtorOk) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res(
-        Ok(make_unique<int>(7)));
+TEST_CASE("Result methods", "[Result]") {
+    SECTION("CtorOk") {
+        const Result<unique_ptr<int>, unique_ptr<string>> res(
+            Ok(make_unique<int>(7)));
 
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(7, *res.get_unchecked());
-}
+        REQUIRE(res.is_ok());
+        REQUIRE(7 == *res.get_unchecked());
+    }
 
-TEST(Result, CtorOkConvert) {
-    // converts from const char * to string
-    const Result<string, string> res(Ok("Hello"));
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ("Hello", res.get_unchecked());
-}
+    SECTION("CtorOkConvert") {
+        // converts from const char * to string
+        const Result<string, string> res(Ok("Hello"));
+        REQUIRE(res.is_ok());
+        REQUIRE("Hello" == res.get_unchecked());
+    }
 
-TEST(Result, CtorErr) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res(
-        Err(make_unique<string>("Error")));
+    SECTION("CtorErr") {
+        const Result<unique_ptr<int>, unique_ptr<string>> res(
+            Err(make_unique<string>("Error")));
 
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Error", *res.get_err_unchecked());
-}
+        REQUIRE(res.is_err());
+        REQUIRE("Error" == *res.get_err_unchecked());
+    }
 
-TEST(Result, CtorErrConvert) {
-    // converts from const char * to string
-    const Result<string, string> res(Err("Error"));
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Error", res.get_err_unchecked());
-}
+    SECTION("CtorErrConvert") {
+        // converts from const char * to string
+        const Result<string, string> res(Err("Error"));
+        REQUIRE(res.is_err());
+        REQUIRE("Error" == res.get_err_unchecked());
+    }
 
-TEST(Result, AssignmentOkToOkConvert) {
-    Result<string, double> res = Ok(string("Hello"));
+    SECTION("AssignmentOkToOkConvert") {
+        Result<string, double> res = Ok(string("Hello"));
 
-    // converts from const char * to string
-    res = Ok("World");
+        // converts from const char * to string
+        res = Ok("World");
 
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ("World", res.get_unchecked());
-}
+        REQUIRE(res.is_ok());
+        REQUIRE("World" == res.get_unchecked());
+    }
 
-TEST(Result, AssignmentOkToErr) {
-    Result<unique_ptr<string>, string> res = Ok(make_unique<string>("Hello"));
-    res = Err(string("World"));
+    SECTION("AssignmentOkToErr") {
+        Result<unique_ptr<string>, string> res =
+            Ok(make_unique<string>("Hello"));
+        res = Err(string("World"));
 
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("World", res.get_err_unchecked());
-}
+        REQUIRE(res.is_err());
+        REQUIRE("World" == res.get_err_unchecked());
+    }
 
-TEST(Result, AssignmentErrToErrConvert) {
-    Result<double, string> res = Err(string("Hello"));
+    SECTION("AssignmentErrToErrConvert") {
+        Result<double, string> res = Err(string("Hello"));
 
-    // converts from const char * to string
-    res = Err("World");
+        // converts from const char * to string
+        res = Err("World");
 
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("World", res.get_err_unchecked());
-}
+        REQUIRE(res.is_err());
+        REQUIRE("World" == res.get_err_unchecked());
+    }
 
-TEST(Result, AssignmentErrToOk) {
-    Result<unique_ptr<string>, string> res = Err(string("Hello"));
-    res = Ok(make_unique<string>("World"));
+    SECTION("AssignmentErrToOk") {
+        Result<unique_ptr<string>, string> res = Err(string("Hello"));
+        res = Ok(make_unique<string>("World"));
 
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ("World", *res.get_unchecked());
-}
+        REQUIRE(res.is_ok());
+        REQUIRE("World" == *res.get_unchecked());
+    }
 
-TEST(Result, GetUnchecked) {
-    const Result<int, string> res = Ok(7);
+    SECTION("GetUnchecked") {
+        const Result<int, string> res = Ok(7);
 
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(7, res.get_unchecked());
-}
+        REQUIRE(res.is_ok());
+        REQUIRE(7 == res.get_unchecked());
+    }
 
-TEST(Result, GetMutUnchecked) {
-    Result<int, string> res = Ok(7);
+    SECTION("GetMutUnchecked") {
+        Result<int, string> res = Ok(7);
 
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(7, res.get_mut_unchecked());
+        REQUIRE(res.is_ok());
+        REQUIRE(7 == res.get_mut_unchecked());
 
-    res.get_mut_unchecked() = 8;
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(8, res.get_mut_unchecked());
-}
+        res.get_mut_unchecked() = 8;
+        REQUIRE(res.is_ok());
+        REQUIRE(8 == res.get_mut_unchecked());
+    }
 
-TEST(Result, GetErrUnchecked) {
-    const Result<int, string> res = Err(string{"Hello"});
+    SECTION("GetErrUnchecked") {
+        const Result<int, string> res = Err(string{"Hello"});
 
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Hello", res.get_err_unchecked());
-}
+        REQUIRE(res.is_err());
+        REQUIRE("Hello" == res.get_err_unchecked());
+    }
 
-TEST(Result, GetErrMutUnchecked) {
-    Result<int, string> res = Err(string{"Hello"});
+    SECTION("GetErrMutUnchecked") {
+        Result<int, string> res = Err(string{"Hello"});
 
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Hello", res.get_err_mut_unchecked());
+        REQUIRE(res.is_err());
+        REQUIRE("Hello" == res.get_err_mut_unchecked());
 
-    res.get_err_mut_unchecked() = "World";
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("World", res.get_err_mut_unchecked());
-}
+        res.get_err_mut_unchecked() = "World";
+        REQUIRE(res.is_err());
+        REQUIRE("World" == res.get_err_mut_unchecked());
+    }
 
-TEST(Result, UnwrapUnchecked) {
-    int x = 7;
-    Result<int &, int> res = Ok(ref(x));
+    SECTION("UnwrapUnchecked") {
+        int x = 7;
+        Result<int &, int> res = Ok(ref(x));
 
-    ASSERT_TRUE(res.is_ok());
+        REQUIRE(res.is_ok());
 
-    // to show that it returns reference
-    static_assert(
-        is_same<decltype(move(res).unwrap_unchecked()), int &>::value,
-        "Result::UnwrapUnchecked does not return reference directly!");
+        // to show that it returns reference
+        static_assert(
+            is_same<decltype(move(res).unwrap_unchecked()), int &>::value,
+            "Result::UnwrapUnchecked does not return reference directly!");
 
-    ASSERT_EQ(7, move(res).unwrap_unchecked());
-}
+        REQUIRE(7 == move(res).unwrap_unchecked());
+    }
 
-TEST(Result, UnwrapErrUnchecked) {
-    Result<string, unique_ptr<string>> res = Err(make_unique<string>("Hello"));
-    ASSERT_TRUE(res.is_err());
+    SECTION("UnwrapErrUnchecked") {
+        Result<string, unique_ptr<string>> res =
+            Err(make_unique<string>("Hello"));
 
-    // to prove that the pointer can move
-    auto err_ptr = move(res).unwrap_err_unchecked();
-    ASSERT_EQ("Hello", *err_ptr);
-}
+        REQUIRE(res.is_err());
 
-TEST(Result, MatchOk) {
-    Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
+        // to prove that the pointer can move
+        auto err_ptr = move(res).unwrap_err_unchecked();
+        REQUIRE("Hello" == *err_ptr);
+    }
 
-    const auto match_res = move(res).match(
-        [](auto &&value) {
-            // static_assert(is_same<decltype(value), unique_ptr<int>>::value,
-            //    "value is expected to be of unique_ptr<int> type");
+    SECTION("MatchOk") {
+        Result<unique_ptr<int>, unique_ptr<string>> res =
+            Ok(make_unique<int>(2));
 
-            return true;
-        },
-        [](auto &&value) {
-            // static_assert(is_same<decltype(value), unique_ptr<string>
-            // &&>::value,
-            //     "value is expected to be of unique_ptr<string> && type");
+        const auto match_res = move(res).match(
+            [](auto &&value) {
+                // static_assert(is_same<decltype(value),
+                // unique_ptr<int>>::value,
+                //    "value is expected to be of unique_ptr<int> type");
 
-            return false;
+                return true;
+            },
+            [](auto &&value) {
+                // static_assert(is_same<decltype(value), unique_ptr<string>
+                // &&>::value,
+                //     "value is expected to be of unique_ptr<string> && type");
+
+                return false;
+            });
+
+        REQUIRE(match_res);
+    }
+
+    SECTION("MatchErr") {
+        Result<int, string> res = Err(string{"Hello"});
+
+        const auto match_res = move(res).match(
+            [](const auto value) {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return 0.5;
+            },
+            [](const auto &value) {
+                static_assert(
+                    is_same<decltype(value), const string &>::value,
+                    "value is expected to be of const string & type");
+
+                return 0.25;
+            });
+
+        REQUIRE(0.25 == match_res);
+    }
+
+    SECTION("MatchOkRef") {
+        Result<unique_ptr<int>, unique_ptr<string>> res =
+            Ok(make_unique<int>(777));
+
+        const auto match_res = res.match(
+            [](const auto &value) {
+                static_assert(
+                    is_same<decltype(value), const unique_ptr<int> &>::value,
+                    "value is expected to be of const unique_ptr<int> & type");
+
+                return to_string(*value);
+            },
+            [](const auto &value) {
+                static_assert(
+                    is_same<decltype(value), const unique_ptr<string> &>::value,
+                    "value is expected to be of const unique_ptr<string> & "
+                    "type");
+
+                return *value;
+            });
+
+        REQUIRE("777" == match_res);
+    }
+
+    SECTION("MatchErrRef") {
+        Result<string, string> res = Err(string{"World"});
+
+        const auto match_res = res.match(
+            [](const auto &value) {
+                static_assert(
+                    is_same<decltype(value), const string &>::value,
+                    "value is expected to be of const string & type");
+
+                return cref(value);
+            },
+            [](const auto &value) {
+                static_assert(
+                    is_same<decltype(value), const string &>::value,
+                    "value is expected to be of const string & type");
+
+                return cref(value);
+            });
+
+        REQUIRE(res.is_err());
+        REQUIRE(&res.get_err_unchecked() == &match_res.get());
+        REQUIRE("World" == match_res.get());
+    }
+
+    SECTION("MatchOkOk") {
+        Result<unique_ptr<int>, unique_ptr<string>> res =
+            Ok(make_unique<int>(2));
+        unique_ptr<int> ptr;
+
+        move(res).match_ok([&ptr](auto &&value) {
+            static_assert(
+                is_same<decltype(value), unique_ptr<int> &&>::value,
+                "value is expected to be of unique_ptr<int> && type");
+
+            ptr = move(value);
         });
 
-    ASSERT_TRUE(match_res);
-}
+        REQUIRE(static_cast<bool>(ptr));
+        REQUIRE(2 == *ptr);
+    }
 
-TEST(Result, MatchErr) {
-    Result<int, string> res = Err(string{"Hello"});
+    SECTION("MatchOkErr") {
+        Result<unique_ptr<int>, unique_ptr<string>> res =
+            Err(make_unique<string>("Hello"));
 
-    const auto match_res = move(res).match(
-        [](const auto value) {
+        unique_ptr<int> ptr;
+
+        move(res).match_ok([&ptr](auto &&value) {
+            static_assert(
+                is_same<decltype(value), unique_ptr<int> &&>::value,
+                "value is expected to be of unique_ptr<int> && type");
+
+            ptr = move(value);
+        });
+
+        REQUIRE(!static_cast<bool>(ptr));
+    }
+
+    SECTION("MatchOkRefOk") {
+        const Result<unique_ptr<int>, unique_ptr<string>> res =
+            Ok(make_unique<int>(2));
+        int value = 0;
+
+        res.match_ok([&value](const auto &res_value) {
+            static_assert(
+                is_same<decltype(res_value), const unique_ptr<int> &>::value,
+                "res_value is expected to be of const unique_ptr<int> & type");
+
+            value = *res_value;
+        });
+
+        REQUIRE(2 == value);
+        REQUIRE(res.is_ok());
+        REQUIRE(2 == *res.get_unchecked());
+    }
+
+    SECTION("MatchOkRefErr") {
+        const Result<unique_ptr<int>, unique_ptr<string>> res =
+            Err(make_unique<string>("Hello"));
+        int value = 7;
+
+        res.match_ok([&value](const auto &res_value) {
+            static_assert(
+                is_same<decltype(res_value), const unique_ptr<int> &>::value,
+                "res_value is expected to be of const unique_ptr<int> & type");
+
+            value = *res_value;
+        });
+
+        REQUIRE(7 == value);
+        REQUIRE(res.is_err());
+        REQUIRE("Hello" == *res.get_err_unchecked());
+    }
+
+    SECTION("MatchErrOk") {
+        Result<unique_ptr<int>, unique_ptr<string>> res =
+            Ok(make_unique<int>(2));
+
+        unique_ptr<string> ptr;
+
+        move(res).match_err([&ptr](auto &&value) {
+            static_assert(
+                is_same<decltype(value), unique_ptr<string> &&>::value,
+                "value is expected to be of unique_ptr<string> && type");
+
+            ptr = move(value);
+        });
+
+        REQUIRE(!static_cast<bool>(ptr));
+    }
+
+    SECTION("MatchErrErr") {
+        Result<unique_ptr<int>, unique_ptr<string>> res =
+            Err(make_unique<string>("Hello"));
+        unique_ptr<string> ptr;
+
+        move(res).match_err([&ptr](auto &&value) {
+            static_assert(
+                is_same<decltype(value), unique_ptr<string> &&>::value,
+                "value is expected to be of unique_ptr<string> && type");
+
+            ptr = move(value);
+        });
+
+        REQUIRE(static_cast<bool>(ptr));
+        REQUIRE("Hello" == *ptr);
+    }
+
+    SECTION("MatchErrRefOk") {
+        const Result<unique_ptr<int>, unique_ptr<string>> res =
+            Ok(make_unique<int>(2));
+        string value = "World";
+
+        res.match_err([&value](const auto &res_value) {
+            static_assert(
+                is_same<decltype(res_value), const unique_ptr<string> &>::value,
+                "res_value is expected to be of const unique_ptr<string> & "
+                "type");
+
+            value = *res_value;
+        });
+
+        REQUIRE("World" == value);
+        REQUIRE(res.is_ok());
+        REQUIRE(2 == *res.get_unchecked());
+    }
+
+    SECTION("MatchErrRefErr") {
+        const Result<unique_ptr<int>, unique_ptr<string>> res =
+            Err(make_unique<string>("Hello"));
+        string value = "World";
+
+        res.match_err([&value](auto &&res_value) {
+            static_assert(
+                is_same<decltype(res_value), const unique_ptr<string> &>::value,
+                "res_value is expected to be of const unique_ptr<string> & "
+                "type");
+
+            value = *res_value;
+        });
+
+        REQUIRE("Hello" == value);
+        REQUIRE(res.is_err());
+        REQUIRE("Hello" == *res.get_err_unchecked());
+    }
+
+    SECTION("MapOk") {
+        Result<int, string> res = Ok(1);
+        const auto mapped_res = move(res).map([](const auto value) {
             static_assert(
                 is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return 0.5;
-        },
-        [](const auto &value) {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return 0.25;
+            return value + 0.5;
         });
 
-    ASSERT_EQ(0.25, match_res);
-}
-
-TEST(Result, MatchOkRef) {
-    Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(777));
-
-    const auto match_res = res.match(
-        [](const auto &value) {
-            static_assert(
-                is_same<decltype(value), const unique_ptr<int> &>::value,
-                "value is expected to be of const unique_ptr<int> & type");
-
-            return to_string(*value);
-        },
-        [](const auto &value) {
-            static_assert(
-                is_same<decltype(value), const unique_ptr<string> &>::value,
-                "value is expected to be of const unique_ptr<string> & type");
-
-            return *value;
-        });
-
-    ASSERT_EQ("777", match_res);
-}
-
-TEST(Result, MatchErrRef) {
-    Result<string, string> res = Err(string{"World"});
-
-    const auto match_res = res.match(
-        [](const auto &value) {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return cref(value);
-        },
-        [](const auto &value) {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return cref(value);
-        });
-
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ(&res.get_err_unchecked(), &match_res.get());
-    ASSERT_EQ("World", match_res.get());
-}
-
-TEST(Result, MatchOkOk) {
-    Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
-    unique_ptr<int> ptr;
-
-    move(res).match_ok([&ptr](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<int> &&>::value,
-            "value is expected to be of unique_ptr<int> && type");
-
-        ptr = move(value);
-    });
-
-    ASSERT_TRUE(static_cast<bool>(ptr));
-    ASSERT_EQ(2, *ptr);
-}
-
-TEST(Result, MatchOkErr) {
-    Result<unique_ptr<int>, unique_ptr<string>> res =
-        Err(make_unique<string>("Hello"));
-    unique_ptr<int> ptr;
-
-    move(res).match_ok([&ptr](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<int> &&>::value,
-            "value is expected to be of unique_ptr<int> && type");
-
-        ptr = move(value);
-    });
-
-    ASSERT_FALSE(static_cast<bool>(ptr));
-}
-
-TEST(Result, MatchOkRefOk) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res =
-        Ok(make_unique<int>(2));
-    int value = 0;
-
-    res.match_ok([&value](const auto &res_value) {
-        static_assert(
-            is_same<decltype(res_value), const unique_ptr<int> &>::value,
-            "res_value is expected to be of const unique_ptr<int> & type");
-
-        value = *res_value;
-    });
-
-    ASSERT_EQ(2, value);
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(2, *res.get_unchecked());
-}
-
-TEST(Result, MatchOkRefErr) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res =
-        Err(make_unique<string>("Hello"));
-    int value = 7;
-
-    res.match_ok([&value](const auto &res_value) {
-        static_assert(
-            is_same<decltype(res_value), const unique_ptr<int> &>::value,
-            "res_value is expected to be of const unique_ptr<int> & type");
-
-        value = *res_value;
-    });
-
-    ASSERT_EQ(7, value);
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Hello", *res.get_err_unchecked());
-}
-
-TEST(Result, MatchErrOk) {
-    Result<unique_ptr<int>, unique_ptr<string>> res = Ok(make_unique<int>(2));
-    unique_ptr<string> ptr;
-
-    move(res).match_err([&ptr](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<string> &&>::value,
-            "value is expected to be of unique_ptr<string> && type");
-
-        ptr = move(value);
-    });
-
-    ASSERT_FALSE(static_cast<bool>(ptr));
-}
-
-TEST(Result, MatchErrErr) {
-    Result<unique_ptr<int>, unique_ptr<string>> res =
-        Err(make_unique<string>("Hello"));
-    unique_ptr<string> ptr;
-
-    move(res).match_err([&ptr](auto &&value) {
-        static_assert(
-            is_same<decltype(value), unique_ptr<string> &&>::value,
-            "value is expected to be of unique_ptr<string> && type");
-
-        ptr = move(value);
-    });
-
-    ASSERT_TRUE(static_cast<bool>(ptr));
-    ASSERT_EQ("Hello", *ptr);
-}
-
-TEST(Result, MatchErrRefOk) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res =
-        Ok(make_unique<int>(2));
-    string value = "World";
-
-    res.match_err([&value](const auto &res_value) {
-        static_assert(
-            is_same<decltype(res_value), const unique_ptr<string> &>::value,
-            "res_value is expected to be of const unique_ptr<string> & type");
-
-        value = *res_value;
-    });
-
-    ASSERT_EQ("World", value);
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(2, *res.get_unchecked());
-}
-
-TEST(Result, MatchErrRefErr) {
-    const Result<unique_ptr<int>, unique_ptr<string>> res =
-        Err(make_unique<string>("Hello"));
-    string value = "World";
-
-    res.match_err([&value](auto &&res_value) {
-        static_assert(
-            is_same<decltype(res_value), const unique_ptr<string> &>::value,
-            "res_value is expected to be of const unique_ptr<string> & type");
-
-        value = *res_value;
-    });
-
-    ASSERT_EQ("Hello", value);
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Hello", *res.get_err_unchecked());
-}
-
-TEST(Result, MapOk) {
-    Result<int, string> res = Ok(1);
-    const auto mapped_res = move(res).map([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return value + 0.5;
-    });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ(1.5, mapped_res.get_unchecked());
-}
-
-TEST(Result, MapErr) {
-    Result<int, string> res = Err(string{"Error"});
-    const auto mapped_res = move(res).map([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return to_string(value);
-    });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("Error", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, MapErrErr) {
-    Result<int, string> res = Err(string{"Error"});
-    const auto mapped_res = move(res).map_err([](const auto &value) {
-        static_assert(
-            is_same<decltype(value), const string &>::value,
-            "value is expected to be of const string & type");
-
-        return value + " value";
-    });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("Error value", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, MapErrOk) {
-    Result<int, int> res = Ok(-1);
-    const auto mapped_res = move(res).map_err([](const auto value) {
-        static_assert(
-            is_same<decltype(value), const int>::value,
-            "value is expected to be of const int type");
-
-        return to_string(value);
-    });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ(-1, mapped_res.get_unchecked());
-}
-
-TEST(Result, AndOkWithOk) {
-    Result<int, string> res_left = Ok(1);
-    Result<double, string> res_right = Ok(3.14);
-
-    const auto res = move(res_left).and_(move(res_right));
-
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(3.14, res.get_unchecked());
-}
-
-TEST(Result, AndErrWithOk) {
-    Result<int, string> res_left = Err(string("Error"));
-    Result<double, string> res_right = Ok(3.14);
-
-    const auto res = move(res_left).and_(move(res_right));
-
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Error", res.get_err_unchecked());
-}
-
-TEST(Result, AndOkWithErr) {
-    Result<int, string> res_left = Ok(1);
-    Result<double, string> res_right = Err(string("Error"));
-
-    const auto res = move(res_left).and_(move(res_right));
-
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Error", res.get_err_unchecked());
-}
-
-TEST(Result, AndErrWithErr) {
-    Result<int, string> res_left = Err(string("Left Error"));
-    Result<double, string> res_right = Err(string("Right Error"));
-
-    const auto res = move(res_left).and_(move(res_right));
-
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ("Left Error", res.get_err_unchecked());
-}
-
-TEST(Result, AndThenOkWithOk) {
-    Result<int, string> res = Ok(1);
-
-    const auto mapped_res =
-        move(res).and_then([](const auto value) -> Result<string, string> {
+        REQUIRE(mapped_res.is_ok());
+        REQUIRE(1.5 == mapped_res.get_unchecked());
+    }
+
+    SECTION("MapErr") {
+        Result<int, string> res = Err(string{"Error"});
+        const auto mapped_res = move(res).map([](const auto value) {
             static_assert(
                 is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return Ok(to_string(value));
+            return to_string(value);
         });
 
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ("1", mapped_res.get_unchecked());
-}
+        REQUIRE(mapped_res.is_err());
+        REQUIRE("Error" == mapped_res.get_err_unchecked());
+    }
 
-TEST(Result, AndThenOkWithErr) {
-    Result<int, string> res = Ok(2);
+    SECTION("MapErrErr") {
+        Result<int, string> res = Err(string{"Error"});
+        const auto mapped_res = move(res).map_err([](const auto &value) {
+            static_assert(
+                is_same<decltype(value), const string &>::value,
+                "value is expected to be of const string & type");
 
-    const auto mapped_res =
-        move(res).and_then([](const auto value) -> Result<int, string> {
+            return value + " value";
+        });
+
+        REQUIRE(mapped_res.is_err());
+        REQUIRE("Error value" == mapped_res.get_err_unchecked());
+    }
+
+    SECTION("MapErrOk") {
+        Result<int, int> res = Ok(-1);
+        const auto mapped_res = move(res).map_err([](const auto value) {
             static_assert(
                 is_same<decltype(value), const int>::value,
                 "value is expected to be of const int type");
 
-            return Err(to_string(value));
+            return to_string(value);
         });
 
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("2", mapped_res.get_err_unchecked());
+        REQUIRE(mapped_res.is_ok());
+        REQUIRE(-1 == mapped_res.get_unchecked());
+    }
+
+    SECTION("AndOkWithOk") {
+        Result<int, string> res_left = Ok(1);
+        Result<double, string> res_right = Ok(3.14);
+
+        const auto res = move(res_left).and_(move(res_right));
+
+        REQUIRE(res.is_ok());
+        REQUIRE(3.14 == res.get_unchecked());
+    }
+
+    SECTION("AndErrWithOk") {
+        Result<int, string> res_left = Err(string("Error"));
+        Result<double, string> res_right = Ok(3.14);
+
+        const auto res = move(res_left).and_(move(res_right));
+
+        REQUIRE(res.is_err());
+        REQUIRE("Error" == res.get_err_unchecked());
+    }
+
+    SECTION("AndOkWithErr") {
+        Result<int, string> res_left = Ok(1);
+        Result<double, string> res_right = Err(string("Error"));
+
+        const auto res = move(res_left).and_(move(res_right));
+
+        REQUIRE(res.is_err());
+        REQUIRE("Error" == res.get_err_unchecked());
+    }
+
+    SECTION("AndErrWithErr") {
+        Result<int, string> res_left = Err(string("Left Error"));
+        Result<double, string> res_right = Err(string("Right Error"));
+
+        const auto res = move(res_left).and_(move(res_right));
+
+        REQUIRE(res.is_err());
+        REQUIRE("Left Error" == res.get_err_unchecked());
+    }
+
+    SECTION("AndThenOkWithOk") {
+        Result<int, string> res = Ok(1);
+
+        const auto mapped_res =
+            move(res).and_then([](const auto value) -> Result<string, string> {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return Ok(to_string(value));
+            });
+
+        REQUIRE(mapped_res.is_ok());
+        REQUIRE("1" == mapped_res.get_unchecked());
+    }
+
+    SECTION("AndThenOkWithErr") {
+        Result<int, string> res = Ok(2);
+
+        const auto mapped_res =
+            move(res).and_then([](const auto value) -> Result<int, string> {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return Err(to_string(value));
+            });
+
+        REQUIRE(mapped_res.is_err());
+        REQUIRE("2" == mapped_res.get_err_unchecked());
+    }
+
+    SECTION("AndThenErr") {
+        Result<int, string> res = Err(string{"Error"});
+
+        const auto mapped_res =
+            move(res).and_then([](const auto value) -> Result<int, string> {
+                static_assert(
+                    is_same<decltype(value), const int>::value,
+                    "value is expected to be of const int type");
+
+                return Ok(value);
+            });
+
+        REQUIRE(mapped_res.is_err());
+        REQUIRE("Error" == mapped_res.get_err_unchecked());
+    }
+
+    SECTION("OrOkWithOk") {
+        Result<int, string> res_left = Ok(1);
+        Result<int, double> res_right = Ok(2);
+
+        const auto res = move(res_left).or_(move(res_right));
+
+        REQUIRE(res.is_ok());
+        REQUIRE(1 == res.get_unchecked());
+    }
+
+    SECTION("OrErrWithOk") {
+        Result<int, string> res_left = Err(string("Error"));
+        Result<int, double> res_right = Ok(2);
+
+        const auto res = move(res_left).or_(move(res_right));
+
+        REQUIRE(res.is_ok());
+        REQUIRE(2 == res.get_unchecked());
+    }
+
+    SECTION("OrOkWithErr") {
+        Result<int, string> res_left = Ok(1);
+        Result<int, double> res_right = Err(3.14);
+
+        const auto res = move(res_left).or_(move(res_right));
+
+        REQUIRE(res.is_ok());
+        REQUIRE(1 == res.get_unchecked());
+    }
+
+    SECTION("OrErrWithErr") {
+        Result<int, string> res_left = Err(string("Error"));
+        Result<int, double> res_right = Err(3.14);
+
+        const auto res = move(res_left).or_(move(res_right));
+
+        REQUIRE(res.is_err());
+        REQUIRE(3.14 == res.get_err_unchecked());
+    }
+
+    SECTION("OrElseErrWithOk") {
+        Result<int, string> res = Err(string{"Error"});
+
+        const auto mapped_res =
+            move(res).or_else([](const auto &value) -> Result<int, int> {
+                static_assert(
+                    is_same<decltype(value), const string &>::value,
+                    "value is expected to be of const string & type");
+
+                return Ok(7);
+            });
+
+        REQUIRE(mapped_res.is_ok());
+        REQUIRE(7 == mapped_res.get_unchecked());
+    }
+
+    SECTION("OrElseErrWithErr") {
+        Result<int, string> res = Err(string{"Error"});
+
+        const auto mapped_res =
+            move(res).or_else([](const auto &value) -> Result<int, string> {
+                static_assert(
+                    is_same<decltype(value), const string &>::value,
+                    "value is expected to be of const string & type");
+
+                return Err(string{"Still error"});
+            });
+
+        REQUIRE(mapped_res.is_err());
+        REQUIRE("Still error" == mapped_res.get_err_unchecked());
+    }
+
+    SECTION("OrElseOk") {
+        Result<int, string> res = Ok(5);
+
+        const auto mapped_res =
+            move(res).or_else([](const auto &value) -> Result<int, double> {
+                static_assert(
+                    is_same<decltype(value), const string &>::value,
+                    "value is expected to be of const string & type");
+
+                return Ok(6);
+            });
+
+        REQUIRE(mapped_res.is_ok());
+        REQUIRE(5 == mapped_res.get_unchecked());
+    }
+
+    SECTION("UnwrapOrOk") {
+        Result<int, string> res = Ok(1);
+        const auto v = move(res).unwrap_or(7);
+        REQUIRE(1 == v);
+    }
+
+    SECTION("UnwrapOrErr") {
+        Result<int, string> res = Err(string("Error"));
+        const auto v = move(res).unwrap_or(7);
+        REQUIRE(7 == v);
+    }
+
+    SECTION("UnwrapOrElseOk") {
+        Result<int, string> res = Ok(1);
+        const auto v = move(res).unwrap_or_else([] { return 7; });
+        REQUIRE(1 == v);
+    }
+
+    SECTION("UnwrapOrElseErr") {
+        Result<int, string> res = Err(string("Error"));
+        const auto v = move(res).unwrap_or_else([] { return 7; });
+        REQUIRE(7 == v);
+    }
+
+    SECTION("UnwrapOrDefaultOk") {
+        Result<string, double> res = Ok(string("Hello"));
+        const auto v = move(res).unwrap_or_default();
+        REQUIRE("Hello" == v);
+    }
+
+    SECTION("UnwrapOrDefaultErr") {
+        Result<string, double> res = Err(3.14);
+        const auto v = move(res).unwrap_or_default();
+        REQUIRE(v.empty());
+    }
+
+    SECTION("ResIfElseTrue") {
+        const auto res =
+            res_if_else(true, [] { return 1; }, [] { return 3.14; });
+
+        REQUIRE(res.is_ok());
+    }
+
+    SECTION("ResIfElseFalse") {
+        const auto res =
+            res_if_else(false, [] { return 1; }, [] { return 3.14; });
+
+        REQUIRE(res.is_err());
+    }
+
+    SECTION("OkSome") {
+        Result<int, string> res = Ok(8);
+        const auto opt = move(res).ok();
+
+        REQUIRE(opt.is_some());
+        REQUIRE(8 == opt.get_unchecked());
+    }
+
+    SECTION("OkNone") {
+        Result<int, string> res = Err(string{"World"});
+        const auto opt = move(res).ok();
+
+        REQUIRE(opt.is_none());
+    }
+
+    SECTION("ErrSome") {
+        Result<int, string> res = Err(string{"World"});
+        const auto opt = move(res).err();
+
+        REQUIRE(opt.is_some());
+        REQUIRE("World" == opt.get_unchecked());
+    }
+
+    SECTION("ErrNone") {
+        Result<int, string> res = Ok(9);
+        const auto opt = move(res).err();
+
+        REQUIRE(opt.is_none());
+    }
 }
 
-TEST(Result, AndThenErr) {
-    Result<int, string> res = Err(string{"Error"});
+TEST_CASE("Macro expansion", "[Macro]") {
+    SECTION("Let") {
+        const auto fn = [](const bool flag,
+                           size_t &count) -> Result<int, string> {
+            using inter_result_t = Result<double, string>;
 
-    const auto mapped_res =
-        move(res).and_then([](const auto value) -> Result<int, string> {
-            static_assert(
-                is_same<decltype(value), const int>::value,
-                "value is expected to be of const int type");
+            auto create_res = [](const bool flag, size_t &count) {
+                // to prove that the function is only called once
+                // despite expression being placed into the macro
+                ++count;
+                return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+            };
 
-            return Ok(value);
-        });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("Error", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, OrOkWithOk) {
-    Result<int, string> res_left = Ok(1);
-    Result<int, double> res_right = Ok(2);
-
-    const auto res = move(res_left).or_(move(res_right));
-
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(1, res.get_unchecked());
-}
-
-TEST(Result, OrErrWithOk) {
-    Result<int, string> res_left = Err(string("Error"));
-    Result<int, double> res_right = Ok(2);
-
-    const auto res = move(res_left).or_(move(res_right));
-
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(2, res.get_unchecked());
-}
-
-TEST(Result, OrOkWithErr) {
-    Result<int, string> res_left = Ok(1);
-    Result<int, double> res_right = Err(3.14);
-
-    const auto res = move(res_left).or_(move(res_right));
-
-    ASSERT_TRUE(res.is_ok());
-    ASSERT_EQ(1, res.get_unchecked());
-}
-
-TEST(Result, OrErrWithErr) {
-    Result<int, string> res_left = Err(string("Error"));
-    Result<int, double> res_right = Err(3.14);
-
-    const auto res = move(res_left).or_(move(res_right));
-
-    ASSERT_TRUE(res.is_err());
-    ASSERT_EQ(3.14, res.get_err_unchecked());
-}
-
-TEST(Result, OrElseErrWithOk) {
-    Result<int, string> res = Err(string{"Error"});
-
-    const auto mapped_res =
-        move(res).or_else([](const auto &value) -> Result<int, int> {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return Ok(7);
-        });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ(7, mapped_res.get_unchecked());
-}
-
-TEST(Result, OrElseErrWithErr) {
-    Result<int, string> res = Err(string{"Error"});
-
-    const auto mapped_res =
-        move(res).or_else([](const auto &value) -> Result<int, string> {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return Err(string{"Still error"});
-        });
-
-    ASSERT_TRUE(mapped_res.is_err());
-    ASSERT_EQ("Still error", mapped_res.get_err_unchecked());
-}
-
-TEST(Result, OrElseOk) {
-    Result<int, string> res = Ok(5);
-
-    const auto mapped_res =
-        move(res).or_else([](const auto &value) -> Result<int, double> {
-            static_assert(
-                is_same<decltype(value), const string &>::value,
-                "value is expected to be of const string & type");
-
-            return Ok(6);
-        });
-
-    ASSERT_TRUE(mapped_res.is_ok());
-    ASSERT_EQ(5, mapped_res.get_unchecked());
-}
-
-TEST(Result, UnwrapOrOk) {
-    Result<int, string> res = Ok(1);
-    const auto v = move(res).unwrap_or(7);
-    ASSERT_EQ(1, v);
-}
-
-TEST(Result, UnwrapOrErr) {
-    Result<int, string> res = Err(string("Error"));
-    const auto v = move(res).unwrap_or(7);
-    ASSERT_EQ(7, v);
-}
-
-TEST(Result, UnwrapOrElseOk) {
-    Result<int, string> res = Ok(1);
-    const auto v = move(res).unwrap_or_else([] { return 7; });
-    ASSERT_EQ(1, v);
-}
-
-TEST(Result, UnwrapOrElseErr) {
-    Result<int, string> res = Err(string("Error"));
-    const auto v = move(res).unwrap_or_else([] { return 7; });
-    ASSERT_EQ(7, v);
-}
-
-TEST(Result, UnwrapOrDefaultOk) {
-    Result<string, double> res = Ok(string("Hello"));
-    const auto v = move(res).unwrap_or_default();
-    ASSERT_EQ("Hello", v);
-}
-
-TEST(Result, UnwrapOrDefaultErr) {
-    Result<string, double> res = Err(3.14);
-    const auto v = move(res).unwrap_or_default();
-    ASSERT_TRUE(v.empty());
-}
-
-TEST(Result, ResIfElseTrue) {
-    const auto res = res_if_else(true, [] { return 1; }, [] { return 3.14; });
-    ASSERT_TRUE(res.is_ok());
-}
-
-TEST(Result, ResIfElseFalse) {
-    const auto res = res_if_else(false, [] { return 1; }, [] { return 3.14; });
-    ASSERT_TRUE(res.is_err());
-}
-
-TEST(Result, OkSome) {
-    Result<int, string> res = Ok(8);
-    const auto opt = move(res).ok();
-
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ(8, opt.get_unchecked());
-}
-
-TEST(Result, OkNone) {
-    Result<int, string> res = Err(string{"World"});
-    const auto opt = move(res).ok();
-
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Result, ErrSome) {
-    Result<int, string> res = Err(string{"World"});
-    const auto opt = move(res).err();
-
-    ASSERT_TRUE(opt.is_some());
-    ASSERT_EQ("World", opt.get_unchecked());
-}
-
-TEST(Result, ErrNone) {
-    Result<int, string> res = Ok(9);
-    const auto opt = move(res).err();
-
-    ASSERT_TRUE(opt.is_none());
-}
-
-TEST(Macro, Let) {
-    const auto fn = [](const bool flag, size_t &count) -> Result<int, string> {
-        using inter_result_t = Result<double, string>;
-
-        auto create_res = [](const bool flag, size_t &count) {
-            // to prove that the function is only called once
-            // despite expression being placed into the macro
-            ++count;
-            return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+            let(value, create_res(flag, count));
+            return Ok(static_cast<int>(value));
         };
 
-        let(value, create_res(flag, count));
-        return Ok(static_cast<int>(value));
-    };
+        {
+            size_t count = 0;
+            const auto res = fn(true, count);
 
-    {
-        size_t count = 0;
-        const auto res = fn(true, count);
+            REQUIRE(1 == count);
+            REQUIRE(res.is_ok());
+            REQUIRE(3 == res.get_unchecked());
+        }
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_ok());
-        ASSERT_EQ(3, res.get_unchecked());
+        {
+            size_t count = 0;
+            const auto res = fn(false, count);
+
+            REQUIRE(1 == count);
+            REQUIRE(res.is_err());
+            REQUIRE("Hello" == res.get_err_unchecked());
+        }
     }
 
-    {
-        size_t count = 0;
-        const auto res = fn(false, count);
+    SECTION("LetMut") {
+        const auto fn = [](const bool flag,
+                           size_t &count) -> Result<int, string> {
+            using inter_result_t = Result<double, string>;
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_err());
-        ASSERT_EQ("Hello", res.get_err_unchecked());
-    }
-}
+            auto create_res = [](const bool flag, size_t &count) {
+                // to prove that the function is only called once
+                // despite expression being placed into the macro
+                ++count;
+                return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+            };
 
-TEST(Macro, LetMut) {
-    const auto fn = [](const bool flag, size_t &count) -> Result<int, string> {
-        using inter_result_t = Result<double, string>;
-
-        auto create_res = [](const bool flag, size_t &count) {
-            // to prove that the function is only called once
-            // despite expression being placed into the macro
-            ++count;
-            return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+            let_mut(value, create_res(flag, count));
+            value += 10;
+            return Ok(static_cast<int>(value));
         };
 
-        let_mut(value, create_res(flag, count));
-        value += 10;
-        return Ok(static_cast<int>(value));
-    };
+        {
+            size_t count = 0;
+            const auto res = fn(true, count);
 
-    {
-        size_t count = 0;
-        const auto res = fn(true, count);
+            REQUIRE(1 == count);
+            REQUIRE(res.is_ok());
+            REQUIRE(13 == res.get_unchecked());
+        }
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_ok());
-        ASSERT_EQ(13, res.get_unchecked());
+        {
+            size_t count = 0;
+            const auto res = fn(false, count);
+
+            REQUIRE(1 == count);
+            REQUIRE(res.is_err());
+            REQUIRE("Hello" == res.get_err_unchecked());
+        }
     }
 
-    {
-        size_t count = 0;
-        const auto res = fn(false, count);
+    SECTION("LetRef") {
+        const int val = 7;
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_err());
-        ASSERT_EQ("Hello", res.get_err_unchecked());
-    }
-}
+        const auto fn = [&val](
+                            const bool flag,
+                            size_t &count) -> Result<const int &, string> {
 
-TEST(Macro, LetRef) {
-    const int val = 7;
+            using inter_result_t = Result<const int &, string>;
 
-    const auto fn =
-        [&val](const bool flag, size_t &count) -> Result<const int &, string> {
+            auto create_res = [&val](const bool flag, size_t &count) {
+                // to prove that the function is only called once
+                // despite expression being placed into the macro
+                ++count;
+                return flag ? inter_result_t(Ok(cref(val)))
+                            : Err(string("Hello"));
+            };
 
-        using inter_result_t = Result<const int &, string>;
-
-        auto create_res = [&val](const bool flag, size_t &count) {
-            // to prove that the function is only called once
-            // despite expression being placed into the macro
-            ++count;
-            return flag ? inter_result_t(Ok(cref(val))) : Err(string("Hello"));
+            let_ref(value, create_res(flag, count));
+            return Ok(cref(value));
         };
 
-        let_ref(value, create_res(flag, count));
-        return Ok(cref(value));
-    };
+        {
+            size_t count = 0;
+            const auto res = fn(true, count);
 
-    {
-        size_t count = 0;
-        const auto res = fn(true, count);
+            REQUIRE(1 == count);
+            REQUIRE(res.is_ok());
+            REQUIRE(val == res.get_unchecked());
+            REQUIRE(&val == &res.get_unchecked());
+        }
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_ok());
-        ASSERT_EQ(val, res.get_unchecked());
-        ASSERT_EQ(&val, &res.get_unchecked());
+        {
+            size_t count = 0;
+            const auto res = fn(false, count);
+
+            REQUIRE(1 == count);
+            REQUIRE(res.is_err());
+            REQUIRE("Hello" == res.get_err_unchecked());
+        }
     }
 
-    {
-        size_t count = 0;
-        const auto res = fn(false, count);
+    SECTION("LetMutRef") {
+        int val = 7;
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_err());
-        ASSERT_EQ("Hello", res.get_err_unchecked());
-    }
-}
+        const auto fn = [&val](
+                            const bool flag,
+                            size_t &count) -> Result<const int &, string> {
 
-TEST(Macro, LetMutRef) {
-    int val = 7;
+            using inter_result_t = Result<int &, string>;
 
-    const auto fn =
-        [&val](const bool flag, size_t &count) -> Result<const int &, string> {
+            auto create_res = [&val](const bool flag, size_t &count) {
+                // to prove that the function is only called once
+                // despite expression being placed into the macro
+                ++count;
+                return flag ? inter_result_t(Ok(ref(val)))
+                            : Err(string("Hello"));
+            };
 
-        using inter_result_t = Result<int &, string>;
-
-        auto create_res = [&val](const bool flag, size_t &count) {
-            // to prove that the function is only called once
-            // despite expression being placed into the macro
-            ++count;
-            return flag ? inter_result_t(Ok(ref(val))) : Err(string("Hello"));
+            let_mut_ref(value, create_res(flag, count));
+            value += 10;
+            return Ok(cref(value));
         };
 
-        let_mut_ref(value, create_res(flag, count));
-        value += 10;
-        return Ok(cref(value));
-    };
+        {
+            size_t count = 0;
+            const auto res = fn(true, count);
 
-    {
-        size_t count = 0;
-        const auto res = fn(true, count);
+            REQUIRE(1 == count);
+            REQUIRE(res.is_ok());
+            REQUIRE(17 == res.get_unchecked());
+            REQUIRE(&val == &res.get_unchecked());
+        }
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_ok());
-        ASSERT_EQ(17, res.get_unchecked());
-        ASSERT_EQ(&val, &res.get_unchecked());
+        {
+            size_t count = 0;
+            const auto res = fn(false, count);
+
+            REQUIRE(1 == count);
+            REQUIRE(res.is_err());
+            REQUIRE("Hello" == res.get_err_unchecked());
+        }
     }
 
-    {
-        size_t count = 0;
-        const auto res = fn(false, count);
+    SECTION("RetIfErr") {
+        const auto fn = [](const bool flag,
+                           size_t &count) -> Result<int, string> {
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_err());
-        ASSERT_EQ("Hello", res.get_err_unchecked());
-    }
-}
+            using inter_result_t = Result<double, string>;
 
-TEST(Macro, RetIfErr) {
-    const auto fn = [](const bool flag, size_t &count) -> Result<int, string> {
-        using inter_result_t = Result<double, string>;
+            auto create_res = [](const bool flag, size_t &count) {
+                // to prove that the function is only called once
+                // despite expression being placed into the macro
+                ++count;
+                return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+            };
 
-        auto create_res = [](const bool flag, size_t &count) {
-            // to prove that the function is only called once
-            // despite expression being placed into the macro
-            ++count;
-            return flag ? inter_result_t(Ok(3.14)) : Err(string("Hello"));
+            ret_if_err(create_res(flag, count));
+            return Ok(0);
         };
 
-        ret_if_err(create_res(flag, count));
-        return Ok(0);
-    };
+        {
+            size_t count = 0;
+            const auto res = fn(true, count);
 
-    {
-        size_t count = 0;
-        const auto res = fn(true, count);
+            REQUIRE(1 == count);
+            REQUIRE(res.is_ok());
+            REQUIRE(0 == res.get_unchecked());
+        }
 
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_ok());
-        ASSERT_EQ(0, res.get_unchecked());
+        {
+            size_t count = 0;
+            const auto res = fn(false, count);
+
+            REQUIRE(1 == count);
+            REQUIRE(res.is_err());
+            REQUIRE("Hello" == res.get_err_unchecked());
+        }
     }
-
-    {
-        size_t count = 0;
-        const auto res = fn(false, count);
-
-        ASSERT_EQ(1, count);
-        ASSERT_TRUE(res.is_err());
-        ASSERT_EQ("Hello", res.get_err_unchecked());
-    }
-}
-
-int main(int argc, char *argv[]) {
-    testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
 }

@@ -5,9 +5,9 @@ project(rustfp VERSION 0.1.0 LANGUAGES CXX)
 
 # general fixed compiler settings
 if(${MSVC})
-  set(DEBUG_FLAGS "/W4;")
+  set(DEBUG_FLAGS /W4)
 else()
-  set(DEBUG_FLAGS "-Wall;")
+  set(DEBUG_FLAGS -Wall)
 endif()
 
 add_compile_options("$<$<CONFIG:DEBUG>:${DEBUG_FLAGS}>")
@@ -63,21 +63,23 @@ install(
 
 # rustfp_unit_test
 if(RUSTFP_INCLUDE_UNIT_TESTS)
-  option(gtest_force_shared_crt "" ON)
-  add_subdirectory(deps/googletest/googletest)
-
   add_executable(rustfp_unit_test
+    src/rustfp_unit_test/unit_test_main.cpp
     src/rustfp_unit_test/unit_test.cpp)
 
   enable_testing()
-  add_test(rustfp_unit_test rustfp_unit_test --gtest_color=yes)
+  add_test(rustfp_unit_test rustfp_unit_test)
 
   set_property(TARGET rustfp_unit_test PROPERTY CXX_STANDARD 14)
 
+  # Catch2 does not have modern practice for CMake
+  target_include_directories(rustfp_unit_test
+    PRIVATE
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/deps/Catch2/single_include>)
+
   target_link_libraries(rustfp_unit_test
     PRIVATE
-      rustfp
-      gtest)
+      rustfp)
 
   if(RUSTFP_INCLUDE_TEST_COVERAGE)
     target_compile_options(rustfp_unit_test
