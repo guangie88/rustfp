@@ -132,7 +132,7 @@ auto FlatMap<Self, F>::next() -> Option<Item> {
             continue;
         }
 
-        sub_self_opt = Some(move(sub_self));
+        sub_self_opt = Some(std::move(sub_self));
 
         // success case
         return std::move(next_opt);
